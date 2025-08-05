@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 受注案件
+    match /orders/{document} {
+      allow read, write: if true; // 開発中のため全許可（本番では適切な認証を設定）
+    }
+    
+    // 工数管理
+    match /work-hours/{document} {
+      allow read, write: if true;
+    }
+    
+    // 日報
+    match /daily-reports/{document} {
+      allow read, write: if true;
+    }
+    
+    // 日報下書き
+    match /daily-report-drafts/{document} {
+      allow read, write: if true;
+    }
+    
+    // 作業内容タイプ
+    match /work-content-types/{document} {
+      allow read, write: if true;
+    }
+    
+    // 工程管理
+    match /processes/{document} {
+      allow read, write: if true;
+    }
+    
+    // テスト用
+    match /test/{document} {
+      allow read, write: if true;
+    }
+  }
+}
