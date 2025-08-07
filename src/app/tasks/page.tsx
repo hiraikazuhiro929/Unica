@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 // 型とコンポーネントのインポート
-import { Process, Company } from "@/app/tasks/types";
+import { Process } from "@/app/tasks/types";
 import { getClientColor } from "@/app/tasks/constants";
 import { useProcessManagement } from "@/app/tasks/hooks/useProcessManagement";
 import { useKeyboardShortcuts } from "@/app/tasks/hooks/useKeyboardShortcuts";
@@ -36,7 +36,6 @@ import { KanbanBoard } from "@/app/tasks/components/kanban/KanbanBoard";
 
 const ProcessList = () => {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const fromOrderId = searchParams.get('fromOrder');
   
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
@@ -47,7 +46,7 @@ const ProcessList = () => {
   );
   const [showNewProcessModal, setShowNewProcessModal] = useState(false);
   const [activeTab, setActiveTab] = useState("list");
-  const [ganttViewType, setGanttViewType] = useState<
+  const [ganttViewType] = useState<
     "machine" | "person" | "project"
   >("machine");
   const [orderInfo, setOrderInfo] = useState<any>(null);
@@ -69,7 +68,6 @@ const ProcessList = () => {
     reorderProcesses,
     toggleCompany,
     getStatistics,
-    loadProcessesData,
   } = useProcessManagement();
 
   // 受注情報からの工程作成処理

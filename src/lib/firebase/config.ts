@@ -1,7 +1,8 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
+// Firebase configuration with hardcoded values for production stability
 const firebaseConfig = {
   apiKey: "AIzaSyAIe-WxxfD6ID1QLWp7-PSykPvtW4mcECA",
   authDomain: "unica-1ef93.firebaseapp.com",
@@ -12,8 +13,46 @@ const firebaseConfig = {
   measurementId: "G-EGSBCH5T7B"
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase App (singleton pattern)
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+try {
+  // Check if Firebase app already exists
+  const existingApps = getApps();
+  
+  if (existingApps.length > 0) {
+    app = existingApps[0];
+    console.log('✅ Using existing Firebase app instance');
+  } else {
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase app initialized successfully');
+  }
+
+  // Initialize services
+  auth = getAuth(app);
+  db = getFirestore(app);
+  
+  console.log('✅ Firebase services initialized:', {
+    app: !!app,
+    auth: !!auth,
+    firestore: !!db,
+    projectId: firebaseConfig.projectId
+  });
+
+} catch (error: any) {
+  console.error('❌ Firebase initialization failed:', error);
+  throw new Error(`Firebase initialization failed: ${error.message}`);
+}
+
+// Export Firebase instances
+export { auth, db, app };
 export default app;
+
+// Export Firebase status for debugging
+export const firebaseStatus = {
+  initialized: !!(app && auth && db),
+  projectId: firebaseConfig.projectId,
+  config: firebaseConfig
+};

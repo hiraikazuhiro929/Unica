@@ -1,40 +1,17 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { subscribeToAnnouncements } from "@/lib/firebase/announcements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Megaphone,
   Plus,
   Search,
-  Filter,
-  Clock,
   Eye,
   Edit,
-  Trash2,
   Pin,
-  AlertTriangle,
   Info,
   CheckCircle,
-  Bell,
   Users,
   Calendar,
   MoreHorizontal,
@@ -44,7 +21,6 @@ import {
   BookmarkCheck,
   ChevronDown,
   ChevronUp,
-  Building2,
   Target,
   Wrench,
   HardHat,
@@ -52,34 +28,16 @@ import {
   FileText,
 } from "lucide-react";
 
-// 型定義
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  category: AnnouncementCategory;
-  priority: "low" | "normal" | "high" | "urgent";
-  status: "draft" | "published" | "archived";
-  author: string;
-  department: string;
-  publishedAt: Date | null;
-  expiresAt: Date | null;
-  targetAudience: string[];
-  isSticky: boolean;
-  readCount: number;
-  totalTargets: number;
-  tags: string[];
-  attachments?: AttachmentFile[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Firebase型をimport
+import { Announcement as FirebaseAnnouncement } from "@/lib/firebase/announcements";
 
+// ページ用の拡張型定義
 interface AnnouncementCategory {
   id: string;
   name: string;
   color: string;
   bgColor: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   description: string;
 }
 
@@ -91,17 +49,34 @@ interface AttachmentFile {
   url: string;
 }
 
+// ページ用の拡張Announcement型
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  category: AnnouncementCategory;
+  priority: "normal" | "high" | "urgent";
+  isActive: boolean;
+  authorName: string;
+  publishedAt: Date | null;
+  expiresAt: Date | null;
+  targetAudience: string[];
+  isSticky: boolean;
+  readCount: number;
+  totalTargetCount: number;
+  tags: string[];
+  attachments?: AttachmentFile[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const AnnouncementsPage = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [filteredAnnouncements, setFilteredAnnouncements] = useState<Announcement[]>([]);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("published");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [isEditMode, setIsEditMode] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
 
@@ -157,125 +132,111 @@ const AnnouncementsPage = () => {
     },
   ];
 
-  // サンプルデータ
-  const sampleAnnouncements: Announcement[] = [
-    {
-      id: "1",
-      title: "第1工場設備点検による生産停止のお知らせ",
-      content: "来週月曜日（2月15日）午前9時から午後5時まで、第1工場の定期設備点検を実施いたします。この間、A製品ラインは生産停止となります。\n\n詳細スケジュール：\n- 09:00-12:00: NC旋盤点検\n- 13:00-17:00: プレス機点検\n\n各部署の対応をお願いいたします。",
-      category: categories[2], // maintenance
-      priority: "high",
-      status: "published",
-      author: "保全部長 山田太郎",
-      department: "保全部",
-      publishedAt: new Date(2025, 1, 10, 9, 0),
-      expiresAt: new Date(2025, 1, 20, 17, 0),
-      targetAudience: ["生産部", "品質管理部", "工場作業員"],
-      isSticky: true,
-      readCount: 45,
-      totalTargets: 50,
-      tags: ["設備点検", "生産停止", "第1工場"],
-      createdAt: new Date(2025, 1, 9, 14, 30),
-      updatedAt: new Date(2025, 1, 9, 14, 30),
-    },
-    {
-      id: "2",
-      title: "新しい安全規則の導入について",
-      content: "労働安全衛生法の改正に伴い、以下の新しい安全規則を2月20日より導入いたします。\n\n主な変更点：\n1. 作業開始前の安全確認手順の見直し\n2. 保護具着用基準の更新\n3. 事故報告書の書式変更\n\n詳細は添付の資料をご確認ください。",
-      category: categories[0], // safety
-      priority: "urgent",
-      status: "published",
-      author: "総務部 安全管理者",
-      department: "総務部",
-      publishedAt: new Date(2025, 1, 8, 10, 0),
-      expiresAt: new Date(2025, 2, 20, 17, 0),
-      targetAudience: ["全社員"],
-      isSticky: true,
-      readCount: 78,
-      totalTargets: 85,
-      tags: ["安全規則", "法改正", "保護具"],
-      attachments: [
-        {
-          id: "att1",
-          name: "新安全規則詳細.pdf",
-          size: 1024000,
-          type: "application/pdf",
-          url: "/files/safety-rules.pdf"
-        }
-      ],
-      createdAt: new Date(2025, 1, 7, 16, 0),
-      updatedAt: new Date(2025, 1, 8, 9, 30),
-    },
-    {
-      id: "3",
-      title: "品質管理システムアップデート完了",
-      content: "品質管理システムのアップデートが完了いたしました。\n\n新機能：\n- 検査結果の自動グラフ化\n- 不良品トレーサビリティ強化\n- モバイル対応改善\n\nログイン後、新機能をご確認ください。",
-      category: categories[4], // system
-      priority: "normal",
-      status: "published",
-      author: "システム管理者",
-      department: "情報システム部",
-      publishedAt: new Date(2025, 1, 5, 8, 0),
-      expiresAt: null,
-      targetAudience: ["品質管理部", "検査担当者"],
-      isSticky: false,
-      readCount: 23,
-      totalTargets: 25,
-      tags: ["システム更新", "品質管理", "新機能"],
-      createdAt: new Date(2025, 1, 4, 17, 0),
-      updatedAt: new Date(2025, 1, 4, 17, 0),
-    },
-    {
-      id: "4",
-      title: "3月度生産計画の確定について",
-      content: "3月度の生産計画が確定いたしました。\n\n主要製品の生産予定：\n- A製品: 1,200個\n- B製品: 800個\n- C製品: 600個\n\n詳細スケジュールは各課長にお伝えします。",
-      category: categories[1], // production
-      priority: "normal",
-      status: "published",
-      author: "生産管理部長",
-      department: "生産管理部",
-      publishedAt: new Date(2025, 1, 3, 14, 0),
-      expiresAt: new Date(2025, 2, 28, 17, 0),
-      targetAudience: ["生産部", "資材調達部"],
-      isSticky: false,
-      readCount: 34,
-      totalTargets: 40,
-      tags: ["生産計画", "3月", "製品別"],
-      createdAt: new Date(2025, 1, 2, 10, 0),
-      updatedAt: new Date(2025, 1, 3, 13, 45),
-    },
-    {
-      id: "5",
-      title: "ISO 9001年次内部監査の実施について",
-      content: "ISO 9001の年次内部監査を以下の日程で実施いたします。\n\n実施日程：\n- 2月25日（火）：生産部\n- 2月26日（水）：品質管理部\n- 2月27日（木）：保全部\n\n各部署は必要書類の準備をお願いします。",
-      category: categories[3], // quality
-      priority: "high",
-      status: "published",
-      author: "品質管理部 監査責任者",
-      department: "品質管理部",
-      publishedAt: new Date(2025, 1, 1, 9, 0),
-      expiresAt: new Date(2025, 1, 28, 17, 0),
-      targetAudience: ["生産部", "品質管理部", "保全部"],
-      isSticky: false,
-      readCount: 28,
-      totalTargets: 30,
-      tags: ["ISO監査", "内部監査", "品質"],
-      createdAt: new Date(2025, 0, 30, 15, 0),
-      updatedAt: new Date(2025, 0, 31, 9, 0),
-    },
-  ];
 
-  // 初期データの設定
+  // Firebase型をページ型に変換する関数
+  const convertFirebaseToPageAnnouncement = useCallback((fbAnnouncement: FirebaseAnnouncement): Announcement => {
+    const categoryMap = {
+      'safety': categories[0],
+      'production': categories[1], 
+      'maintenance': categories[2],
+      'quality': categories[3],
+      'system': categories[4],
+      'general': categories[5]
+    } as const;
+    
+    return {
+      id: fbAnnouncement.id,
+      title: fbAnnouncement.title,
+      content: fbAnnouncement.content,
+      category: categoryMap[fbAnnouncement.category as keyof typeof categoryMap] || categories[5],
+      priority: fbAnnouncement.priority === 'medium' ? 'normal' : fbAnnouncement.priority as 'normal' | 'high' | 'urgent',
+      isActive: fbAnnouncement.isActive,
+      authorName: fbAnnouncement.authorName,
+      publishedAt: fbAnnouncement.publishedAt ? new Date(fbAnnouncement.publishedAt) : null,
+      expiresAt: fbAnnouncement.expiresAt ? new Date(fbAnnouncement.expiresAt) : null,
+      targetAudience: Array.isArray(fbAnnouncement.targetDepartments) ? fbAnnouncement.targetDepartments : ['全社員'],
+      isSticky: fbAnnouncement.priority === 'urgent',
+      readCount: fbAnnouncement.readCount,
+      totalTargetCount: fbAnnouncement.totalTargetCount,
+      tags: [],
+      attachments: fbAnnouncement.attachments?.map(att => ({
+        id: att.fileName,
+        name: att.fileName,
+        size: att.fileSize,
+        type: 'application/pdf',
+        url: att.fileUrl
+      })),
+      createdAt: fbAnnouncement.createdAt instanceof Date ? fbAnnouncement.createdAt : new Date(),
+      updatedAt: fbAnnouncement.updatedAt instanceof Date ? fbAnnouncement.updatedAt : new Date()
+    };
+  }, [categories]);
+
+  // Firebaseからデータを取得
   useEffect(() => {
-    setAnnouncements(sampleAnnouncements);
-    setFilteredAnnouncements(sampleAnnouncements.filter(a => a.status === "published"));
-  }, []);
+    let isMounted = true;
+    
+    const unsubscribe = subscribeToAnnouncements(
+      {
+        isActive: true,
+        limit: 50
+      },
+      (firebaseData) => {
+        if (!isMounted) return;
+        
+        console.log('Received announcements from Firebase:', firebaseData);
+        // Firebase型をページ型に変換
+        const convertedData = firebaseData.map(convertFirebaseToPageAnnouncement);
+        setAnnouncements(convertedData);
+        setFilteredAnnouncements(convertedData.filter(a => a.isActive));
+      }
+    );
+    
+    // Fallback to sample data if no Firebase data
+    const fallbackTimer = setTimeout(() => {
+      if (!isMounted) return;
+      setAnnouncements(prev => {
+        if (prev.length === 0) {
+          console.log('No Firebase data found, using sample data as fallback');
+          const fallbackData = [
+            {
+              id: "1",
+              title: "第1工場設備点検による生産停止のお知らせ",
+              content: "来週月曜日（2月15日）午前9時から午後5時まで、第1工場の定期設備点検を実施いたします。この間、A製品ラインは生産停止となります。",
+              category: categories[2],
+              priority: "high" as const,
+              isActive: true,
+              authorName: "保全部長 山田太郎",
+              publishedAt: new Date(2025, 1, 10, 9, 0),
+              expiresAt: new Date(2025, 1, 20, 17, 0),
+              targetAudience: ["生産部", "品質管理部", "工場作業員"],
+              isSticky: true,
+              readCount: 45,
+              totalTargetCount: 50,
+              tags: ["設備点検", "生産停止", "第1工場"],
+              createdAt: new Date(2025, 1, 9, 14, 30),
+              updatedAt: new Date(2025, 1, 9, 14, 30),
+            }
+          ];
+          const activeData = fallbackData.filter(a => a.isActive);
+          setFilteredAnnouncements(activeData);
+          return fallbackData;
+        }
+        return prev;
+      });
+    }, 2000);
+    
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      clearTimeout(fallbackTimer);
+    };
+  }, [convertFirebaseToPageAnnouncement]);
 
   // フィルタリング処理
   useEffect(() => {
-    let filtered = announcements.filter(ann => {
-      // ステータスフィルター
-      if (filterStatus !== "all" && ann.status !== filterStatus) return false;
+    const filtered = announcements.filter(ann => {
+      // アクティブなお知らせのみ表示
+      if (!ann.isActive) return false;
       
       // カテゴリフィルター
       if (filterCategory !== "all" && ann.category.id !== filterCategory) return false;
@@ -289,7 +250,7 @@ const AnnouncementsPage = () => {
         return (
           ann.title.toLowerCase().includes(query) ||
           ann.content.toLowerCase().includes(query) ||
-          ann.author.toLowerCase().includes(query) ||
+          ann.authorName.toLowerCase().includes(query) ||
           ann.tags.some(tag => tag.toLowerCase().includes(query))
         );
       }
@@ -302,7 +263,7 @@ const AnnouncementsPage = () => {
       if (a.isSticky && !b.isSticky) return -1;
       if (!a.isSticky && b.isSticky) return 1;
       
-      const priorityOrder = { urgent: 4, high: 3, normal: 2, low: 1 };
+      const priorityOrder = { urgent: 3, high: 2, normal: 1 };
       const aPriority = priorityOrder[a.priority];
       const bPriority = priorityOrder[b.priority];
       
@@ -314,57 +275,12 @@ const AnnouncementsPage = () => {
     });
 
     setFilteredAnnouncements(filtered);
-  }, [announcements, searchQuery, filterCategory, filterPriority, filterStatus]);
+  }, [announcements, searchQuery, filterCategory, filterPriority]);
 
-  // 新規お知らせ作成用の状態
-  const [newAnnouncement, setNewAnnouncement] = useState<Partial<Announcement>>({
-    title: "",
-    content: "",
-    category: categories[5], // general
-    priority: "normal",
-    status: "draft",
-    department: "総務部",
-    targetAudience: [],
-    isSticky: false,
-    tags: [],
-  });
-
-  // 優先度の色を取得
-  const getPriorityColor = (priority: Announcement["priority"]) => {
-    switch (priority) {
-      case "urgent":
-        return "border-red-500 bg-red-50";
-      case "high":
-        return "border-orange-500 bg-orange-50";
-      case "normal":
-        return "border-blue-500 bg-blue-50";
-      case "low":
-        return "border-gray-400 bg-gray-50";
-      default:
-        return "border-gray-300 bg-gray-50";
-    }
-  };
-
-  // 優先度のバッジを取得
-  const getPriorityBadge = (priority: Announcement["priority"]) => {
-    const configs = {
-      urgent: { label: "緊急", className: "bg-red-100 text-red-800 border-red-300" },
-      high: { label: "重要", className: "bg-orange-100 text-orange-800 border-orange-300" },
-      normal: { label: "普通", className: "bg-blue-100 text-blue-800 border-blue-300" },
-      low: { label: "低", className: "bg-gray-100 text-gray-800 border-gray-300" },
-    };
-    
-    const config = configs[priority];
-    return (
-      <Badge variant="outline" className={`text-xs ${config.className}`}>
-        {config.label}
-      </Badge>
-    );
-  };
 
   // 既読率を取得
   const getReadPercentage = (announcement: Announcement) => {
-    return Math.round((announcement.readCount / announcement.totalTargets) * 100);
+    return Math.round((announcement.readCount / announcement.totalTargetCount) * 100);
   };
 
   // 展開/折りたたみ切り替え
@@ -427,9 +343,8 @@ const AnnouncementsPage = () => {
               </div>
               <Button
                 onClick={() => {
-                  setIsEditMode(true);
-                  setSelectedAnnouncement(null);
-                  setShowCreateDialog(true);
+                  // お知らせ作成機能は今後実装予定
+                  alert("お知らせ作成機能は開発中です");
                 }}
                 className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-medium px-6"
               >
@@ -441,96 +356,116 @@ const AnnouncementsPage = () => {
         </div>
 
         <div className="flex-1 flex">
-          {/* フィルターサイドバー */}
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-            <div className="p-4 border-b border-gray-200">
-              <div className="relative">
+          {/* 左側サイドバー */}
+          <div className="w-64 flex flex-col">
+            <div className="p-4">
+              <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="お知らせを検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
-            </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* ステータスフィルター */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">ステータス</h3>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全て</SelectItem>
-                    <SelectItem value="published">公開中</SelectItem>
-                    <SelectItem value="draft">下書き</SelectItem>
-                    <SelectItem value="archived">アーカイブ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* カテゴリフィルター */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">カテゴリ</h3>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全カテゴリ</SelectItem>
-                    {categories.map(category => {
-                      const Icon = category.icon;
-                      return (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center space-x-2">
-                            <Icon className={`w-4 h-4 ${category.color}`} />
-                            <span>{category.name}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+              {/* カテゴリタブ */}
+              <div className="space-y-1 mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 px-2">カテゴリ</h3>
+                <button
+                  onClick={() => setFilterCategory("all")}
+                  className={`w-full flex items-center gap-3 p-3 transition-all duration-200 text-left border-l-2 ${
+                    filterCategory === "all"
+                      ? "bg-indigo-50/50 text-indigo-600 border-indigo-500"
+                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-50/50 border-transparent"
+                  }`}
+                >
+                  <Megaphone className={`w-4 h-4 ${filterCategory === "all" ? "text-indigo-600" : "text-gray-400"}`} />
+                  <span className="text-sm font-medium">すべて</span>
+                  <span className={`ml-auto text-xs font-semibold ${
+                    filterCategory === "all" ? "text-indigo-700" : "text-gray-500"
+                  }`}>
+                    {announcements.length}
+                  </span>
+                </button>
+                
+                {categories.map(category => {
+                  const Icon = category.icon;
+                  const count = announcements.filter(a => a.category.id === category.id).length;
+                  const isActive = filterCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setFilterCategory(category.id)}
+                      className={`w-full flex items-center gap-3 p-3 transition-all duration-200 text-left border-l-2 ${
+                        isActive
+                          ? "bg-indigo-50/50 text-indigo-600 border-indigo-500"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-gray-50/50 border-transparent"
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isActive ? "text-indigo-600" : category.color}`} />
+                      <span className="text-sm font-medium">{category.name}</span>
+                      {count > 0 && (
+                        <span className={`ml-auto text-xs font-semibold ${
+                          isActive ? "text-indigo-700" : "text-gray-500"
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* 優先度フィルター */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">優先度</h3>
-                <Select value={filterPriority} onValueChange={setFilterPriority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全優先度</SelectItem>
-                    <SelectItem value="urgent">緊急</SelectItem>
-                    <SelectItem value="high">重要</SelectItem>
-                    <SelectItem value="normal">普通</SelectItem>
-                    <SelectItem value="low">低</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-1 mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 px-2">優先度</h3>
+                {[
+                  { value: "all", label: "すべて", count: announcements.length },
+                  { value: "urgent", label: "緊急", count: announcements.filter(a => a.priority === "urgent").length },
+                  { value: "high", label: "重要", count: announcements.filter(a => a.priority === "high").length },
+                  { value: "normal", label: "普通", count: announcements.filter(a => a.priority === "normal").length },
+                ].map(priority => {
+                  const isActive = filterPriority === priority.value;
+                  return (
+                    <button
+                      key={priority.value}
+                      onClick={() => setFilterPriority(priority.value)}
+                      className={`w-full flex items-center justify-between p-2 px-4 transition-all duration-200 text-left hover:bg-gray-50/50 ${
+                        isActive ? "text-indigo-600" : "text-gray-700"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{priority.label}</span>
+                      <span className={`text-xs font-semibold ${
+                        isActive ? "text-indigo-600" : "text-gray-500"
+                      }`}>
+                        {priority.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* 統計情報 */}
-              <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">統計</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">総お知らせ数</span>
-                    <span className="font-medium">{announcements.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">公開中</span>
-                    <span className="font-medium">
-                      {announcements.filter(a => a.status === "published").length}
+              <div className="py-4 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4 px-2">統計</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between px-2 py-1">
+                    <span className="text-sm text-gray-600">公開中</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {announcements.filter(a => a.isActive).length}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">重要・緊急</span>
-                    <span className="font-medium text-red-600">
+                  <div className="flex justify-between px-2 py-1">
+                    <span className="text-sm text-gray-600">重要・緊急</span>
+                    <span className="text-sm font-semibold text-red-600">
                       {announcements.filter(a => a.priority === "high" || a.priority === "urgent").length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-2 py-1">
+                    <span className="text-sm text-gray-600">固定表示</span>
+                    <span className="text-sm font-semibold text-blue-600">
+                      {announcements.filter(a => a.isSticky).length}
                     </span>
                   </div>
                 </div>
@@ -542,19 +477,17 @@ const AnnouncementsPage = () => {
           <div className="flex-1 overflow-auto">
             <div className="p-6">
               {filteredAnnouncements.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <Megaphone className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                      お知らせが見つかりません
-                    </h3>
-                    <p className="text-gray-500">
-                      検索条件を変更するか、新しいお知らせを作成してください。
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="text-center py-16">
+                  <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    お知らせが見つかりません
+                  </h3>
+                  <p className="text-gray-600">
+                    検索条件を変更するか、新しいお知らせを作成してください。
+                  </p>
+                </div>
               ) : (
-                <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-4"}>
+                <div className="space-y-4">
                   {filteredAnnouncements.map(announcement => {
                     const Icon = announcement.category.icon;
                     const isExpanded = expandedItems.has(announcement.id);
@@ -562,144 +495,173 @@ const AnnouncementsPage = () => {
                     const readPercentage = getReadPercentage(announcement);
 
                     return (
-                      <Card
-                        key={announcement.id}
-                        className={`border-2 transition-all duration-200 hover:shadow-lg ${getPriorityColor(announcement.priority)} ${
-                          announcement.isSticky ? "ring-2 ring-blue-200" : ""
-                        }`}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3 flex-1 min-w-0">
-                              {announcement.isSticky && (
-                                <Pin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                              )}
-                              <Icon className={`w-5 h-5 ${announcement.category.color} flex-shrink-0`} />
-                              <div className="min-w-0 flex-1">
-                                <CardTitle className="text-lg font-bold text-gray-900 line-clamp-2">
-                                  {announcement.title}
-                                </CardTitle>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <Badge variant="outline" className={announcement.category.bgColor}>
-                                    {announcement.category.name}
-                                  </Badge>
-                                  {getPriorityBadge(announcement.priority)}
+                      <div key={announcement.id}>
+                        <div
+                          className={`p-6 border-l-4 hover:bg-gray-50/50 transition-all cursor-pointer ${
+                            announcement.priority === "urgent" ? "border-l-red-500" :
+                            announcement.priority === "high" ? "border-l-orange-500" :
+                            announcement.priority === "normal" ? "border-l-blue-500" :
+                            "border-l-gray-400"
+                          } ${announcement.isSticky ? "bg-blue-50/30" : "bg-white/50"}`}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start gap-4 flex-1">
+                              <div className={`p-2 rounded-lg flex-shrink-0 ${
+                                announcement.priority === "urgent" ? "bg-red-100" :
+                                announcement.priority === "high" ? "bg-orange-100" :
+                                announcement.priority === "normal" ? "bg-blue-100" :
+                                "bg-gray-100"
+                              }`}>
+                                <Icon className={`w-5 h-5 ${announcement.category.color}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3 mb-2">
                                   {announcement.isSticky && (
-                                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                                      固定表示
-                                    </Badge>
+                                    <Pin className="w-4 h-4 text-blue-600 flex-shrink-0" />
                                   )}
+                                  <h3 className="text-lg font-bold text-gray-900">
+                                    {announcement.title}
+                                  </h3>
+                                </div>
+                                <div className="flex items-center gap-3 mb-3 text-sm text-gray-600">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    announcement.category.bgColor
+                                  }`}>
+                                    {announcement.category.name}
+                                  </span>
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    announcement.priority === "urgent" ? "bg-red-100 text-red-700" :
+                                    announcement.priority === "high" ? "bg-orange-100 text-orange-700" :
+                                    announcement.priority === "normal" ? "bg-blue-100 text-blue-700" :
+                                    "bg-gray-100 text-gray-700"
+                                  }`}>
+                                    {announcement.priority === "urgent" ? "緊急" :
+                                     announcement.priority === "high" ? "重要" :
+                                     announcement.priority === "normal" ? "普通" : "低"}
+                                  </span>
+                                  {announcement.isSticky && (
+                                    <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                      固定表示
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                                  <div className="flex items-center gap-1">
+                                    <Users className="w-4 h-4" />
+                                    <span>{announcement.authorName}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{announcement.publishedAt?.toLocaleDateString("ja-JP")}</span>
+                                  </div>
+                                </div>
+                                <p className={`text-sm text-gray-700 leading-relaxed mb-3 ${
+                                  isExpanded ? "whitespace-pre-line" : "line-clamp-2"
+                                }`}>
+                                  {announcement.content}
+                                </p>
+                                {/* 既読率バー */}
+                                <div className="flex items-center gap-3 text-sm">
+                                  <div className="flex items-center gap-1">
+                                    <Eye className="w-4 h-4 text-gray-500" />
+                                    <span className="text-gray-600">
+                                      既読率: {readPercentage}% ({announcement.readCount}/{announcement.totalTargetCount})
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-48">
+                                    <div
+                                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                      style={{ width: `${readPercentage}%` }}
+                                    ></div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="sm"
+                            <div className="flex items-center gap-1 ml-6">
+                              <button
                                 onClick={() => toggleBookmark(announcement.id)}
-                                className="p-1"
+                                className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors"
                               >
                                 {isBookmarked ? (
                                   <BookmarkCheck className="w-4 h-4 text-blue-600" />
                                 ) : (
-                                  <Bookmark className="w-4 h-4 text-gray-400" />
+                                  <Bookmark className="w-4 h-4" />
                                 )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
+                              </button>
+                              <button
                                 onClick={() => toggleExpanded(announcement.id)}
-                                className="p-1"
+                                className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700 transition-colors"
                               >
                                 {isExpanded ? (
                                   <ChevronUp className="w-4 h-4" />
                                 ) : (
                                   <ChevronDown className="w-4 h-4" />
                                 )}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-
-                        <CardContent>
-                          {/* 基本情報 */}
-                          <div className="mb-4">
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
-                              <div className="flex items-center space-x-1">
-                                <Users className="w-4 h-4" />
-                                <span>{announcement.author}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Building2 className="w-4 h-4" />
-                                <span>{announcement.department}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="w-4 h-4" />
-                                <span>
-                                  {announcement.publishedAt?.toLocaleDateString("ja-JP")}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* 既読率 */}
-                            <div className="flex items-center space-x-3 text-sm">
-                              <div className="flex items-center space-x-1">
-                                <Eye className="w-4 h-4 text-gray-500" />
-                                <span className="text-gray-600">
-                                  既読率: {readPercentage}% ({announcement.readCount}/{announcement.totalTargets})
-                                </span>
-                              </div>
-                              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                  style={{ width: `${readPercentage}%` }}
-                                ></div>
-                              </div>
+                              </button>
                             </div>
                           </div>
 
-                          {/* 内容 */}
-                          <div className="mb-4">
-                            <p className={`text-gray-700 whitespace-pre-line ${
-                              isExpanded ? "" : "line-clamp-3"
-                            }`}>
-                              {announcement.content}
-                            </p>
+                          {/* アクションボタン */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded transition-colors">
+                                <MessageSquare className="w-4 h-4" />
+                                コメント
+                              </button>
+                              <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50/50 rounded transition-colors">
+                                <Share2 className="w-4 h-4" />
+                                共有
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-orange-600 hover:bg-orange-50/50 rounded transition-colors">
+                                <Edit className="w-4 h-4" />
+                                編集
+                              </button>
+                              <button className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
+                        </div>
 
-                          {/* 対象者・タグ */}
-                          {isExpanded && (
-                            <div className="space-y-3 pt-4 border-t border-gray-100">
+                        {/* 展開された詳細エリア */}
+                        {isExpanded && (
+                          <div className="border-l-4 border-l-gray-200 bg-gray-50/30 px-6 py-4">
+                            <div className="space-y-4">
+                              {/* 対象者 */}
                               <div>
-                                <h4 className="text-sm font-medium text-gray-700 mb-2">対象者</h4>
-                                <div className="flex flex-wrap gap-1">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-2">対象者</h4>
+                                <div className="flex flex-wrap gap-2">
                                   {announcement.targetAudience.map((target, index) => (
-                                    <Badge key={index} variant="secondary" className="text-xs">
+                                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
                                       {target}
-                                    </Badge>
+                                    </span>
                                   ))}
                                 </div>
                               </div>
                               
+                              {/* タグ */}
                               {announcement.tags.length > 0 && (
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-700 mb-2">タグ</h4>
-                                  <div className="flex flex-wrap gap-1">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">タグ</h4>
+                                  <div className="flex flex-wrap gap-2">
                                     {announcement.tags.map((tag, index) => (
-                                      <Badge key={index} variant="outline" className="text-xs">
+                                      <span key={index} className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded">
                                         #{tag}
-                                      </Badge>
+                                      </span>
                                     ))}
                                   </div>
                                 </div>
                               )}
 
+                              {/* 添付ファイル */}
                               {announcement.attachments && announcement.attachments.length > 0 && (
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-700 mb-2">添付ファイル</h4>
-                                  <div className="space-y-1">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">添付ファイル</h4>
+                                  <div className="space-y-2">
                                     {announcement.attachments.map((file) => (
-                                      <div key={file.id} className="flex items-center space-x-2 text-sm">
+                                      <div key={file.id} className="flex items-center gap-3 text-sm hover:bg-blue-50/50 p-2 rounded transition-colors">
                                         <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
                                           <FileText className="w-3 h-3 text-blue-600" />
                                         </div>
@@ -715,32 +677,9 @@ const AnnouncementsPage = () => {
                                 </div>
                               )}
                             </div>
-                          )}
-
-                          {/* アクションボタン */}
-                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
-                                <MessageSquare className="w-4 h-4 mr-1" />
-                                コメント
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Share2 className="w-4 h-4 mr-1" />
-                                共有
-                              </Button>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
-                                <Edit className="w-4 h-4 mr-1" />
-                                編集
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

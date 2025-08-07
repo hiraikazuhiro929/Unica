@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+
+// Firebase imports
+import { getTodayEvents, getMonthEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/firebase/calendar';
+import type { CalendarEvent as FirebaseCalendarEvent } from '@/lib/firebase/calendar';
 import {
   Select,
   SelectContent,

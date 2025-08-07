@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Bell, AtSign, MessageCircle, Zap } from 'lucide-react';
 
-export interface Notification {
+export interface NotificationDisplay {
   id: number;
   type: 'mention' | 'chat' | 'system';
   user: string;
@@ -12,7 +12,7 @@ export interface Notification {
 }
 
 interface NotificationPanelProps {
-  notifications: Notification[];
+  notifications: NotificationDisplay[];
   show: boolean;
   onClose: () => void;
 }

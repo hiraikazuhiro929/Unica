@@ -1,57 +1,449 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import NotificationPanel from "./components/NotificationPanel";
-import MiniCalendar from "./components/MiniCalendar";
+import NotificationPanel, { type NotificationDisplay } from "./components/NotificationPanel";
 import { Button } from "@/components/ui/button";
+import EnhancedProcessCard from "./components/EnhancedProcessCard";
+
+// Firebase imports
+import { subscribeToProcessesList } from "@/lib/firebase/processes";
+import { subscribeToCompanyTasks, subscribeToPersonalTasks } from "@/lib/firebase/tasks";
+import { subscribeToNotifications } from "@/lib/firebase/notifications";
+import { subscribeToAnnouncements } from "@/lib/firebase/announcements";
+import { getTodayEvents, getMonthEvents } from '@/lib/firebase/calendar';
+import { createQuickNote } from '@/lib/firebase/notes';
+
+// Types
+import type { Process } from "@/app/tasks/types";
+import type { CompanyTask, PersonalTask } from "@/lib/firebase/tasks";
+import type { Notification } from "@/lib/firebase/notifications";
+import type { Announcement } from "@/lib/firebase/announcements";
+import type { CalendarEvent } from '@/lib/firebase/calendar';
 import {
-  Plus,
   CheckCircle,
   Clock,
   FileText,
-  AlertTriangle,
   Calendar,
   Bell,
-  AlertCircle,
-  CheckCircle2,
-  Info,
   MessageCircle,
   AtSign,
-  Users,
   Zap,
-  Activity,
-  TrendingUp,
   Target,
-  BarChart3,
-  PieChart,
   X,
   PlayCircle,
-  Pause,
-  ArrowRight,
   Home,
-  RefreshCw,
-  Eye,
+  Save,
 } from "lucide-react";
 
 const MainDashboard = () => {
+  const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
-  const [calendarSyncStatus, setCalendarSyncStatus] = useState({
-    isConnected: true,
-    lastSync: new Date(Date.now() - 300000), // 5分前
-    provider: 'google' as const
-  });
-  const [announcementSyncStatus, setAnnouncementSyncStatus] = useState({
-    isConnected: true,
-    lastSync: new Date(Date.now() - 180000), // 3分前
-    newCount: 2
-  });
-  const [taskSyncStatus, setTaskSyncStatus] = useState({
-    isConnected: true,
-    lastSync: new Date(Date.now() - 120000), // 2分前
-    pendingUpdates: 1
-  });
+
+  // Firebase State
+  const [processes, setProcesses] = useState<Process[]>([]);
+  const [companyTasks, setCompanyTasks] = useState<CompanyTask[]>([]);
+  const [personalTasks, setPersonalTasks] = useState<PersonalTask[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+  const [showQuickNoteModal, setShowQuickNoteModal] = useState(false);
+  const [quickNoteContent, setQuickNoteContent] = useState('');
+
+  // Current user ID (should be from authentication)
+  const currentUserId = "user-123"; // TODO: Get from auth context
+
+  // デバッグ用：サンプルデータをFirebaseに投入する関数
+  const seedFirebaseData = async () => {
+    console.log('Firebase にサンプルデータを投入中...');
+    
+    try {
+      // Firebase functions をインポート
+      const { createProcess } = await import('@/lib/firebase/processes');
+      const { createCompanyTask, createPersonalTask } = await import('@/lib/firebase/tasks');
+      const { createNotification } = await import('@/lib/firebase/notifications');
+      const { createAnnouncement } = await import('@/lib/firebase/announcements');
+      const { createCalendarEvent } = await import('@/lib/firebase/calendar');
+      const { createNote } = await import('@/lib/firebase/notes');
+      
+      // 工程データを作成
+      const sampleProcesses = [
+        {
+          orderId: 'M-001',
+          orderClient: 'トヨタ自動車',
+          lineNumber: 'L001',
+          projectName: '自動車部品A製造',
+          managementNumber: 'MGT-2024-001',
+          progress: 75,
+          quantity: 100,
+          salesPerson: '山田太郎',
+          assignee: '田中一郎',
+          fieldPerson: '田中一郎',
+          assignedMachines: ['NC旋盤-001'],
+          workDetails: {
+            setup: 6,
+            machining: 12,
+            finishing: 9,
+            useDynamicSteps: false,
+            totalEstimatedHours: 27,
+            totalActualHours: 20.25
+          },
+          orderDate: '2024-03-01',
+          arrivalDate: '2024-03-05',
+          shipmentDate: '2024-03-31',
+          dataWorkDate: '2024-03-03',
+          processingPlanDate: '2024-03-15',
+          remarks: '高精度加工要求',
+          status: 'processing' as const,
+          priority: 'high' as const,
+          dueDate: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          orderId: 'M-002',
+          orderClient: 'ソニー',
+          lineNumber: 'L002',
+          projectName: '精密機器B組立',
+          managementNumber: 'MGT-2024-002',
+          progress: 30,
+          quantity: 50,
+          salesPerson: '鈴木花子',
+          assignee: '高橋三郎',
+          fieldPerson: '高橋三郎',
+          assignedMachines: ['マシニングセンタ-002'],
+          workDetails: {
+            setup: 4,
+            machining: 8,
+            finishing: 6,
+            useDynamicSteps: false,
+            totalEstimatedHours: 18,
+            totalActualHours: 5.4
+          },
+          orderDate: '2024-03-15',
+          arrivalDate: '2024-03-18',
+          shipmentDate: '2024-04-15',
+          dataWorkDate: '2024-03-16',
+          processingPlanDate: '2024-03-20',
+          remarks: '精密加工注意',
+          status: 'processing' as const,
+          priority: 'medium' as const,
+          dueDate: new Date(Date.now() + 10 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          orderId: 'M-003',
+          orderClient: 'パナソニック',
+          lineNumber: 'L003',
+          projectName: '電子部品筐体加工',
+          managementNumber: 'MGT-2024-004',
+          progress: 85,
+          quantity: 300,
+          salesPerson: '田中花子',
+          assignee: '佐藤五郎',
+          fieldPerson: '佐藤五郎',
+          assignedMachines: ['プレス機-001'],
+          workDetails: {
+            setup: 2,
+            machining: 4,
+            finishing: 2,
+            useDynamicSteps: false,
+            totalEstimatedHours: 8,
+            totalActualHours: 6.8
+          },
+          orderDate: '2024-02-20',
+          arrivalDate: '2024-02-25',
+          shipmentDate: '2024-03-20',
+          dataWorkDate: '2024-02-22',
+          processingPlanDate: '2024-02-28',
+          remarks: '量産対応',
+          status: 'finishing' as const,
+          priority: 'medium' as const,
+          dueDate: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString()
+        }
+      ];
+
+      for (const process of sampleProcesses) {
+        const result = await createProcess(process);
+        console.log(`工程 ${process.projectName} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      // タスクデータを作成
+      const sampleTasks = [
+        {
+          title: '手順書更新',
+          description: '新製品の製造手順書を更新する',
+          status: 'completed' as const,
+          priority: 'medium' as const,
+          assignee: '田中一郎',
+          assigneeId: 'user-123',
+          createdBy: '管理者',
+          createdById: 'admin-123',
+          category: 'general' as const,
+          completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          title: '設備点検',
+          description: '月次設備点検の実施',
+          status: 'progress' as const,
+          priority: 'high' as const,
+          assignee: '佐藤五郎',
+          assigneeId: 'user-456',
+          createdBy: '管理者',
+          createdById: 'admin-123',
+          category: 'maintenance' as const
+        }
+      ];
+
+      for (const task of sampleTasks) {
+        const result = await createCompanyTask(task);
+        console.log(`タスク ${task.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      // 個人タスクデータを作成
+      const personalTaskData = [
+        {
+          title: '資料準備',
+          description: '明日の会議用資料を準備',
+          status: 'pending' as const,
+          priority: 'medium' as const,
+          userId: 'user-123',
+          category: 'work' as const
+        },
+        {
+          title: 'メール返信',
+          description: '顧客からの問い合わせに返信',
+          status: 'progress' as const,
+          priority: 'high' as const,
+          userId: 'user-123',
+          category: 'work' as const
+        }
+      ];
+
+      for (const task of personalTaskData) {
+        const result = await createPersonalTask(task);
+        console.log(`個人タスク ${task.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      // 通知データを作成
+      const notificationData = [
+        {
+          type: 'mention' as const,
+          title: 'レビュー依頼',
+          message: '製品Aの仕様書をレビューお願いします',
+          priority: 'high' as const,
+          recipientId: 'user-123',
+          senderId: 'user-yamada',
+          senderName: '山田太郎'
+        },
+        {
+          type: 'system' as const,
+          title: '工程完了',
+          message: '工程A（製品X）が完了しました',
+          priority: 'normal' as const,
+          recipientId: 'user-123'
+        }
+      ];
+
+      for (const notification of notificationData) {
+        const result = await createNotification(notification);
+        console.log(`通知 ${notification.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      // 全体連絡データを作成
+      const announcementData = [
+        {
+          title: '来週の設備点検について',
+          content: '来週月曜日から水曜日にかけて、第1工場の設備点検を実施します。',
+          priority: 'urgent' as const,
+          category: 'maintenance' as const,
+          authorId: 'admin-123',
+          authorName: '設備管理部',
+          targetAudience: 'all' as const,
+          isActive: true
+        },
+        {
+          title: '新しい安全規則の徹底',
+          content: '労働安全衛生法の改正に伴い、新しい安全規則を導入します。',
+          priority: 'medium' as const,
+          category: 'safety' as const,
+          authorId: 'admin-123',
+          authorName: '安全管理部',
+          targetAudience: 'all' as const,
+          isActive: true
+        }
+      ];
+
+      for (const announcement of announcementData) {
+        const result = await createAnnouncement(announcement);
+        console.log(`全体連絡 ${announcement.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+        
+        // 全体連絡に関連する通知を自動作成
+        if (result.id) {
+          const notificationResult = await createNotification({
+            type: 'system',
+            title: `新しい全体連絡: ${announcement.title}`,
+            message: announcement.content.substring(0, 50) + '...',
+            recipientId: 'all', // 全員への通知
+            senderId: announcement.authorId,
+            senderName: announcement.authorName,
+            priority: announcement.priority === 'medium' ? 'normal' : announcement.priority as 'normal' | 'high' | 'urgent'
+          });
+          console.log(`関連通知作成:`, notificationResult.id ? '成功' : '失敗');
+        }
+      }
+
+      // カレンダーイベントを作成
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const tomorrowStr = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const calendarEventData = [
+        {
+          title: '朝礼',
+          description: '全体朝礼・安全確認',
+          startTime: '09:00',
+          endTime: '09:15',
+          date: todayStr,
+          location: '会議室A',
+          type: 'meeting' as const,
+          priority: 'medium' as const,
+          color: 'bg-blue-500',
+          createdBy: 'システム管理者',
+          createdById: 'admin-123',
+          isAllDay: false,
+          isRecurring: true,
+          recurringPattern: 'daily' as const,
+          reminderMinutes: 10,
+          isActive: true
+        },
+        {
+          title: '品質管理MTG',
+          description: '品質改善検討会',
+          startTime: '10:30',
+          endTime: '11:30',
+          date: todayStr,
+          location: 'オンライン',
+          type: 'meeting' as const,
+          priority: 'high' as const,
+          color: 'bg-green-500',
+          createdBy: '品質管理部',
+          createdById: 'quality-123',
+          isAllDay: false,
+          isRecurring: false,
+          reminderMinutes: 15,
+          isActive: true
+        },
+        {
+          title: '設備点検',
+          description: 'NC旋盤-001 定期点検',
+          startTime: '14:00',
+          endTime: '15:00',
+          date: todayStr,
+          location: '第1工場',
+          type: 'maintenance' as const,
+          priority: 'high' as const,
+          color: 'bg-orange-500',
+          createdBy: '保全部',
+          createdById: 'maintenance-123',
+          isAllDay: false,
+          isRecurring: false,
+          reminderMinutes: 30,
+          isActive: true
+        },
+        {
+          title: '定例会議',
+          description: '週次進捗確認会議',
+          startTime: '16:30',
+          endTime: '17:30',
+          date: todayStr,
+          location: '会議室B',
+          type: 'meeting' as const,
+          priority: 'medium' as const,
+          color: 'bg-purple-500',
+          createdBy: 'プロジェクト管理部',
+          createdById: 'project-123',
+          isAllDay: false,
+          isRecurring: false,
+          reminderMinutes: 15,
+          isActive: true
+        },
+        {
+          title: '安全パトロール',
+          description: '工場内安全点検',
+          startTime: '13:00',
+          endTime: '14:00',
+          date: tomorrowStr,
+          location: '全工場',
+          type: 'inspection' as const,
+          priority: 'high' as const,
+          color: 'bg-red-500',
+          createdBy: '安全管理部',
+          createdById: 'safety-123',
+          isAllDay: false,
+          isRecurring: false,
+          reminderMinutes: 30,
+          isActive: true
+        }
+      ];
+
+      for (const eventData of calendarEventData) {
+        const result = await createCalendarEvent(eventData);
+        console.log(`カレンダーイベント ${eventData.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      // メモデータを作成
+      const noteData = [
+        {
+          title: '今日のタスク',
+          content: '・品質管理MTGの資料準備\n・設備点検スケジュール確認\n・新入社員研修計画',
+          category: 'todo' as const,
+          priority: 'high' as const,
+          color: 'bg-yellow-100',
+          createdBy: 'ユーザー',
+          createdById: currentUserId,
+          isPrivate: true,
+          isArchived: false,
+          isActive: true
+        },
+        {
+          title: 'アイデアメモ',
+          content: '製造効率向上のため、IoTセンサーを活用した自動品質チェックシステムを検討',
+          category: 'idea' as const,
+          priority: 'medium' as const,
+          color: 'bg-blue-100',
+          createdBy: 'ユーザー',
+          createdById: currentUserId,
+          isPrivate: true,
+          isArchived: false,
+          isActive: true
+        },
+        {
+          title: '会議メモ - 品質管理MTG',
+          content: '次回の点検スケジュール:\n- 来週火曜日 NC旋盤-001\n- 来週木曜日 マシニングセンタ-002',
+          category: 'meeting' as const,
+          priority: 'medium' as const,
+          color: 'bg-green-100',
+          createdBy: 'ユーザー',
+          createdById: currentUserId,
+          isPrivate: false,
+          isArchived: false,
+          isActive: true
+        }
+      ];
+
+      for (const note of noteData) {
+        const result = await createNote(note);
+        console.log(`メモ ${note.title} 作成:`, result.id ? '成功' : '失敗', result.error);
+      }
+
+      console.log('✅ サンプルデータの投入が完了しました！');
+      alert('サンプルデータをFirebaseに投入しました。ページを更新してください。');
+      
+    } catch (error) {
+      console.error('サンプルデータ投入エラー:', error);
+      alert('データ投入に失敗しました: ' + error);
+    }
+  };
 
   // 現在時刻の更新
   useEffect(() => {
@@ -61,153 +453,233 @@ const MainDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // サンプルデータ
-  const processes = [
-    {
-      id: 1,
-      name: "製品A",
-      code: "M-001",
-      person: "田中",
-      progress: 75,
-      deadline: "16:00",
-      status: "progress",
-    },
-    {
-      id: 2,
-      name: "製品B",
-      code: "M-002",
-      person: "佐藤",
-      progress: 40,
-      deadline: "18:00",
-      status: "progress",
-    },
-    {
-      id: 3,
-      name: "製品C",
-      code: "M-003",
-      person: "鈴木",
-      progress: 90,
-      deadline: "15:00",
-      status: "almost",
-    },
-  ];
+  // Firebase Data Subscriptions
+  useEffect(() => {
+    const unsubscribes: (() => void)[] = [];
+    
+    console.log('Firebase接続を開始します...');
 
-  const allTasks = [
-    { id: 1, title: "手順書作成", status: "completed", type: "company" },
-    {
-      id: 2,
-      title: "ファイル整理",
-      status: "progress",
-      type: "company",
-      person: "田中",
-    },
-    { id: 3, title: "新人研修資料", status: "pending", type: "company" },
-  ];
+    // Subscribe to processes
+    const processUnsubscribe = subscribeToProcessesList(
+      {
+        limit: 10,
+        orderByField: 'updatedAt',
+        orderDirection: 'desc'
+      },
+      (data) => {
+        console.log('取得した工程データ:', data);
+        setProcesses(data);
+      }
+    );
+    unsubscribes.push(processUnsubscribe);
 
-  const personalTasks = [
-    { id: 1, title: "資料準備", status: "pending" },
-    { id: 2, title: "メール返信", status: "progress" },
-  ];
+    // Subscribe to company tasks
+    const companyTasksUnsubscribe = subscribeToCompanyTasks(
+      {
+        limit: 10
+      },
+      (data) => {
+        console.log('取得した全体タスク:', data);
+        setCompanyTasks(data);
+      }
+    );
+    unsubscribes.push(companyTasksUnsubscribe);
 
-  // 今日の予定データ（カレンダーと連動）
-  const todaySchedule = [
-    {
-      id: 1,
-      time: "09:00",
-      endTime: "10:00",
-      title: "朝礼",
-      location: "会議室A",
-      color: "bg-blue-500",
-    },
-    {
-      id: 2,
-      time: "10:30",
-      endTime: "11:30",
-      title: "品質管理MTG",
-      location: "オンライン",
-      color: "bg-green-500",
-    },
-    {
-      id: 3,
-      time: "14:00",
-      endTime: "14:30",
-      title: "設備点検",
-      location: "第1工場",
-      color: "bg-orange-500",
-    },
-    {
-      id: 4,
-      time: "16:30",
-      endTime: "17:30",
-      title: "定例会議",
-      location: "会議室B",
-      color: "bg-purple-500",
-    },
-  ];
+    // Subscribe to personal tasks
+    const personalTasksUnsubscribe = subscribeToPersonalTasks(
+      {
+        userId: currentUserId,
+        limit: 10
+      },
+      (data) => {
+        console.log('取得した個人タスク:', data);
+        setPersonalTasks(data);
+      }
+    );
+    unsubscribes.push(personalTasksUnsubscribe);
 
-  // 通知データ（チャット・メンション中心）
-  const notifications = [
-    {
-      id: 1,
-      type: "mention" as const,
-      user: "山田",
-      message: "レビューお願いします",
-      time: "2分前",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "chat" as const,
-      user: "鈴木",
-      message: "了解しました",
-      time: "5分前",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "system" as const,
-      user: "システム",
-      message: "工程Aが完了",
-      time: "10分前",
-      unread: false,
-    },
-    {
-      id: 4,
-      type: "mention" as const,
-      user: "佐藤",
-      message: "確認してください",
-      time: "15分前",
-      unread: false,
-    },
-  ];
+    // Subscribe to notifications
+    const notificationsUnsubscribe = subscribeToNotifications(
+      {
+        recipientId: currentUserId,
+        limit: 20
+      },
+      (data) => {
+        console.log('取得した通知:', data);
+        setNotifications(data);
+      }
+    );
+    unsubscribes.push(notificationsUnsubscribe);
 
-  const announcements = [
-    {
-      id: 1,
-      title: "来週の設備点検について",
-      content: "来週月曜日から水曜日にかけて、第1工場の設備点検を実施します。",
-      priority: "high",
-    },
-    {
-      id: 2,
-      title: "新しい安全規則の徹底",
-      content: "労働安全衛生法の改正に伴い、新しい安全規則を導入します。",
-      priority: "medium",
-    },
-    {
-      id: 3,
-      title: "7月の納期スケジュール確認",
-      content:
-        "7月の納期スケジュールが確定しました。各担当者は確認をお願いします。",
-      priority: "normal",
-    },
-    {
-      id: 4,
-      title: "夏季休暇の調整",
-      content: "夏季休暇の希望調査を開始します。今月末までに提出してください。",
-      priority: "normal",
-    },
-  ];
+    // Subscribe to announcements
+    const announcementsUnsubscribe = subscribeToAnnouncements(
+      {
+        isActive: true,
+        limit: 10
+      },
+      (data) => {
+        console.log('取得した全体連絡:', data);
+        setAnnouncements(data);
+      }
+    );
+    unsubscribes.push(announcementsUnsubscribe);
+
+
+    // Load calendar events
+    const loadCalendarData = async () => {
+      // Get today's events
+      const { data: todayEvents, error: todayError } = await getTodayEvents();
+      if (todayError) {
+        console.warn('今日の予定取得エラー:', todayError);
+      } else {
+        console.log('取得した今日の予定:', todayEvents);
+        setCalendarEvents(todayEvents);
+      }
+
+      // Get current month events for calendar display
+      const now = new Date();
+      const { data: currentMonthEvents, error: monthError } = await getMonthEvents(
+        now.getFullYear(), 
+        now.getMonth()
+      );
+      if (monthError) {
+        console.warn('今月の予定取得エラー:', monthError);
+      } else {
+        console.log('取得した今月の予定:', currentMonthEvents);
+        setMonthEvents(currentMonthEvents);
+      }
+    };
+
+    loadCalendarData();
+
+    return () => {
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+    };
+  }, [currentUserId]);
+
+  // デバッグ用：Windowオブジェクトに関数を追加
+  useEffect(() => {
+    (window as any).seedFirebaseData = seedFirebaseData;
+    console.log('🔧 デバッグ用関数を追加しました。');
+    console.log('コンソールで window.seedFirebaseData() を実行してFirebaseにサンプルデータを投入できます。');
+  }, []);
+
+  // データ変換関数
+  const transformProcessToDisplay = (process: Process) => ({
+    id: process.id,
+    name: process.projectName || process.orderId || 'Unknown',
+    code: process.orderId || process.managementNumber,
+    person: process.assignee,
+    progress: calculateProgress(process),
+    deadline: formatDeadline(process.dueDate),
+    status: mapProcessStatus(process.status),
+  });
+
+  const calculateProgress = (process: Process): number => {
+    // 基本的な進捗計算（既存のWorkDetailsを使用）
+    if (!process.workDetails) return 0;
+    
+    if (process.workDetails.useDynamicSteps && process.workDetails.customSteps) {
+      const completedSteps = process.workDetails.customSteps.filter(step => step.isCompleted).length;
+      return Math.round((completedSteps / process.workDetails.customSteps.length) * 100);
+    }
+    
+    // 従来の固定ステップでの計算
+    const total = process.workDetails.setup + process.workDetails.machining + process.workDetails.finishing;
+    const actual = process.workDetails.totalActualHours;
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((actual / total) * 100));
+  };
+
+  const formatDeadline = (dueDate?: string): string => {
+    if (!dueDate) return "--:--";
+    const date = new Date(dueDate);
+    return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const mapProcessStatus = (status: string): string => {
+    switch (status) {
+      case 'completed': return 'completed';
+      case 'processing': return 'progress';
+      case 'data-work': return 'progress';
+      case 'finishing': return 'progress';
+      case 'planning': return 'pending';
+      case 'delayed': return 'almost';
+      default: return 'pending';
+    }
+  };
+
+  // Helper function - defined first
+  const mapTaskStatus = (status: string): 'completed' | 'progress' | 'pending' => {
+    switch (status) {
+      case 'completed': return 'completed';
+      case 'progress': 
+      case 'inProgress': return 'progress';
+      case 'pending':
+      case 'cancelled':
+      default: return 'pending';
+    }
+  };
+
+  // Helper functions - 関数を先に定義
+  const mapNotificationType = (type: string): 'mention' | 'chat' | 'system' => {
+    switch (type) {
+      case 'mention': return 'mention';
+      case 'chat': return 'chat';
+      case 'system':
+      case 'alert':
+      case 'reminder':
+      case 'task':
+      case 'process':
+      default:
+        return 'system';
+    }
+  };
+
+  // Firebase から取得した今日の予定データ
+  const todaySchedule = calendarEvents.map(event => ({
+    id: event.id,
+    time: event.startTime,
+    endTime: event.endTime,
+    title: event.title,
+    location: event.location || '',
+    color: event.color,
+  }));
+
+
+  // 全体連絡データの変換
+  const displayAnnouncements = announcements.map(announcement => ({
+    id: announcement.id,
+    title: announcement.title,
+    content: announcement.content,
+    priority: announcement.priority === 'urgent' ? 'high' : announcement.priority,
+  }));
+
+  const formatRelativeTime = (timestamp: any): string => {
+    if (!timestamp || !timestamp.seconds) return "--";
+    
+    const date = new Date(timestamp.seconds * 1000);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return "たった今";
+    if (diffMins < 60) return `${diffMins}分前`;
+    if (diffHours < 24) return `${diffHours}時間前`;
+    return `${diffDays}日前`;
+  };
+
+  // 通知データの変換
+  const displayNotifications: NotificationDisplay[] = notifications.map((notification, index) => ({
+    id: parseInt(notification.id) || index + 1,
+    type: mapNotificationType(notification.type),
+    user: notification.senderName || "システム",
+    message: notification.message,
+    time: formatRelativeTime(notification.createdAt),
+    unread: !notification.isRead,
+  }));
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -222,40 +694,6 @@ const MainDashboard = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
-            完了
-          </span>
-        );
-      case "progress":
-        return (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-            進行中
-          </span>
-        );
-      case "pending":
-        return (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-            未着手
-          </span>
-        );
-      case "almost":
-        return (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
-            完了間近
-          </span>
-        );
-      default:
-        return (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-            未着手
-          </span>
-        );
-    }
-  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -270,16 +708,6 @@ const MainDashboard = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "border-red-300 bg-red-50";
-      case "medium":
-        return "border-yellow-300 bg-yellow-50";
-      default:
-        return "border-blue-300 bg-blue-50";
-    }
-  };
 
   // 現在時刻から次の予定を判定
   const getNextSchedule = () => {
@@ -304,17 +732,6 @@ const MainDashboard = () => {
   const lastDay = new Date(currentYear, currentMonth + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startingDayOfWeek = firstDay.getDay();
-  const monthSchedule = [
-    { day: 3, schedules: [{ color: "bg-blue-500", title: "会議" }] },
-    {
-      day: 5,
-      schedules: [
-        { color: "bg-green-500", title: "作業" },
-        { color: "bg-red-500", title: "締切" },
-      ],
-    },
-    // …必要な分だけ追加
-  ];
 
   const monthNames = [
     "1月",
@@ -332,73 +749,34 @@ const MainDashboard = () => {
   ];
   const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
-  // カレンダーの予定がある日（サンプル）
-  const scheduledDays = [10, 15, 18, 25]; // 今月の予定がある日
+  // カレンダーの予定がある日（Firebase から取得）
+  const scheduledDays = Array.from(
+    new Set(
+      monthEvents.map(event => {
+        const eventDate = new Date(event.date);
+        return eventDate.getDate();
+      })
+    )
+  );
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // 表示用データの変換
+  const displayProcesses = processes.map(transformProcessToDisplay);
+  
+  // タスクデータの変換
+  const allTasks = companyTasks.map(task => ({
+    id: task.id,
+    title: task.title,
+    person: task.assignee,
+    status: mapTaskStatus(task.status),
+  }));
 
-  // カレンダー同期処理
-  const handleCalendarSync = async () => {
-    try {
-      // 実際の同期処理をここに実装
-      console.log('カレンダーを同期中...');
-      
-      // シミュレーション: 外部カレンダーから予定を取得
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 同期状態を更新
-      setCalendarSyncStatus(prev => ({
-        ...prev,
-        lastSync: new Date()
-      }));
-      
-      console.log('カレンダー同期完了');
-    } catch (error) {
-      console.error('カレンダー同期エラー:', error);
-    }
-  };
+  const displayPersonalTasks = personalTasks.map(task => ({
+    id: task.id,
+    title: task.title,
+    status: mapTaskStatus(task.status),
+  }));
 
-  // 全体連絡同期処理
-  const handleAnnouncementSync = async () => {
-    try {
-      console.log('全体連絡を同期中...');
-      
-      // シミュレーション: 外部システムから連絡事項を取得
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // 同期状態を更新
-      setAnnouncementSyncStatus(prev => ({
-        ...prev,
-        lastSync: new Date(),
-        newCount: 0 // 新着をリセット
-      }));
-      
-      console.log('全体連絡同期完了');
-    } catch (error) {
-      console.error('全体連絡同期エラー:', error);
-    }
-  };
-
-  // タスク同期処理
-  const handleTaskSync = async () => {
-    try {
-      console.log('タスクを同期中...');
-      
-      // シミュレーション: 外部システムとタスクを同期
-      await new Promise(resolve => setTimeout(resolve, 1800));
-      
-      // 同期状態を更新
-      setTaskSyncStatus(prev => ({
-        ...prev,
-        lastSync: new Date(),
-        pendingUpdates: 0 // 保留中の更新をリセット
-      }));
-      
-      console.log('タスク同期完了');
-    } catch (error) {
-      console.error('タスク同期エラー:', error);
-    }
-  };
+  const unreadCount = displayNotifications.filter((n) => n.unread).length;
 
   return (
     <div className="min-h-screen bg-white">
@@ -416,44 +794,16 @@ const MainDashboard = () => {
               </div>
             </div>
 
-            {/* 中央 - 時計と次の予定 */}
-            <div className="flex items-center space-x-6">
+            {/* 中央 - システム名 */}
+            <div className="flex items-center space-x-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900 tracking-wider">
-                  {currentTime.toLocaleTimeString("ja-JP", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {currentTime.toLocaleDateString("ja-JP", {
-                    month: "short",
-                    day: "numeric",
-                    weekday: "short",
-                  })}
-                </div>
+                <div className="text-lg font-semibold text-gray-900">製造管理システム</div>
+                <div className="text-sm text-gray-600">Unica Dashboard</div>
               </div>
-              {nextSchedule && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-600 font-medium mb-1">次の予定</p>
-                  <p className="text-sm text-blue-900 font-semibold">
-                    {nextSchedule.time} {nextSchedule.title}
-                  </p>
-                  <p className="text-xs text-blue-600">{nextSchedule.location}</p>
-                </div>
-              )}
             </div>
 
             {/* 右側 - 通知とアクション */}
             <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                新規追加
-              </Button>
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -474,463 +824,453 @@ const MainDashboard = () => {
         </div>
 
         {/* メインコンテンツエリア */}
-        <div className="flex-1 p-6 overflow-auto bg-gray-50">
-          {/* 上部統計カード */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            {/* 今日の工程 */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardContent className="p-4">
+        <div className="flex-1 overflow-auto bg-gray-50">
+          {/* コンパクト統計バー */}
+          <div className="px-6 pt-6 pb-4">
+            <div className="grid grid-cols-4 gap-4">
+              {/* 受注管理 */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+                   onClick={() => router.push('/orders')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">今日の工程</p>
-                    <p className="text-2xl font-bold text-gray-900">{processes.length}</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">受注</p>
+                    <p className="text-2xl font-bold text-gray-900">{displayProcesses.length}</p>
                   </div>
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Target className="w-6 h-6 text-blue-600" />
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Target className="w-4 h-4 text-blue-600" />
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  完了率 {Math.round(processes.reduce((sum, p) => sum + p.progress, 0) / processes.length)}%
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* 進行中タスク */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardContent className="p-4">
+              {/* 進行中タスク */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+                   onClick={() => router.push('/work-hours')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">進行中</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">工数管理</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {[...allTasks, ...personalTasks].filter(t => t.status === 'progress').length}
+                      {[...allTasks, ...displayPersonalTasks].filter(t => t.status === 'progress').length}
                     </p>
                   </div>
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <PlayCircle className="w-6 h-6 text-green-600" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <PlayCircle className="w-4 h-4 text-green-600" />
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  タスク管理
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* 未読通知 */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardContent className="p-4">
+              {/* 未読通知 */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+                   onClick={() => router.push('/notifications')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">未読通知</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">未読通知</p>
                     <p className="text-2xl font-bold text-gray-900">{unreadCount}</p>
                   </div>
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Bell className="w-6 h-6 text-orange-600" />
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Bell className="w-4 h-4 text-orange-600" />
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  新着メッセージ
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* 今日の予定 */}
-            <Card className="bg-white border-0 shadow-sm">
-              <CardContent className="p-4">
+              {/* 日報管理 */}
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+                   onClick={() => router.push('/daily-reports')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">今日の予定</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">日報</p>
                     <p className="text-2xl font-bold text-gray-900">{todaySchedule.length}</p>
                   </div>
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Calendar className="w-6 h-6 text-purple-600" />
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-purple-600" />
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  スケジュール管理
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-12 gap-6 min-h-[600px]">
-            {/* 左側 - 工程・タスク管理 (8列) */}
-            <div className="col-span-8">
-              <Card className="bg-white border-0 shadow-sm h-full overflow-hidden">
-                <CardHeader className="px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                      <Activity className="w-5 h-5 mr-2 text-blue-600" />
-                      本日の工程・タスク
-                    </CardTitle>
-                    <div className="flex items-center space-x-2">
-                      {taskSyncStatus.pendingUpdates > 0 && (
-                        <Badge className="bg-orange-500 text-white text-xs">
-                          {taskSyncStatus.pendingUpdates}件更新保留中
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleTaskSync}
-                        className="h-6 w-6 p-0"
-                      >
-                        <RefreshCw className="w-3 h-3 text-gray-600" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        新規追加
-                      </Button>
-                    </div>
+          {/* メインレイアウト: 左サイド - センター - 右サイド */}
+          <div className="px-6 pb-6">
+            <div className="grid grid-cols-12 gap-6 min-h-[600px]">
+              {/* 左サイド - タスク管理 */}
+              <div className="col-span-3 space-y-6">
+                {/* タスク管理セクション */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                      タスク管理
+                    </h3>
+                    <button 
+                      onClick={() => router.push('/tasks')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      すべて見る
+                    </button>
                   </div>
                   
-                  {/* 同期状態表示 */}
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                    <span>
-                      最終同期: {taskSyncStatus.lastSync ? 
-                        taskSyncStatus.lastSync.toLocaleTimeString('ja-JP', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        }) : '未同期'
-                      }
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        taskSyncStatus.isConnected ? 'bg-green-500' : 'bg-red-500'
-                      }`}></div>
-                      <span>
-                        {taskSyncStatus.isConnected ? '接続中' : '未接続'}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">個人タスク</span>
+                      <span className="font-semibold text-gray-900">
+                        {displayPersonalTasks.filter(t => t.status === 'completed').length}/{displayPersonalTasks.length}
                       </span>
                     </div>
+                    {displayPersonalTasks.length > 0 ? (
+                      displayPersonalTasks.slice(0, 2).map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                          onClick={() => router.push('/tasks')}
+                        >
+                          <div className="w-4 h-4 mr-3 flex-shrink-0">
+                            {getStatusIcon(task.status)}
+                          </div>
+                          <span className="flex-1 text-sm text-gray-700">{task.title}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-gray-400 text-xs">
+                        個人タスクなし ({personalTasks.length})
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-sm mt-4">
+                      <span className="text-gray-600">全体タスク</span>
+                      <span className="font-semibold text-gray-900">
+                        {allTasks.filter(t => t.status === 'completed').length}/{allTasks.length}
+                      </span>
+                    </div>
+                    {allTasks.length > 0 ? (
+                      allTasks.slice(0, 2).map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                          onClick={() => router.push('/tasks')}
+                        >
+                          <div className="w-4 h-4 mr-3 flex-shrink-0">
+                            {getStatusIcon(task.status)}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm text-gray-700">{task.title}</div>
+                            {task.person && (
+                              <div className="text-xs text-gray-500">担当: {task.person}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-gray-400 text-xs">
+                        全体タスクなし ({companyTasks.length})
+                      </div>
+                    )}
                   </div>
-                </CardHeader>
-                <CardContent className="px-6 py-4 overflow-y-auto h-[calc(100%-5rem)]">
-                  <div className="space-y-6">
-                    {/* 工程セクション */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-semibold text-gray-900 flex items-center">
-                          <Target className="w-4 h-4 mr-2 text-blue-600" />
-                          工程管理
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {processes.length}件
-                        </Badge>
-                      </div>
-                      <div className="space-y-3">
-                        {processes.map((process) => (
-                          <div
-                            key={process.id}
-                            className="group p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <Target className="w-4 h-4 text-blue-600" />
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-gray-900">{process.name}</h4>
-                                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                    <span>{process.code}</span>
-                                    <span>•</span>
-                                    <span>{process.person}</span>
-                                    <span>•</span>
-                                    <span>締切: {process.deadline}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                {getStatusBadge(process.status)}
-                                <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full transition-all duration-300 ${
-                                    process.progress >= 80
-                                      ? "bg-green-500"
-                                      : process.progress >= 50
-                                      ? "bg-blue-500"
-                                      : "bg-yellow-500"
-                                  }`}
-                                  style={{ width: `${process.progress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-semibold text-gray-700 min-w-[3rem]">
-                                {process.progress}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                </div>
 
-                    {/* 全体タスクセクション */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-semibold text-gray-900 flex items-center">
-                          <Users className="w-4 h-4 mr-2 text-green-600" />
-                          全体タスク
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {allTasks.length}件
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        {allTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="group flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-all duration-200 cursor-pointer"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                                {getStatusIcon(task.status)}
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-900">
-                                  {task.title}
-                                </span>
-                                {task.person && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    担当: {task.person}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {getStatusBadge(task.status)}
-                              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 個人タスクセクション */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-semibold text-gray-900 flex items-center">
-                          <Activity className="w-4 h-4 mr-2 text-purple-600" />
-                          個人タスク
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {personalTasks.length}件
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        {personalTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="group flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-all duration-200 cursor-pointer"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
-                                {getStatusIcon(task.status)}
-                              </div>
-                              <span className="font-medium text-gray-900">
-                                {task.title}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {getStatusBadge(task.status)}
-                              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 右側 - カレンダーと情報 (4列) */}
-            <div className="col-span-4 space-y-6">
-              {/* カレンダー + 本日の予定 */}
-              <Card className="bg-white border-0 shadow-sm h-[420px] overflow-hidden">
-                <CardHeader className="px-6 py-4 border-b border-gray-100">
-                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                    <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                    カレンダー & 予定
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-6 py-4 h-[calc(100%-5rem)]">
-                  <MiniCalendar
-                    scheduledDays={scheduledDays}
-                    todaySchedule={todaySchedule}
-                    currentTime={currentTime}
-                    monthSchedule={monthSchedule}
-                    onSync={handleCalendarSync}
-                    syncStatus={calendarSyncStatus}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* 全体連絡 */}
-              <Card className="bg-white border-0 shadow-sm h-[480px] overflow-hidden">
-                <CardHeader className="px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                      <MessageCircle className="w-5 h-5 mr-2 text-green-600" />
-                      全体連絡
-                    </CardTitle>
-                    <div className="flex items-center space-x-2">
-                      {announcementSyncStatus.newCount > 0 && (
-                        <Badge className="bg-red-500 text-white text-xs">
-                          {announcementSyncStatus.newCount}新着
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="text-xs">
-                        {announcements.length}件
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleAnnouncementSync}
-                        className="h-6 w-6 p-0"
-                      >
-                        <RefreshCw className="w-3 h-3 text-gray-600" />
-                      </Button>
-                    </div>
+                {/* 通知 - 既存の通知セクションへのリンク */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <Bell className="w-5 h-5 mr-2 text-orange-600" />
+                      通知
+                    </h3>
+                    <button 
+                      onClick={() => router.push('/notifications')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      すべて見る
+                    </button>
                   </div>
                   
-                  {/* 同期状態表示 */}
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                    <span>
-                      最終更新: {announcementSyncStatus.lastSync ? 
-                        announcementSyncStatus.lastSync.toLocaleTimeString('ja-JP', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        }) : '未同期'
-                      }
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        announcementSyncStatus.isConnected ? 'bg-green-500' : 'bg-red-500'
-                      }`}></div>
-                      <span>
-                        {announcementSyncStatus.isConnected ? '接続中' : '未接続'}
-                      </span>
-                    </div>
+                  <div className="space-y-3">
+                    {displayNotifications.slice(0, 3).map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="flex items-start p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                        onClick={() => router.push('/notifications')}
+                      >
+                        <div className="w-4 h-4 mr-3 flex-shrink-0 mt-0.5">
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-700">{notification.message}</div>
+                          <div className="text-xs text-gray-500">
+                            {notification.user} • {notification.time}
+                          </div>
+                        </div>
+                        {notification.unread && (
+                          <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 mt-2"></div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </CardHeader>
-                <CardContent className="px-6 py-4 h-[calc(100%-7rem)] overflow-y-auto">
-                  <div className="space-y-4 overflow-y-auto h-full">
-                    {announcements.map((announcement, index) => {
-                      const isNew = index < announcementSyncStatus.newCount;
-                      const timeAgo = index === 0 ? '30分前' : index === 1 ? '2時間前' : '1日前';
+                </div>
+              </div>
+
+              {/* センターメイン - 工程管理 */}
+              <div className="col-span-6">
+                {/* 背景画像付き時刻エリア */}
+                <div 
+                  className="relative h-48 rounded-lg mb-6 overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"
+                  style={{
+                    backgroundImage: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=300&fit=crop")',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-black bg-opacity-30"></div>
+                  <div className="relative text-center text-white">
+                    <div className="text-5xl font-light mb-2">
+                      {currentTime.toLocaleTimeString("ja-JP", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                    <div className="text-xl opacity-90">
+                      {currentTime.toLocaleDateString("ja-JP", {
+                        month: "long",
+                        day: "numeric",
+                        weekday: "long",
+                      })}
+                    </div>
+                    {nextSchedule && (
+                      <div className="mt-4 text-sm bg-white bg-opacity-20 rounded-full px-4 py-2">
+                        次: {nextSchedule.time} {nextSchedule.title}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+
+                {/* 工程カードリスト */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-gray-900">本日の工程</h2>
+                    <button 
+                      onClick={() => router.push('/tasks')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      詳細管理
+                    </button>
+                  </div>
+                  
+                  {processes.length > 0 ? (
+                    <>
+                      {processes.slice(0, 3).map((process) => (
+                        <EnhancedProcessCard
+                          key={process.id}
+                          process={process}
+                          onStatusUpdate={async (processId, newStatus) => {
+                            // Handle status update - you might want to call a Firebase update function here
+                            console.log(`Updating process ${processId} to status ${newStatus}`);
+                            // Example: await updateProcessStatus(processId, newStatus);
+                          }}
+                          onViewDetails={(processId) => {
+                            router.push(`/tasks?processId=${processId}`);
+                          }}
+                          onEdit={(processId) => {
+                            router.push(`/tasks?edit=${processId}`);
+                          }}
+                        />
+                      ))}
+                      
+                      {processes.length > 3 && (
+                        <button
+                          onClick={() => router.push('/tasks')}
+                          className="w-full mt-3 py-2 px-4 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors"
+                        >
+                          他 {processes.length - 3} 件の工程を表示
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                      <div className="text-center text-gray-500">
+                        <p className="text-lg mb-2">工程データを読み込み中...</p>
+                        <p className="text-sm">現在のデータ件数: {processes.length}</p>
+                        <p className="text-xs mt-1">Firebase接続状態を確認してください</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 右サイド - カレンダー・予定・全体連絡 */}
+              <div className="col-span-3 space-y-6">
+                {/* カレンダー */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                      {monthNames[today.getMonth()]} {today.getFullYear()}
+                    </h3>
+                    <button 
+                      onClick={() => router.push('/calendar')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      カレンダー
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {dayNames.map((day) => (
+                      <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-7 gap-1">
+                    {[...Array(startingDayOfWeek)].map((_, i) => (
+                      <div key={`empty-${i}`} className="h-8"></div>
+                    ))}
+                    {[...Array(daysInMonth)].map((_, i) => {
+                      const day = i + 1;
+                      const isToday = day === today.getDate();
+                      const hasSchedule = scheduledDays.includes(day);
                       return (
                         <div
-                          key={announcement.id}
-                          className={`group p-5 border rounded-xl hover:shadow-md transition-all duration-200 cursor-pointer ${
-                            isNew 
-                              ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                              : 'bg-white border-gray-200'
+                          key={day}
+                          className={`h-8 flex items-center justify-center text-sm rounded cursor-pointer transition-colors ${
+                            isToday
+                              ? "bg-blue-600 text-white"
+                              : hasSchedule
+                              ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                              : "text-gray-700 hover:bg-gray-100"
                           }`}
-                          onClick={() => {
-                            // 全体連絡詳細ページへナビゲーション
-                            console.log('全体連絡詳細:', announcement.id);
-                          }}
                         >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-start space-x-3 flex-1">
-                              {isNew && (
-                                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse mt-1 flex-shrink-0"></div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-gray-900 text-base leading-6 mb-1">
-                                  {announcement.title}
-                                </h4>
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <span className="text-xs text-gray-500">{timeAgo}</span>
-                                  <span className="text-xs text-gray-400">•</span>
-                                  <span className="text-xs text-gray-600">総務部</span>
-                                  {announcement.priority === 'high' && (
-                                    <>
-                                      <span className="text-xs text-gray-400">•</span>
-                                      <span className="flex items-center text-xs text-red-600">
-                                        <AlertTriangle className="w-3 h-3 mr-1" />
-                                        緊急
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                              {isNew && (
-                                <Badge className="bg-blue-500 text-white text-xs">
-                                  NEW
-                                </Badge>
-                              )}
-                              <Badge 
-                                variant={announcement.priority === 'high' ? 'destructive' : 
-                                       announcement.priority === 'medium' ? 'default' : 'secondary'}
-                                className="text-xs"
-                              >
-                                {announcement.priority === 'high' ? '重要' : 
-                                 announcement.priority === 'medium' ? '通常' : '参考'}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm text-gray-700 leading-5 mb-4">
-                            {announcement.content}
-                          </p>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                                <Users className="w-3 h-3" />
-                                <span>全員対象</span>
-                              </div>
-                              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                                <Eye className="w-3 h-3" />
-                                <span>45人が既読</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs text-blue-600 hover:text-blue-700 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('既読マーク:', announcement.id);
-                                }}
-                              >
-                                既読にする
-                              </Button>
-                              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                            </div>
-                          </div>
+                          {day}
                         </div>
                       );
                     })}
-                    
-                    {/* 新しい連絡を追加ボタン */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <Button
-                        variant="outline"
-                        className="w-full h-12 text-gray-600 border-dashed border-2 hover:border-blue-300 hover:text-blue-600"
-                        onClick={() => {
-                          console.log('新しい全体連絡を作成');
-                        }}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        新しい連絡を作成
-                      </Button>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+
+                {/* 全体連絡 - フラットエリア */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <MessageCircle className="w-5 h-5 mr-2 text-green-600" />
+                      全体連絡
+                    </h3>
+                    <button 
+                      onClick={() => router.push('/announcements')}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      すべて見る
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {displayAnnouncements.length > 0 ? (
+                      displayAnnouncements.slice(0, 3).map((announcement) => {
+                        const priorityColor = announcement.priority === 'high' ? 'border-l-red-500' :
+                                             announcement.priority === 'medium' ? 'border-l-orange-500' :
+                                             'border-l-blue-500';
+                        return (
+                          <div
+                            key={announcement.id}
+                            className={`border-l-4 ${priorityColor} bg-gray-50 hover:bg-gray-100 p-3 transition-colors cursor-pointer`}
+                            onClick={() => {
+                              router.push('/announcements');
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-medium text-gray-900 flex-1">
+                                {announcement.title}
+                              </h4>
+                              <span className={`px-2 py-1 text-xs font-medium rounded ml-2 ${
+                                announcement.priority === 'high' ? 'bg-red-100 text-red-700' : 
+                                announcement.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {announcement.priority === 'high' ? '重要' : 
+                                 announcement.priority === 'medium' ? '通常' : '参考'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {announcement.content}
+                            </p>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatRelativeTime((announcements.find(a => a.id === announcement.id) as Announcement)?.createdAt)}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center text-gray-400 text-sm">
+                        全体連絡なし ({announcements.length}件)
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
         </div>
 
+        {/* クイックメモモーダル */}
+        {showQuickNoteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96 mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">クイックメモ</h3>
+                <button
+                  onClick={() => {
+                    setShowQuickNoteModal(false);
+                    setQuickNoteContent('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <textarea
+                value={quickNoteContent}
+                onChange={(e) => setQuickNoteContent(e.target.value)}
+                placeholder="メモを入力してください..."
+                className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <div className="flex items-center justify-end space-x-3 mt-4">
+                <button
+                  onClick={() => {
+                    setShowQuickNoteModal(false);
+                    setQuickNoteContent('');
+                  }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={async () => {
+                    if (quickNoteContent.trim()) {
+                      const result = await createQuickNote({
+                        title: '新しいメモ',
+                        content: quickNoteContent,
+                        userId: currentUserId,
+                        userName: 'ユーザー'
+                      });
+                      if (result.id) {
+                        console.log('クイックメモ作成成功');
+                      }
+                      setShowQuickNoteModal(false);
+                      setQuickNoteContent('');
+                    }
+                  }}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 通知パネル（オーバーレイ） */}
         <NotificationPanel
-          notifications={notifications}
+          notifications={displayNotifications}
           show={showNotifications}
           onClose={() => setShowNotifications(false)}
         />

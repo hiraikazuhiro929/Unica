@@ -7,7 +7,6 @@ import {
   Target,
   Clock,
   FileText,
-  QrCode,
   Calendar,
   Users,
   Settings,
@@ -15,35 +14,32 @@ import {
   PinOff,
   Plus,
   Search,
-  TrendingUp,
   AlertTriangle,
-  CheckCircle,
   Archive,
   BarChart3,
   Bell,
   User,
   Building2,
-  Package,
-  Truck,
   FolderOpen,
   MessageCircle,
-  Shield,
   Wrench,
   BookOpen,
-  Star,
   Zap,
   HelpCircle,
   Activity,
   Megaphone,
-  Keyboard,
   ChevronUp,
   LogOut,
+  ChevronRight,
+  CheckSquare,
+  StickyNote,
 } from "lucide-react";
 
 // 型定義
 interface SubItem {
   label: string;
   icon: any;
+  path: string;
 }
 
 interface MenuItem {
@@ -59,9 +55,9 @@ const menuItems: MenuItem[] = [
     label: "ホーム",
     icon: Home,
     subItems: [
-      { label: "ダッシュボード", icon: BarChart3 },
-      { label: "全体周知", icon: Megaphone },
-      { label: "通知管理", icon: Bell },
+      { label: "ダッシュボード", icon: BarChart3, path: "/" },
+      { label: "全体周知", icon: Megaphone, path: "/announcements" },
+      { label: "通知管理", icon: Bell, path: "/notifications" },
     ],
   },
   {
@@ -69,10 +65,10 @@ const menuItems: MenuItem[] = [
     label: "プロジェクト管理",
     icon: ClipboardList,
     subItems: [
-      { label: "受注案件", icon: Building2 },
-      { label: "工程リスト", icon: Target },
-      { label: "工数管理", icon: Clock },
-      { label: "顧客先管理", icon: Users },
+      { label: "受注案件", icon: Building2, path: "/orders" },
+      { label: "工程リスト", icon: Target, path: "/tasks" },
+      { label: "工数管理", icon: Clock, path: "/work-hours" },
+      { label: "顧客先管理", icon: Users, path: "/partners" },
     ],
   },
   {
@@ -80,9 +76,9 @@ const menuItems: MenuItem[] = [
     label: "日報・記録",
     icon: FileText,
     subItems: [
-      { label: "日報作成", icon: Plus },
-      { label: "日報一覧", icon: Archive },
-      { label: "不具合報告", icon: AlertTriangle },
+      { label: "日報作成", icon: Plus, path: "/daily-reports" },
+      { label: "日報一覧", icon: Archive, path: "/daily-reports/history" },
+      { label: "不具合報告", icon: AlertTriangle, path: "/defect-reports" },
     ],
   },
   {
@@ -90,10 +86,10 @@ const menuItems: MenuItem[] = [
     label: "ファイル・資料",
     icon: FolderOpen,
     subItems: [
-      { label: "ファイル管理", icon: FolderOpen },
-      { label: "工具管理", icon: Wrench },
-      { label: "図面管理", icon: FileText },
-      { label: "納品書", icon: BookOpen },
+      { label: "ファイル管理", icon: FolderOpen, path: "/files" },
+      { label: "工具管理", icon: Wrench, path: "/tools" },
+      { label: "図面管理", icon: FileText, path: "/drawings" },
+      { label: "納品書", icon: BookOpen, path: "/delivery-notes" },
     ],
   },
   {
@@ -101,18 +97,18 @@ const menuItems: MenuItem[] = [
     label: "管理・設定",
     icon: Settings,
     subItems: [
-      { label: "外部連携設定", icon: Zap },
-      { label: "操作履歴", icon: Activity },
-      { label: "ヘルプ", icon: HelpCircle },
+      { label: "外部連携設定", icon: Zap, path: "/integrations" },
+      { label: "操作履歴", icon: Activity, path: "/audit-logs" },
+      { label: "ヘルプ", icon: HelpCircle, path: "/help" },
     ],
   },
 ];
 
-export default function PerplexitySidebar() {
+export default function ModernSidebar() {
   const router = useRouter();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [pinned, setPinned] = useState<boolean>(false);
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [unreadChatCount, setUnreadChatCount] = useState<number>(5);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -128,13 +124,21 @@ export default function PerplexitySidebar() {
 
   const isExpanded = pinned || hoveredItem !== null;
 
+  // アイテムの展開/折りたたみ
+  const toggleExpanded = (itemId: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
   // マウスリーブ時の遅延処理
   const handleMouseLeave = () => {
     if (!pinned) {
       timeoutRef.current = setTimeout(() => {
         setHoveredItem(null);
-        setExpandedItem(null);
-      }, 100);
+      }, 300);
     }
   };
 
@@ -143,6 +147,7 @@ export default function PerplexitySidebar() {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+    setHoveredItem("sidebar");
   };
 
   // サイドバー外クリックでピン解除
@@ -156,7 +161,6 @@ export default function PerplexitySidebar() {
       ) {
         setPinned(false);
         setHoveredItem(null);
-        setExpandedItem(null);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -182,271 +186,322 @@ export default function PerplexitySidebar() {
   return (
     <div
       ref={sidebarRef}
-      className="fixed top-0 left-0 h-full z-50 flex"
+      className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 ease-out ${
+        isExpanded ? "w-64" : "w-16"
+      }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* 左側の細いバー（アイコンのみ） */}
-      <div className="w-16 h-full bg-slate-800 backdrop-blur-sm border-r border-slate-700 shadow-lg flex flex-col items-center py-4">
+      <div className="h-full bg-slate-800 backdrop-blur-sm border-r border-slate-700 shadow-lg flex flex-col py-4 overflow-hidden">
         {/* ロゴ */}
-        <div className="w-12 h-12 bg-indigo-600 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-md mb-6 border border-indigo-500">
-          <span className="text-white font-bold text-xl">U</span>
+        <div className="mb-8 px-3">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <span className="text-white font-bold text-lg">U</span>
+            </div>
+            <div className={`ml-3 flex items-center justify-between flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <h1 className="text-white font-semibold text-lg whitespace-nowrap">Unica</h1>
+              <button
+                onClick={() => setPinned(!pinned)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-slate-700 flex-shrink-0"
+              >
+                {pinned ? (
+                  <PinOff className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <Pin className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* メニューアイテム */}
-        <nav className="flex flex-col items-center space-y-3 flex-1">
+        <nav className="flex-1 px-2 space-y-1 overflow-y-auto scrollbar-hide">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = expandedItem === item.id;
+            const isActive = expandedItems.includes(item.id);
+            
             return (
-              <button
-                key={item.id}
-                className={`
-                  w-13 h-10 rounded-md flex items-center justify-center
-                  transition-all duration-200 border
-                  ${
-                    isActive
-                      ? "bg-slate-600 shadow-md border-slate-500 text-white"
-                      : "bg-slate-700 hover:bg-slate-600 border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white"
-                  }
-                `}
-                onMouseEnter={() => {
-                  setHoveredItem(item.id);
-                  setExpandedItem(item.id);
-                }}
-                onClick={() => {
-                  if (expandedItem === item.id) {
-                    setPinned(!pinned);
-                  } else {
-                    setExpandedItem(item.id);
-                    setPinned(true);
-                  }
-                }}
-              >
-                <Icon className="w-6 h-6" />
-              </button>
+              <div key={item.id}>
+                <button
+                  className={`w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                    isActive 
+                      ? "bg-slate-700/50" 
+                      : "hover:bg-slate-700/30"
+                  }`}
+                  onClick={() => toggleExpanded(item.id)}
+                >
+                  {/* アクティブ時の左側のアクセントバー */}
+                  <div className={`
+                    absolute left-0 top-2 bottom-2 w-1 bg-indigo-400 rounded-r-full
+                    transition-all duration-300
+                    ${isActive ? 'opacity-100' : 'opacity-0'}
+                  `} />
+                  
+                  {/* アイコン */}
+                  <Icon className={`
+                    w-6 h-6 transition-all duration-300 flex-shrink-0
+                    ${isActive 
+                      ? 'text-indigo-300' 
+                      : 'text-slate-400 group-hover:text-white'
+                    }
+                  `} />
+                  
+                  <div className={`ml-3 flex items-center justify-between flex-1 transition-all duration-300 ${
+                    isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+                  }`}>
+                    <span className={`
+                      font-medium whitespace-nowrap
+                      ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}
+                    `}>
+                      {item.label}
+                    </span>
+                    <ChevronRight className={`
+                      w-4 h-4 transition-all duration-300 flex-shrink-0
+                      ${isActive 
+                        ? 'rotate-90 text-indigo-300' 
+                        : 'text-slate-500'
+                      }
+                    `} />
+                  </div>
+                </button>
+                
+                {/* サブメニュー */}
+                {isExpanded && isActive && (
+                  <div className="ml-9 mt-1 space-y-0.5 opacity-0 animate-slideDown">
+                    {item.subItems.map((subItem, index) => {
+                      const SubIcon = subItem.icon;
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => router.push(subItem.path)}
+                          className="w-full flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:bg-slate-700/30 group"
+                        >
+                          <SubIcon className="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-colors" />
+                          <span className="ml-3 text-slate-400 group-hover:text-white transition-colors">
+                            {subItem.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
 
-        {/* クイックアクセスボタン */}
-        <button 
-          className="w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 flex items-center justify-center transition-all duration-200 text-slate-300 hover:text-white mb-2"
-          onClick={() => router.push("/shortcuts")}
-        >
-          <Zap className="w-6 h-6" />
-        </button>
-
-        {/* カレンダーボタン */}
-        <button 
-          className="w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 flex items-center justify-center transition-all duration-200 text-slate-300 hover:text-white mb-2"
-          onClick={() => router.push("/calendar")}
-        >
-          <Calendar className="w-6 h-6" />
-        </button>
-        
-        {/* チャットボタン */}
-        <button 
-          className="w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 flex items-center justify-center transition-all duration-200 text-slate-300 hover:text-white mb-2 relative"
-          onClick={() => {
-            router.push("/chat");
-            setUnreadChatCount(0); // チャットページを開いたら未読数をリセット
-          }}
-        >
-          <MessageCircle className="w-6 h-6" />
-          {unreadChatCount > 0 && (
-            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
-              {unreadChatCount > 9 ? '9+' : unreadChatCount}
-            </div>
-          )}
-        </button>
-
-        {/* 検索ボタン */}
-        <button 
-          className="w-12 h-12 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 flex items-center justify-center transition-all duration-200 text-slate-300 hover:text-white mb-4"
-          onClick={() => router.push("/search")}
-        >
-          <Search className="w-6 h-6" />
-        </button>
-        
-        {/* ユーザー設定パネル (Discord風) */}
-        <div className="relative" ref={userMenuRef}>
+        {/* 下部のクイックアクセス */}
+        <div className="px-2 space-y-1 border-t border-slate-700 pt-4">
+          {/* クイックアクセス */}
           <button 
-            className="w-14 h-14 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 p-1 cursor-pointer group transition-all duration-200"
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
+            onClick={() => router.push("/shortcuts")}
           >
-            <div className="flex items-center justify-center w-full h-full">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                U
-              </div>
+            <Zap className="w-6 h-6 text-slate-400 group-hover:text-yellow-400 transition-all duration-300 flex-shrink-0" />
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                クイックアクセス
+              </span>
             </div>
           </button>
           
+          {/* タスク管理 */}
+          <button 
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
+            onClick={() => router.push("/company-tasks")}
+          >
+            <CheckSquare className="w-6 h-6 text-slate-400 group-hover:text-orange-400 transition-all duration-300 flex-shrink-0" />
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                タスク管理
+              </span>
+            </div>
+          </button>
+          
+          {/* メモ */}
+          <button 
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
+            onClick={() => router.push("/notes")}
+          >
+            <StickyNote className="w-6 h-6 text-slate-400 group-hover:text-pink-400 transition-all duration-300 flex-shrink-0" />
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                メモ
+              </span>
+            </div>
+          </button>
+          
+          {/* カレンダー */}
+          <button 
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
+            onClick={() => router.push("/calendar")}
+          >
+            <Calendar className="w-6 h-6 text-slate-400 group-hover:text-blue-400 transition-all duration-300 flex-shrink-0" />
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                カレンダー
+              </span>
+            </div>
+          </button>
+          
+          {/* チャット */}
+          <button 
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group relative"
+            onClick={() => {
+              router.push("/chat");
+              setUnreadChatCount(0);
+            }}
+          >
+            <MessageCircle className="w-6 h-6 text-slate-400 group-hover:text-purple-400 transition-all duration-300 flex-shrink-0" />
+            {unreadChatCount > 0 && (
+              <div className="absolute left-8 top-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                {unreadChatCount > 9 ? '9+' : unreadChatCount}
+              </div>
+            )}
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                チャット
+              </span>
+            </div>
+          </button>
+          
+          {/* 検索 */}
+          <button 
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
+            onClick={() => router.push("/search")}
+          >
+            <Search className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 transition-all duration-300 flex-shrink-0" />
+            <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <span className="text-slate-300 group-hover:text-white font-medium whitespace-nowrap">
+                検索
+              </span>
+            </div>
+          </button>
+        </div>
+        
+        {/* ユーザー設定 */}
+        <div className="mt-2 relative" style={{ paddingLeft: '16px' }} ref={userMenuRef}>
+          <div className="flex items-center py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+              U
+            </div>
+            <div className={`ml-3 flex items-center justify-between flex-1 transition-all duration-300 ${
+              isExpanded ? 'opacity-100 w-full' : 'opacity-0 w-0 overflow-hidden'
+            }`}>
+              <div className="text-left">
+                <div className="text-sm font-semibold text-white whitespace-nowrap">管理者</div>
+                <div className="text-xs text-slate-400 whitespace-nowrap">admin@unica.com</div>
+              </div>
+              <ChevronUp className={`w-4 h-4 text-slate-500 transition-transform duration-300 flex-shrink-0 ${
+                showUserMenu ? 'rotate-180' : ''
+              }`} />
+            </div>
+          </div>
+          
           {/* ユーザーメニュードロップダウン */}
-          {showUserMenu && (
-            <div className="absolute bottom-full left-16 mb-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
-              {/* ユーザー情報ヘッダー */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                    U
+          {showUserMenu && isExpanded && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-700 rounded-xl shadow-lg border border-slate-600 py-2 opacity-0 animate-slideUp">
+              {userMenuItems.map((item, index) => {
+                const Icon = item.icon;
+                const isDivider = item.divider;
+                
+                return (
+                  <div key={index}>
+                    {isDivider && <div className="border-t border-slate-600 my-2" />}
+                    <button
+                      className={`w-full flex items-center px-4 py-2 text-left hover:bg-slate-600 transition-colors ${
+                        item.label === "ログアウト" ? "text-red-400 hover:bg-red-900/20" : "text-slate-300"
+                      }`}
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        if (item.path === "/logout") {
+                          console.log("ログアウト実行");
+                        } else {
+                          router.push(item.path);
+                        }
+                      }}
+                    >
+                      <Icon className="w-4 h-4 mr-3" />
+                      <span className="text-sm">{item.label}</span>
+                    </button>
                   </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">管理者</div>
-                    <div className="text-sm text-gray-500">admin@unica.com</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* メニュー項目 */}
-              <div className="py-2">
-                {userMenuItems.map((item, index) => {
-                  const Icon = item.icon;
-                  const isDivider = item.divider;
-                  
-                  return (
-                    <div key={index}>
-                      {isDivider && <div className="border-t border-gray-100 my-2" />}
-                      <button
-                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors ${
-                          item.label === "ログアウト" ? "text-red-600 hover:bg-red-50" : "text-gray-700"
-                        }`}
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          if (item.path === "/logout") {
-                            // ログアウト処理
-                            console.log("ログアウト実行");
-                          } else {
-                            router.push(item.path);
-                          }
-                        }}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span>{item.label}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
-
-      {/* 右側の展開パネル */}
-      <div
-        className={`
-        h-full bg-slate-700 backdrop-blur-sm border-r border-slate-600 shadow-lg
-        transition-all duration-300 ease-out overflow-hidden
-        ${isExpanded ? "w-64 opacity-100" : "w-0 opacity-0"}
-      `}
-      >
-        {expandedItem && (
-          <div className="p-6 h-full flex flex-col">
-            {/* ヘッダー */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                {(() => {
-                  const currentItem = menuItems.find(
-                    (item) => item.id === expandedItem
-                  );
-                  if (currentItem) {
-                    const Icon = currentItem.icon;
-                    return (
-                      <>
-                        <Icon className="w-7 h-7 text-slate-200" />
-                        <h2 className="text-xl font-semibold text-white">
-                          {currentItem.label}
-                        </h2>
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-              <button
-                onClick={() => setPinned(!pinned)}
-                className={`
-                  w-9 h-9 rounded-lg flex items-center justify-center
-                  transition-all duration-200 border
-                  ${
-                    pinned
-                      ? "bg-slate-600 border-slate-500 text-white"
-                      : "bg-slate-800 hover:bg-slate-600 border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white"
-                  }
-                `}
-              >
-                {pinned ? (
-                  <PinOff className="w-5 h-5" />
-                ) : (
-                  <Pin className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-
-            {/* サブメニュー */}
-            <div className="flex-1 space-y-2">
-              {(() => {
-                const currentItem = menuItems.find(
-                  (item) => item.id === expandedItem
-                );
-                if (currentItem && currentItem.subItems) {
-                  return currentItem.subItems.map((subItem, index) => {
-                    const SubIcon = subItem.icon;
-                    return (
-                      <button
-                        key={index}
-                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-slate-800 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 transition-all duration-200 group"
-                        onClick={() => {
-                          // ホーム
-                          if (subItem.label === "ダッシュボード") router.push("/");
-                          if (subItem.label === "全体周知") router.push("/announcements");
-                          if (subItem.label === "通知管理") router.push("/notifications");
-                          
-                          // プロジェクト管理
-                          if (subItem.label === "受注案件") router.push("/orders");
-                          if (subItem.label === "工程リスト") router.push("/tasks");
-                          if (subItem.label === "工数管理") router.push("/work-hours");
-                          if (subItem.label === "顧客先管理") router.push("/partners");
-                          
-                          // 日報・記録
-                          if (subItem.label === "日報作成") router.push("/daily-reports");
-                          if (subItem.label === "日報一覧") router.push("/daily-reports/history");
-                          if (subItem.label === "不具合報告") router.push("/defect-reports");
-                          
-                          // ファイル・資料
-                          if (subItem.label === "ファイル管理") router.push("/files");
-                          if (subItem.label === "工具管理") router.push("/tools");
-                          if (subItem.label === "図面管理") router.push("/drawings");
-                          if (subItem.label === "納品書") router.push("/delivery-notes");
-                          
-                          // 管理・設定
-                          if (subItem.label === "外部連携設定") router.push("/integrations");
-                          if (subItem.label === "操作履歴") router.push("/audit-logs");
-                          if (subItem.label === "ヘルプ") router.push("/help");
-                        }}
-                      >
-                        <SubIcon className="w-5 h-5 text-slate-300 group-hover:text-white transition-colors" />
-                        <span className="text-slate-200 group-hover:text-white font-medium transition-colors">
-                          {subItem.label}
-                        </span>
-                      </button>
-                    );
-                  });
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* フッター */}
-            <div className="mt-6 pt-6 border-t border-slate-600">
-              <div className="text-sm text-slate-400 text-center">
-                ManufacturingHub v1.0
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        .animate-slideDown {
+          animation: slideDown 0.3s ease-out forwards;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out forwards;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }
