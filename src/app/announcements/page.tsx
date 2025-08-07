@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { subscribeToAnnouncements } from "@/lib/firebase/announcements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +28,6 @@ import {
   FileText,
 } from "lucide-react";
 
-// Firebase型をimport
-import { Announcement as FirebaseAnnouncement } from "@/lib/firebase/announcements";
 
 // ページ用の拡張型定義
 interface AnnouncementCategory {
@@ -80,8 +78,8 @@ const AnnouncementsPage = () => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [bookmarkedItems, setBookmarkedItems] = useState<Set<string>>(new Set());
 
-  // 製造業特化のお知らせカテゴリ
-  const categories: AnnouncementCategory[] = [
+  // 製造業特化のお知らせカテゴリ（useMemoで固定）
+  const categories = React.useMemo<AnnouncementCategory[]>(() => [
     {
       id: "safety",
       name: "安全・労務",
@@ -130,107 +128,85 @@ const AnnouncementsPage = () => {
       icon: Info,
       description: "一般的なお知らせ・イベント",
     },
-  ];
+  ], []);
 
 
-  // Firebase型をページ型に変換する関数
-  const convertFirebaseToPageAnnouncement = useCallback((fbAnnouncement: FirebaseAnnouncement): Announcement => {
-    const categoryMap = {
-      'safety': categories[0],
-      'production': categories[1], 
-      'maintenance': categories[2],
-      'quality': categories[3],
-      'system': categories[4],
-      'general': categories[5]
-    } as const;
-    
-    return {
-      id: fbAnnouncement.id,
-      title: fbAnnouncement.title,
-      content: fbAnnouncement.content,
-      category: categoryMap[fbAnnouncement.category as keyof typeof categoryMap] || categories[5],
-      priority: fbAnnouncement.priority === 'medium' ? 'normal' : fbAnnouncement.priority as 'normal' | 'high' | 'urgent',
-      isActive: fbAnnouncement.isActive,
-      authorName: fbAnnouncement.authorName,
-      publishedAt: fbAnnouncement.publishedAt ? new Date(fbAnnouncement.publishedAt) : null,
-      expiresAt: fbAnnouncement.expiresAt ? new Date(fbAnnouncement.expiresAt) : null,
-      targetAudience: Array.isArray(fbAnnouncement.targetDepartments) ? fbAnnouncement.targetDepartments : ['全社員'],
-      isSticky: fbAnnouncement.priority === 'urgent',
-      readCount: fbAnnouncement.readCount,
-      totalTargetCount: fbAnnouncement.totalTargetCount,
-      tags: [],
-      attachments: fbAnnouncement.attachments?.map(att => ({
-        id: att.fileName,
-        name: att.fileName,
-        size: att.fileSize,
-        type: 'application/pdf',
-        url: att.fileUrl
-      })),
-      createdAt: fbAnnouncement.createdAt instanceof Date ? fbAnnouncement.createdAt : new Date(),
-      updatedAt: fbAnnouncement.updatedAt instanceof Date ? fbAnnouncement.updatedAt : new Date()
-    };
-  }, [categories]);
 
-  // Firebaseからデータを取得
+  // Firebaseからデータを取得（リアルタイムサブスクリプション）
   useEffect(() => {
-    let isMounted = true;
+    let unsubscribe: (() => void) | null = null;
+    let lastDataStr = "";
     
-    const unsubscribe = subscribeToAnnouncements(
-      {
-        isActive: true,
-        limit: 50
-      },
-      (firebaseData) => {
-        if (!isMounted) return;
-        
-        console.log('Received announcements from Firebase:', firebaseData);
-        // Firebase型をページ型に変換
-        const convertedData = firebaseData.map(convertFirebaseToPageAnnouncement);
-        setAnnouncements(convertedData);
-        setFilteredAnnouncements(convertedData.filter(a => a.isActive));
-      }
-    );
-    
-    // Fallback to sample data if no Firebase data
-    const fallbackTimer = setTimeout(() => {
-      if (!isMounted) return;
-      setAnnouncements(prev => {
-        if (prev.length === 0) {
-          console.log('No Firebase data found, using sample data as fallback');
-          const fallbackData = [
-            {
-              id: "1",
-              title: "第1工場設備点検による生産停止のお知らせ",
-              content: "来週月曜日（2月15日）午前9時から午後5時まで、第1工場の定期設備点検を実施いたします。この間、A製品ラインは生産停止となります。",
-              category: categories[2],
-              priority: "high" as const,
-              isActive: true,
-              authorName: "保全部長 山田太郎",
-              publishedAt: new Date(2025, 1, 10, 9, 0),
-              expiresAt: new Date(2025, 1, 20, 17, 0),
-              targetAudience: ["生産部", "品質管理部", "工場作業員"],
-              isSticky: true,
-              readCount: 45,
-              totalTargetCount: 50,
-              tags: ["設備点検", "生産停止", "第1工場"],
-              createdAt: new Date(2025, 1, 9, 14, 30),
-              updatedAt: new Date(2025, 1, 9, 14, 30),
-            }
-          ];
-          const activeData = fallbackData.filter(a => a.isActive);
-          setFilteredAnnouncements(activeData);
-          return fallbackData;
+    // Firebase subscription設定
+    const setupSubscription = () => {
+      unsubscribe = subscribeToAnnouncements(
+        {
+          isActive: true,
+          limit: 50
+        },
+        (firebaseData) => {
+          // データの変更を検出
+          const currentDataStr = JSON.stringify(firebaseData.map(d => ({ id: d.id, updatedAt: d.updatedAt })));
+          if (currentDataStr === lastDataStr) {
+            return; // データが同じなら何もしない
+          }
+          lastDataStr = currentDataStr;
+          
+          // データを変換して設定
+          const convertedData = firebaseData.map(fbData => {
+            const categoryMap = {
+              'safety': categories[0],
+              'production': categories[1], 
+              'maintenance': categories[2],
+              'quality': categories[3],
+              'system': categories[4],
+              'general': categories[5],
+              'schedule': categories[5],
+              'policy': categories[5],
+              'emergency': categories[0]
+            } as const;
+            
+            return {
+              id: fbData.id,
+              title: fbData.title,
+              content: fbData.content,
+              category: categoryMap[fbData.category as keyof typeof categoryMap] || categories[5],
+              priority: fbData.priority === 'medium' ? 'normal' : fbData.priority as 'normal' | 'high' | 'urgent',
+              isActive: fbData.isActive,
+              authorName: fbData.authorName,
+              publishedAt: fbData.publishedAt ? new Date(fbData.publishedAt) : null,
+              expiresAt: fbData.expiresAt ? new Date(fbData.expiresAt) : null,
+              targetAudience: Array.isArray(fbData.targetDepartments) ? fbData.targetDepartments : ['全社員'],
+              isSticky: fbData.priority === 'urgent',
+              readCount: fbData.readCount,
+              totalTargetCount: fbData.totalTargetCount,
+              tags: [],
+              attachments: fbData.attachments?.map(att => ({
+                id: att.fileName,
+                name: att.fileName,
+                size: att.fileSize,
+                type: 'application/pdf',
+                url: att.fileUrl
+              })),
+              createdAt: fbData.createdAt instanceof Date ? fbData.createdAt : new Date(),
+              updatedAt: fbData.updatedAt instanceof Date ? fbData.updatedAt : new Date()
+            };
+          });
+          
+          setAnnouncements(convertedData);
         }
-        return prev;
-      });
-    }, 2000);
-    
-    return () => {
-      isMounted = false;
-      unsubscribe();
-      clearTimeout(fallbackTimer);
+      );
     };
-  }, [convertFirebaseToPageAnnouncement]);
+    
+    setupSubscription();
+    
+    // クリーンアップ
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [categories]); // categoriesを依存配列に追加
 
   // フィルタリング処理
   useEffect(() => {
