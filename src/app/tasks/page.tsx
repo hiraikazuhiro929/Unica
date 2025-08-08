@@ -56,6 +56,7 @@ const ProcessList = () => {
     companies,
     isLoading: isProcessesLoading,
     error: processesError,
+    companySortOrder,
     generateLineNumber,
     createNewProcess,
     updateProcess,
@@ -66,6 +67,8 @@ const ProcessList = () => {
     updateStatus,
     updateDate,
     reorderProcesses,
+    reorderCompanies,
+    changeCompanySortOrder,
     toggleCompany,
     getStatistics,
   } = useProcessManagement();
@@ -297,9 +300,51 @@ const ProcessList = () => {
                 </SelectContent>
               </Select>
 
-              {/* 新規追加ボタン */}
+            </div>
+          </div>
+        </div>
+
+        {/* タブナビゲーション */}
+        <div className="bg-white border-b border-gray-200 px-6">
+          <div className="flex items-center justify-between py-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-3 w-auto">
+                <TabsTrigger value="list" className="flex items-center gap-2 px-4">
+                  <ClipboardList className="w-4 h-4" />
+                  工程リスト
+                </TabsTrigger>
+                <TabsTrigger value="gantt" className="flex items-center gap-2 px-4">
+                  <BarChart3 className="w-4 h-4" />
+                  ガントチャート
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="flex items-center gap-2 px-4">
+                  <Grid3X3 className="w-4 h-4" />
+                  看板
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex items-center gap-3">
+              {/* 会社ソート機能 */}
+              <Select
+                value={companySortOrder}
+                onValueChange={(value) => changeCompanySortOrder(value as typeof companySortOrder)}
+              >
+                <SelectTrigger className="w-40 h-8 text-sm">
+                  <SelectValue placeholder="並び順" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">自由並び替え</SelectItem>
+                  <SelectItem value="name">会社名順</SelectItem>
+                  <SelectItem value="processCount">工程数順</SelectItem>
+                  <SelectItem value="totalHours">工数順</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* 新規工程ボタン */}
               <Button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6"
+                size="sm"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
                 onClick={() => {
                   setSelectedProcess(createNewProcess());
                   setShowNewProcessModal(true);
@@ -310,26 +355,6 @@ const ProcessList = () => {
               </Button>
             </div>
           </div>
-        </div>
-
-        {/* タブナビゲーション */}
-        <div className="bg-white border-b border-gray-200 px-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 max-w-md">
-              <TabsTrigger value="list" className="flex items-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                工程リスト
-              </TabsTrigger>
-              <TabsTrigger value="gantt" className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                ガントチャート
-              </TabsTrigger>
-              <TabsTrigger value="kanban" className="flex items-center gap-2">
-                <Grid3X3 className="w-4 h-4" />
-                看板
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
 
         {/* メインコンテンツ */}
@@ -369,7 +394,26 @@ const ProcessList = () => {
                   {filteredCompanies.map((company) => (
                     <Card
                       key={company.id}
-                      className="bg-white border-gray-200 shadow-lg overflow-hidden rounded-xl p-0"
+                      className="bg-white border-gray-200 shadow-lg overflow-hidden rounded-xl p-0 cursor-move"
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("company-drag", company.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        const hasCompanyDrag = e.dataTransfer.types.includes("company-drag");
+                        if (hasCompanyDrag) {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }
+                      }}
+                      onDrop={async (e) => {
+                        const draggedId = e.dataTransfer.getData("company-drag");
+                        if (draggedId && draggedId !== company.id) {
+                          e.preventDefault();
+                          await reorderCompanies(draggedId, company.id);
+                        }
+                      }}
                     >
                       <CardHeader
                         className="py-5 px-4 cursor-pointer bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-colors border-b flex items-center"

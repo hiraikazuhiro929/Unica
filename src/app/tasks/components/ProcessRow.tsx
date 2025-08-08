@@ -27,8 +27,8 @@ interface ProcessRowProps {
     date: Date | undefined
   ) => void;
   onDuplicate: (process: Process) => void;
-  onDelete: (processId: string) => void;
-  onReorder?: (draggedId: string, targetId: string) => void;
+  onDelete: (processId: string) => Promise<void>;
+  onReorder?: (draggedId: string, targetId: string) => Promise<void>;
   onProgressChange: (processId: string, progress: number) => void;
 }
 
@@ -63,7 +63,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
 
   const handleDragStart = (e: React.DragEvent) => {
     setIsDragging(true);
-    e.dataTransfer.setData("text/plain", process.id);
+    e.dataTransfer.setData("process-drag", process.id);
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -72,15 +72,19 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    // 工程のドラッグのみ受け入れる
+    const hasProcessDrag = e.dataTransfer.types.includes("process-drag");
+    if (hasProcessDrag) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData("text/plain");
-    if (draggedId !== process.id && onReorder) {
-      onReorder(draggedId, process.id);
+  const handleDrop = async (e: React.DragEvent) => {
+    const draggedId = e.dataTransfer.getData("process-drag");
+    if (draggedId && draggedId !== process.id && onReorder) {
+      e.preventDefault();
+      await onReorder(draggedId, process.id);
     }
   };
 
@@ -105,7 +109,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
         )} relative overflow-hidden cursor-move ${
           isDragging ? "opacity-50" : ""
         }`}
-        draggable="true"
+        draggable={true}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
@@ -319,9 +323,9 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
           <hr className="my-1" />
           <button
             className="px-3 py-1 hover:bg-red-100 text-red-600 w-full text-left text-sm"
-            onClick={() => {
+            onClick={async () => {
               if (confirm("この工程を削除しますか？")) {
-                onDelete(process.id);
+                await onDelete(process.id);
               }
               setShowContextMenu(false);
             }}

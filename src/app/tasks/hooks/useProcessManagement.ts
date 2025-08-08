@@ -13,201 +13,120 @@ export const useProcessManagement = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [companySortOrder, setCompanySortOrder] = useState<'name' | 'processCount' | 'totalHours' | 'custom'>('custom');
+  const [customCompanyOrder, setCustomCompanyOrder] = useState<string[]>([]);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
-  // サンプルデータ（初期データまたはFirebase接続失敗時のフォールバック）
-  const sampleCompanies: Company[] = [
-    {
-      id: "1",
-      name: "トヨタ自動車",
-      isExpanded: true,
-      processes: [
-        {
-          id: "1-1",
-          orderClient: "トヨタ自動車",
-          lineNumber: "",
-          projectName: "自動車部品A製造",
-          managementNumber: "MGT-2024-001",
-          progress: 75,
-          quantity: 100,
-          salesPerson: "山田太郎",
-          assignee: "田中一郎",
-          fieldPerson: "佐藤次郎",
-          assignedMachines: ["NC旋盤-001", "マシニングセンタ-001"],
-          workDetails: {
-            setup: 6,
-            machining: 12,
-            finishing: 9,
-            additionalSetup: 6,
-            additionalMachining: 3,
-            additionalFinishing: 1.5,
-            useDynamicSteps: false,
-            totalEstimatedHours: 37.5,
-            totalActualHours: 0
-          },
-          orderDate: "2024-03-01",
-          arrivalDate: "2024-03-05",
-          shipmentDate: "2024-03-31",
-          dataWorkDate: "2024-03-03",
-          dataCompleteDate: "2024-03-04",
-          processingPlanDate: "2024-03-06",
-          processingEndDate: "2024-03-25",
-          remarks: "特急対応、品質検査強化",
-          status: "processing",
-          priority: "high",
-          dueDate: "2024-03-31",
-        },
-        {
-          id: "1-2",
-          orderClient: "トヨタ自動車",
-          lineNumber: "",
-          projectName: "エンジン部品C加工",
-          managementNumber: "MGT-2024-003",
-          progress: 45,
-          quantity: 200,
-          salesPerson: "山田太郎",
-          assignee: "鈴木三郎",
-          fieldPerson: "高橋四郎",
-          assignedMachines: ["NC旋盤-002", "フライス盤-001"],
-          workDetails: {
-            setup: 8,
-            machining: 16,
-            finishing: 12,
-            useDynamicSteps: false,
-            totalEstimatedHours: 36,
-            totalActualHours: 0
-          },
-          orderDate: "2024-03-10",
-          arrivalDate: "2024-03-12",
-          shipmentDate: "2024-04-10",
-          dataWorkDate: "2024-03-11",
-          processingPlanDate: "2024-03-13",
-          remarks: "",
-          status: "processing",
-          priority: "medium",
-          dueDate: "2024-04-10",
-        },
-      ],
-    },
-    {
-      id: "2",
-      name: "ソニーグループ",
-      isExpanded: true,
-      processes: [
-        {
-          id: "2-1",
-          orderClient: "ソニーグループ",
-          lineNumber: "",
-          projectName: "精密機器B組立",
-          managementNumber: "MGT-2024-002",
-          progress: 30,
-          quantity: 50,
-          salesPerson: "鈴木花子",
-          assignee: "高橋三郎",
-          fieldPerson: "伊藤四郎",
-          assignedMachines: ["マシニングセンタ-002", "研削盤-001"],
-          workDetails: {
-            setup: 4,
-            machining: 8,
-            finishing: 6,
-            useDynamicSteps: false,
-            totalEstimatedHours: 18,
-            totalActualHours: 0
-          },
-          orderDate: "2024-03-15",
-          arrivalDate: "2024-03-18",
-          shipmentDate: "2024-04-15",
-          dataWorkDate: "2024-03-16",
-          processingPlanDate: "2024-03-20",
-          remarks: "精密加工注意",
-          status: "data-work",
-          priority: "medium",
-          dueDate: "2024-04-15",
-        },
-      ],
-    },
-    {
-      id: "3",
-      name: "パナソニック",
-      isExpanded: true,
-      processes: [
-        {
-          id: "3-1",
-          orderClient: "パナソニック",
-          lineNumber: "",
-          projectName: "電子部品筐体加工",
-          managementNumber: "MGT-2024-004",
-          progress: 10,
-          quantity: 300,
-          salesPerson: "田中花子",
-          assignee: "佐藤五郎",
-          fieldPerson: "山田六郎",
-          assignedMachines: ["プレス機-001"],
-          workDetails: {
-            setup: 2,
-            machining: 4,
-            finishing: 2,
-            useDynamicSteps: false,
-            totalEstimatedHours: 8,
-            totalActualHours: 0
-          },
-          orderDate: "2024-03-20",
-          arrivalDate: "2024-03-22",
-          shipmentDate: "2024-04-20",
-          dataWorkDate: "2024-03-21",
-          processingPlanDate: "2024-03-25",
-          remarks: "",
-          status: "planning",
-          priority: "low",
-          dueDate: "2024-04-20",
-        },
-      ],
-    },
-    {
-      id: "4",
-      name: "ホンダ技研工業",
-      isExpanded: true,
-      processes: [
-        {
-          id: "4-1",
-          orderClient: "ホンダ技研工業",
-          lineNumber: "",
-          projectName: "二輪車部品製造",
-          managementNumber: "MGT-2024-005",
-          progress: 85,
-          quantity: 150,
-          salesPerson: "佐藤太郎",
-          assignee: "田中花子",
-          fieldPerson: "山田次郎",
-          assignedMachines: ["NC旋盤-001", "フライス盤-001"],
-          workDetails: {
-            setup: 3,
-            machining: 10,
-            finishing: 5,
-            useDynamicSteps: false,
-            totalEstimatedHours: 18,
-            totalActualHours: 0
-          },
-          orderDate: "2024-02-28",
-          arrivalDate: "2024-03-02",
-          shipmentDate: "2024-03-28",
-          dataWorkDate: "2024-03-01",
-          processingPlanDate: "2024-03-04",
-          remarks: "",
-          status: "finishing",
-          priority: "medium",
-          dueDate: "2024-03-28",
-        },
-      ],
-    },
-  ];
-
-  // Firebaseからデータを取得
+  // LocalStorageから設定を読み込み
   useEffect(() => {
-    loadProcessesData();
+    try {
+      const savedOrder = localStorage.getItem('unica-company-order');
+      const savedSortOrder = localStorage.getItem('unica-company-sort-order');
+      
+      if (savedOrder) {
+        setCustomCompanyOrder(JSON.parse(savedOrder));
+      }
+      if (savedSortOrder) {
+        setCompanySortOrder(savedSortOrder as typeof companySortOrder);
+      }
+      setIsSettingsLoaded(true);
+    } catch (error) {
+      console.warn('設定の読み込みに失敗:', error);
+      setIsSettingsLoaded(true);
+    }
+  }, []);
+
+  // 設定をLocalStorageに保存
+  const saveCustomOrder = (order: string[]) => {
+    try {
+      localStorage.setItem('unica-company-order', JSON.stringify(order));
+      setCustomCompanyOrder(order);
+    } catch (error) {
+      console.warn('設定の保存に失敗:', error);
+    }
+  };
+
+  const saveSortOrder = (sortOrder: typeof companySortOrder) => {
+    try {
+      localStorage.setItem('unica-company-sort-order', sortOrder);
+      setCompanySortOrder(sortOrder);
+    } catch (error) {
+      console.warn('ソート順の保存に失敗:', error);
+    }
+  };
+
+  // 会社の並び替え関数
+  const sortCompanies = (companies: Company[], sortOrder: typeof companySortOrder) => {
+    return [...companies].sort((a, b) => {
+      switch (sortOrder) {
+        case 'name':
+          return a.name.localeCompare(b.name, 'ja');
+        case 'processCount':
+          return b.processes.length - a.processes.length;
+        case 'totalHours':
+          const totalHoursA = a.processes.reduce((sum, p) => sum + calculateTotalHours(p.workDetails), 0);
+          const totalHoursB = b.processes.reduce((sum, p) => sum + calculateTotalHours(p.workDetails), 0);
+          return totalHoursB - totalHoursA;
+        case 'custom':
+          // カスタム順序を適用
+          if (customCompanyOrder.length > 0) {
+            const indexA = customCompanyOrder.indexOf(a.name);
+            const indexB = customCompanyOrder.indexOf(b.name);
+            
+            // 両方とも保存済み順序にある場合
+            if (indexA !== -1 && indexB !== -1) {
+              return indexA - indexB;
+            }
+            // Aのみ保存済み順序にある場合（Aを上位）
+            if (indexA !== -1) return -1;
+            // Bのみ保存済み順序にある場合（Bを上位）
+            if (indexB !== -1) return 1;
+          }
+          // 保存済み順序がない場合は名前順
+          return a.name.localeCompare(b.name, 'ja');
+        default:
+          return a.name.localeCompare(b.name, 'ja');
+      }
+    });
+  };
+
+  // 会社の並び順を変更
+  const changeCompanySortOrder = (sortOrder: typeof companySortOrder) => {
+    saveSortOrder(sortOrder);
+    const sortedCompanies = sortCompanies(companies, sortOrder);
+    setCompanies(sortedCompanies);
+  };
+
+  // 会社の順序を手動で変更（ドラッグ&ドロップ用）
+  const reorderCompanies = (draggedCompanyId: string, targetCompanyId: string) => {
+    setCompanies((prev) => {
+      const companies = [...prev];
+      const draggedIndex = companies.findIndex((c) => c.id === draggedCompanyId);
+      const targetIndex = companies.findIndex((c) => c.id === targetCompanyId);
+
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const [draggedItem] = companies.splice(draggedIndex, 1);
+        companies.splice(targetIndex, 0, draggedItem);
+        
+        // 新しい順序を保存
+        const newOrder = companies.map(c => c.name);
+        saveCustomOrder(newOrder);
+        saveSortOrder('custom');
+      }
+
+      return companies;
+    });
+  };
+
+  // Firebaseからデータを取得（LocalStorage読み込み後）
+  useEffect(() => {
+    if (isSettingsLoaded) {
+      loadProcessesData();
+    }
     
     // リアルタイム同期を削除し、必要時のみデータを更新
     // パフォーマンス重視のため定期更新も削除
-  }, []);
+  }, [isSettingsLoaded]);
 
   const loadProcessesData = async () => {
     try {
@@ -215,8 +134,8 @@ export const useProcessManagement = () => {
       const { data: processes, error } = await getProcessesList({ limit: 100 });
       
       if (error) {
-        console.warn('プロセスデータの取得に失敗、サンプルデータを使用:', error);
-        setCompanies(sampleCompanies);
+        console.warn('プロセスデータの取得に失敗:', error);
+        setCompanies([]);
         setError(error);
       } else {
         // プロセスを会社ごとにグループ化
@@ -236,38 +155,33 @@ export const useProcessManagement = () => {
         });
         
         const companiesArray = Array.from(companiesMap.values());
-        
-        // データがない場合はサンプルデータを使用
-        if (companiesArray.length === 0) {
-          setCompanies(sampleCompanies);
-        } else {
-          setCompanies(companiesArray);
-        }
+        const sortedCompanies = sortCompanies(companiesArray, companySortOrder);
+        const companiesWithLineNumbers = updateLineNumbers(sortedCompanies);
+        setCompanies(companiesWithLineNumbers);
+        setError(null);
       }
     } catch (err: any) {
       console.error('プロセスデータの取得中にエラー:', err);
-      setCompanies(sampleCompanies);
+      setCompanies([]);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 初期化時に行番号を設定（サンプルデータのみ）
-  useEffect(() => {
-    if (companies === sampleCompanies) {
-      setCompanies((prev) =>
-        prev.map((company) => ({
-          ...company,
-          processes: company.processes.map((process, index) => ({
-            ...process,
-            rowNumber: index + 1,
-            lineNumber: String(index + 1).padStart(3, "0"),
-          })),
-        }))
-      );
-    }
-  }, [companies]);
+
+  // 行番号を正しく設定する関数
+  const updateLineNumbers = (companies: Company[]) => {
+    return companies.map((company) => ({
+      ...company,
+      processes: company.processes.map((process, index) => ({
+        ...process,
+        rowNumber: index + 1,
+        lineNumber: String(index + 1).padStart(3, "0"),
+      })),
+    }));
+  };
+
 
   // 行番号を自動生成する関数
   const generateLineNumber = (orderClient: string) => {
@@ -313,8 +227,19 @@ export const useProcessManagement = () => {
 
   // 工程更新（ローカル更新 + Firebase保存）
   const updateProcess = async (updatedProcess: Process) => {
-    // まずローカル状態を即座に更新（UIがすぐ反応）
-    setCompanies((prev) => {
+    try {
+      // Firebaseに保存
+      if (updatedProcess.id) {
+        const { error } = await updateProcessInFirebase(updatedProcess.id, updatedProcess);
+        if (error) {
+          console.error('工程の更新に失敗しました:', error);
+          alert('工程の更新に失敗しました: ' + error);
+          return;
+        }
+      }
+
+      // ローカル状態を更新（UIがすぐ反応）
+      setCompanies((prev) => {
       // 既存のプロセスの会社とインデックスを記録
       let oldCompanyId: string | null = null;
       let oldIndex: number = -1;
@@ -374,31 +299,71 @@ export const useProcessManagement = () => {
         ];
       }
     });
+    } catch (error: any) {
+      console.error('工程更新エラー:', error);
+      alert('工程の更新中にエラーが発生しました: ' + error.message);
+    }
   };
 
-  // 工程追加
-  const addProcess = (newProcess: Process) => {
-    setCompanies((prev) => {
-      const firstCompany = prev[0];
-      if (firstCompany) {
-        return prev.map((company) =>
-          company.id === firstCompany.id
-            ? { ...company, processes: [...company.processes, newProcess] }
-            : company
-        );
+  // 工程追加（Firebase連携）
+  const addProcess = async (newProcess: Process) => {
+    try {
+      // Firebaseに保存
+      const processData = { ...newProcess };
+      delete (processData as any).id; // idを除去してFirebaseに送信
+      
+      const { id, error } = await createProcessInFirebase(processData);
+      if (error || !id) {
+        console.error('工程の作成に失敗しました:', error);
+        alert('工程の作成に失敗しました: ' + error);
+        return;
       }
-      return prev;
-    });
+
+      // 作成されたIDを設定
+      const createdProcess = { ...newProcess, id };
+
+      // ローカル状態を更新
+      setCompanies((prev) => {
+        const firstCompany = prev[0];
+        if (firstCompany) {
+          const updatedCompanies = prev.map((company) =>
+            company.id === firstCompany.id
+              ? { ...company, processes: [...company.processes, createdProcess] }
+              : company
+          );
+          return updateLineNumbers(updatedCompanies);
+        }
+        return prev;
+      });
+    } catch (error: any) {
+      console.error('工程追加エラー:', error);
+      alert('工程の追加中にエラーが発生しました: ' + error.message);
+    }
   };
 
-  // 工程削除
-  const deleteProcess = (processId: string) => {
-    setCompanies((prev) =>
-      prev.map((company) => ({
-        ...company,
-        processes: company.processes.filter((p) => p.id !== processId),
-      }))
-    );
+  // 工程削除（Firebase連携）
+  const deleteProcess = async (processId: string) => {
+    try {
+      // Firebaseから削除
+      const { error } = await deleteProcessInFirebase(processId);
+      if (error) {
+        console.error('工程の削除に失敗しました:', error);
+        alert('工程の削除に失敗しました: ' + error);
+        return;
+      }
+
+      // ローカル状態からも削除
+      setCompanies((prev) => {
+        const updatedCompanies = prev.map((company) => ({
+          ...company,
+          processes: company.processes.filter((p) => p.id !== processId),
+        }));
+        return updateLineNumbers(updatedCompanies);
+      });
+    } catch (error: any) {
+      console.error('工程削除エラー:', error);
+      alert('工程の削除中にエラーが発生しました: ' + error.message);
+    }
   };
 
   // 工程複製
@@ -479,9 +444,9 @@ export const useProcessManagement = () => {
   };
 
   // 並び替え
-  const reorderProcesses = (draggedId: string, targetId: string) => {
-    setCompanies((prev) =>
-      prev.map((company) => {
+  const reorderProcesses = async (draggedId: string, targetId: string) => {
+    setCompanies((prev) => {
+      const updatedCompanies = prev.map((company) => {
         const processes = [...company.processes];
         const draggedIndex = processes.findIndex((p) => p.id === draggedId);
         const targetIndex = processes.findIndex((p) => p.id === targetId);
@@ -495,11 +460,15 @@ export const useProcessManagement = () => {
             process.rowNumber = index + 1;
             process.lineNumber = String(index + 1).padStart(3, "0");
           });
+
+          return { ...company, processes };
         }
 
-        return { ...company, processes };
-      })
-    );
+        return company;
+      });
+
+      return updatedCompanies;
+    });
   };
 
   // 会社の展開/折りたたみ
@@ -541,6 +510,7 @@ export const useProcessManagement = () => {
     companies,
     isLoading,
     error,
+    companySortOrder,
     generateLineNumber,
     createNewProcess,
     updateProcess,
@@ -551,6 +521,8 @@ export const useProcessManagement = () => {
     updateStatus,
     updateDate,
     reorderProcesses,
+    reorderCompanies,
+    changeCompanySortOrder,
     toggleCompany,
     getStatistics,
     loadProcessesData,
