@@ -21,7 +21,8 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteReadNotifications,
-  getNotificationStatistics
+  getNotificationStatistics,
+  manualCleanupNotifications
 } from '@/lib/firebase/notifications';
 import type { Notification } from '@/lib/firebase/notifications';
 
@@ -85,7 +86,7 @@ const NotificationManagement = () => {
   }>({ urgent: true, high: true, normal: true });
   
   // デフォルトユーザーID（実際のアプリでは認証から取得）
-  const currentUserId = 'default-user';
+  const currentUserId = 'user-123'; // TODO: Get from auth context
 
   // Firebaseからリアルタイム通知を取得
   useEffect(() => {
@@ -118,57 +119,10 @@ const NotificationManagement = () => {
     }
   };
 
-  // サンプルデータ（Firebase接続前の開発用）
-  const sampleNotifications: SampleNotification[] = [
-    {
-      id: "1",
-      type: "alert",
-      title: "設備異常検知",
-      message: "機械A-001で温度異常が検知されました",
-      time: "5分前",
-      isRead: false,
-      priority: "urgent",
-    },
-    {
-      id: "2",
-      type: "mention",
-      title: "工程進捗確認",
-      message: "田中部長からメンション: 本日の進捗確認をお願いします",
-      time: "15分前",
-      isRead: false,
-      priority: "high",
-    },
-    {
-      id: "3",
-      type: "system",
-      title: "システムメンテナンス",
-      message: "明日の深夜2:00-4:00にメンテナンスを実施します",
-      time: "1時間前",
-      isRead: true,
-      priority: "normal",
-    },
-    {
-      id: "4",
-      type: "reminder",
-      title: "日報提出",
-      message: "本日の日報がまだ提出されていません",
-      time: "2時間前",
-      isRead: false,
-      priority: "normal",
-    },
-    {
-      id: "5",
-      type: "system",
-      title: "在庫アラート",
-      message: "部品B-205の在庫が残り5個です",
-      time: "3時間前",
-      isRead: true,
-      priority: "high",
-    }
-  ];
+  // サンプルデータは削除済み - Firebaseデータのみ使用
   
-  // 実際のnotificationsが空の場合はサンプルデータを使用
-  const displayNotifications: DisplayNotification[] = notifications.length > 0 ? notifications : sampleNotifications;
+  // Firebaseから取得した通知データのみ使用
+  const displayNotifications: DisplayNotification[] = notifications;
 
   const tabs = [
     { 
@@ -183,7 +137,7 @@ const NotificationManagement = () => {
     { 
       id: "mentions", 
       label: "メンション", 
-      count: displayNotifications.filter(n => n.type === "mention").length,
+      count: displayNotifications.filter(n => n.type === "mention" && !n.isRead).length,
       subItems: [
         { id: "unread", label: "未読", count: displayNotifications.filter(n => n.type === "mention" && !n.isRead).length },
         { id: "all", label: "すべて", count: displayNotifications.filter(n => n.type === "mention").length },
@@ -192,7 +146,7 @@ const NotificationManagement = () => {
     { 
       id: "alerts", 
       label: "アラート", 
-      count: displayNotifications.filter(n => n.type === "alert").length,
+      count: displayNotifications.filter(n => n.type === "alert" && !n.isRead).length,
       subItems: [
         { id: "equipment", label: "設備", count: displayNotifications.filter(n => n.type === "alert").length },
         { id: "inventory", label: "在庫", count: displayNotifications.filter(n => n.type === "system" && n.title.includes("在庫")).length },
@@ -201,11 +155,26 @@ const NotificationManagement = () => {
     { 
       id: "system", 
       label: "システム", 
-      count: displayNotifications.filter(n => n.type === "system" || n.type === "reminder").length,
+      count: displayNotifications.filter(n => (n.type === "system" || n.type === "reminder") && !n.isRead).length,
       subItems: [
         { id: "maintenance", label: "メンテ", count: displayNotifications.filter(n => n.title.includes("メンテ")).length },
         { id: "reminders", label: "リマインダー", count: displayNotifications.filter(n => n.type === "reminder").length },
       ]
+    },
+    { 
+      id: "chat", 
+      label: "チャット", 
+      count: displayNotifications.filter(n => n.type === "chat" && !n.isRead).length,
+    },
+    { 
+      id: "task", 
+      label: "タスク", 
+      count: displayNotifications.filter(n => n.type === "task" && !n.isRead).length,
+    },
+    { 
+      id: "process", 
+      label: "工程", 
+      count: displayNotifications.filter(n => n.type === "process" && !n.isRead).length,
     }
   ];
 
@@ -264,6 +233,29 @@ const NotificationManagement = () => {
     }
   };
 
+  const handleCleanupOldNotifications = async () => {
+    try {
+      setLoading(true);
+      const { error, deletedCount } = await manualCleanupNotifications(currentUserId, {
+        retentionLimit: 50, // 50件まで保持
+        deleteOnlyRead: true,
+        olderThanDays: 30 // 30日より古い既読通知を削除
+      });
+      
+      if (error) {
+        console.error('Failed to cleanup old notifications:', error);
+        alert('古い通知の削除に失敗しました');
+      } else {
+        alert(`${deletedCount}件の古い通知を削除しました`);
+      }
+    } catch (error) {
+      console.error('Failed to cleanup old notifications:', error);
+      alert('古い通知の削除に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredNotifications = displayNotifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          notification.message.toLowerCase().includes(searchQuery.toLowerCase());
@@ -272,6 +264,9 @@ const NotificationManagement = () => {
                       activeTab === "mentions" ? notification.type === "mention" :
                       activeTab === "alerts" ? notification.type === "alert" :
                       activeTab === "system" ? (notification.type === "system" || notification.type === "reminder") :
+                      activeTab === "chat" ? notification.type === "chat" :
+                      activeTab === "task" ? notification.type === "task" :
+                      activeTab === "process" ? notification.type === "process" :
                       true;
     const matchesPriority = priorityFilters[notification.priority as keyof typeof priorityFilters];
     return matchesSearch && matchesFilter && matchesTab && matchesPriority;
@@ -297,36 +292,14 @@ const NotificationManagement = () => {
             </div>
             
             {/* 検索バー */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <Input
-                  placeholder="通知を検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-96 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={filter === "unread" ? "default" : "outline"}
-                  onClick={() => setFilter(filter === "unread" ? "all" : "unread")}
-                  size="sm"
-                  className={`${filter === "unread" ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
-                >
-                  {filter === "unread" ? "全て表示" : "未読のみ"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  size="sm"
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  更新
-                </Button>
-              </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="通知を検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-96 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
             </div>
           </div>
         </div>
@@ -334,6 +307,7 @@ const NotificationManagement = () => {
         {/* メインコンテンツエリア */}
         <div className="flex-1 p-6 overflow-auto bg-gray-50">
           <div className="max-w-7xl mx-auto">
+
             {loading && (
               <div className="flex items-center justify-center py-8">
                 <div className="flex items-center gap-3 text-gray-600">
@@ -400,6 +374,34 @@ const NotificationManagement = () => {
 
               {/* 中央 - 通知リスト */}
               <div className="flex-1">
+                {/* リスト制御バー */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={filter === "unread" ? "default" : "ghost"}
+                      onClick={() => setFilter(filter === "unread" ? "all" : "unread")}
+                      size="sm"
+                      className={`h-7 text-xs ${filter === "unread" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "text-gray-600 hover:text-gray-800"}`}
+                    >
+                      {filter === "unread" ? "全て" : "未読のみ"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500">
+                      {filteredNotifications.length}件
+                    </div>
+                    <Button
+                      variant="ghost"
+                      onClick={handleRefresh}
+                      size="sm"
+                      disabled={loading}
+                      className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
+                </div>
                 <div className="space-y-4">
                   {filteredNotifications.map((notification) => (
                     <div key={notification.id}>
@@ -661,6 +663,14 @@ const NotificationManagement = () => {
                     >
                       <Trash2 className="w-4 h-4" />
                       既読通知を削除
+                    </button>
+                    <button 
+                      onClick={handleCleanupOldNotifications}
+                      disabled={loading}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-left text-sm text-orange-700 hover:bg-orange-50/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                      古い通知を整理
                     </button>
                     <button className="w-full flex items-center gap-2 px-2 py-2 text-left text-sm text-gray-700 hover:bg-gray-50/50 transition-colors">
                       <Settings className="w-4 h-4" />

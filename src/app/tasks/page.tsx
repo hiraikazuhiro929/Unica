@@ -304,64 +304,105 @@ const ProcessList = () => {
           </div>
         </div>
 
-        {/* タブナビゲーション */}
-        <div className="bg-white border-b border-gray-200 px-6">
-          <div className="flex items-center justify-between py-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-3 w-auto">
-                <TabsTrigger value="list" className="flex items-center gap-2 px-4">
-                  <ClipboardList className="w-4 h-4" />
-                  工程リスト
-                </TabsTrigger>
-                <TabsTrigger value="gantt" className="flex items-center gap-2 px-4">
-                  <BarChart3 className="w-4 h-4" />
-                  ガントチャート
-                </TabsTrigger>
-                <TabsTrigger value="kanban" className="flex items-center gap-2 px-4">
-                  <Grid3X3 className="w-4 h-4" />
-                  看板
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex items-center gap-3">
-              {/* 会社ソート機能 */}
-              <Select
-                value={companySortOrder}
-                onValueChange={(value) => changeCompanySortOrder(value as typeof companySortOrder)}
-              >
-                <SelectTrigger className="w-40 h-8 text-sm">
-                  <SelectValue placeholder="並び順" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="custom">自由並び替え</SelectItem>
-                  <SelectItem value="name">会社名順</SelectItem>
-                  <SelectItem value="processCount">工程数順</SelectItem>
-                  <SelectItem value="totalHours">工数順</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* 新規工程ボタン */}
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
-                onClick={() => {
-                  setSelectedProcess(createNewProcess());
-                  setShowNewProcessModal(true);
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                新規工程
-              </Button>
-            </div>
-          </div>
-        </div>
-
         {/* メインコンテンツ */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {/* タブナビゲーション */}
+            <div className="bg-white border-b border-gray-200 px-6">
+              <div className="flex items-center justify-between py-3">
+                <TabsList className="grid grid-cols-3 w-auto">
+                  <TabsTrigger value="list" className="flex items-center gap-2 px-4">
+                    <ClipboardList className="w-4 h-4" />
+                    工程リスト
+                  </TabsTrigger>
+                  <TabsTrigger value="gantt" className="flex items-center gap-2 px-4">
+                    <BarChart3 className="w-4 h-4" />
+                    ガントチャート
+                  </TabsTrigger>
+                  <TabsTrigger value="kanban" className="flex items-center gap-2 px-4">
+                    <Grid3X3 className="w-4 h-4" />
+                    看板
+                  </TabsTrigger>
+                </TabsList>
+
+                <div className="flex items-center gap-3">
+                  {/* 会社ソート機能 */}
+                  <Select
+                    value={companySortOrder}
+                    onValueChange={(value) => changeCompanySortOrder(value as typeof companySortOrder)}
+                  >
+                    <SelectTrigger className="w-40 h-8 text-sm">
+                      <SelectValue placeholder="並び順" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">自由並び替え</SelectItem>
+                      <SelectItem value="name">会社名順</SelectItem>
+                      <SelectItem value="processCount">工程数順</SelectItem>
+                      <SelectItem value="totalHours">工数順</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* 新規工程ボタン */}
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
+                    onClick={() => {
+                      setSelectedProcess(createNewProcess());
+                      setShowNewProcessModal(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    新規工程
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* 工程リスト */}
-            <TabsContent value="list" className="m-0 p-6">
+            <TabsContent value="list" className="m-0 flex h-full">
+              {/* 左サイドバー */}
+              <div className="w-64 bg-white border-r border-gray-200 p-4">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">フィルター</h3>
+                  <div className="space-y-1">
+                    <button 
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        filterStatus === 'all' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setFilterStatus('all')}
+                    >
+                      すべて ({stats.total})
+                    </button>
+                    <button 
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        filterStatus === 'planning' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setFilterStatus('planning')}
+                    >
+                      計画 ({stats.byStatus.planning})
+                    </button>
+                    <button 
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        filterStatus === 'processing' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setFilterStatus('processing')}
+                    >
+                      加工 ({stats.byStatus.processing})
+                    </button>
+                    <button 
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        filterStatus === 'completed' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setFilterStatus('completed')}
+                    >
+                      完了 ({stats.byStatus.completed})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* メインコンテンツエリア */}
+              <div className="flex-1 overflow-auto p-6">
               {isProcessesLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -487,6 +528,7 @@ const ProcessList = () => {
               )}
               </>
               )}
+              </div>
             </TabsContent>
 
             {/* ガントチャート */}

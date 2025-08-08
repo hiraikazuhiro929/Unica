@@ -55,7 +55,7 @@ const MainDashboard = () => {
   // Current user ID (should be from authentication)
   const currentUserId = "user-123"; // TODO: Get from auth context
 
-  // デバッグ用：サンプルデータをFirebaseに投入する関数
+  // デバッグ用：サンプルデータをFirebaseに投入する関数（削除予定）
   const seedFirebaseData = async () => {
     console.log('Firebase にサンプルデータを投入中...');
     
@@ -445,11 +445,11 @@ const MainDashboard = () => {
     }
   };
 
-  // 現在時刻の更新
+  // 現在時刻の更新（1分間隔に変更して負荷軽減）
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 60000); // 60秒間隔に変更
     return () => clearInterval(timer);
   }, []);
 
@@ -557,7 +557,7 @@ const MainDashboard = () => {
     };
   }, [currentUserId]);
 
-  // デバッグ用：Windowオブジェクトに関数を追加
+  // デバッグ用：Windowオブジェクトに関数を追加（削除予定）
   useEffect(() => {
     (window as any).seedFirebaseData = seedFirebaseData;
     console.log('🔧 デバッグ用関数を追加しました。');
@@ -679,6 +679,7 @@ const MainDashboard = () => {
     message: notification.message,
     time: formatRelativeTime(notification.createdAt),
     unread: !notification.isRead,
+    originalId: notification.id, // Firebase IDを保持
   }));
 
   const getStatusIcon = (status: string) => {
@@ -783,22 +784,14 @@ const MainDashboard = () => {
       {/* サイドバーの幅を考慮してメインコンテンツを配置 */}
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* 上部ヘッダー - 現代的なデザイン */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             {/* 左側 - ブランドとナビゲーション */}
             <div className="flex items-center space-x-4">
               <Home className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Unica Dashboard</h1>
                 <p className="text-sm text-gray-600">製造管理システム</p>
-              </div>
-            </div>
-
-            {/* 中央 - システム名 */}
-            <div className="flex items-center space-x-4">
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">製造管理システム</div>
-                <div className="text-sm text-gray-600">Unica Dashboard</div>
               </div>
             </div>
 
@@ -824,64 +817,64 @@ const MainDashboard = () => {
         </div>
 
         {/* メインコンテンツエリア */}
-        <div className="flex-1 overflow-auto bg-gray-50">
-          {/* コンパクト統計バー */}
+        <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/40 custom-scrollbar">
+          {/* エレガントな統計バー */}
           <div className="px-6 pt-6 pb-4">
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-6">
               {/* 受注管理 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-blue-200/30" 
                    onClick={() => router.push('/orders')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">受注</p>
-                    <p className="text-2xl font-bold text-gray-900">{displayProcesses.length}</p>
+                    <p className="text-xs font-medium text-blue-600 mb-2">受注</p>
+                    <p className="text-3xl font-bold text-gray-800">{displayProcesses.length}</p>
                   </div>
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Target className="w-4 h-4 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <Target className="w-6 h-6 text-blue-600" />
                   </div>
                 </div>
               </div>
 
               {/* 進行中タスク */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+              <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-green-200/30" 
                    onClick={() => router.push('/work-hours')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">工数管理</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xs font-medium text-green-600 mb-2">工数</p>
+                    <p className="text-3xl font-bold text-gray-800">
                       {[...allTasks, ...displayPersonalTasks].filter(t => t.status === 'progress').length}
                     </p>
                   </div>
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <PlayCircle className="w-4 h-4 text-green-600" />
+                  <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <PlayCircle className="w-6 h-6 text-green-600" />
                   </div>
                 </div>
               </div>
 
               {/* 未読通知 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-orange-200/30" 
                    onClick={() => router.push('/notifications')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">未読通知</p>
-                    <p className="text-2xl font-bold text-gray-900">{unreadCount}</p>
+                    <p className="text-xs font-medium text-orange-600 mb-2">未読</p>
+                    <p className="text-3xl font-bold text-gray-800">{unreadCount}</p>
                   </div>
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Bell className="w-4 h-4 text-orange-600" />
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <Bell className="w-6 h-6 text-orange-600" />
                   </div>
                 </div>
               </div>
 
               {/* 日報管理 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow" 
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-purple-200/30" 
                    onClick={() => router.push('/daily-reports')}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">日報</p>
-                    <p className="text-2xl font-bold text-gray-900">{todaySchedule.length}</p>
+                    <p className="text-xs font-medium text-purple-600 mb-2">日報</p>
+                    <p className="text-3xl font-bold text-gray-800">{todaySchedule.length}</p>
                   </div>
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-purple-600" />
+                  <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <FileText className="w-6 h-6 text-purple-600" />
                   </div>
                 </div>
               </div>
@@ -894,90 +887,90 @@ const MainDashboard = () => {
               {/* 左サイド - タスク管理 */}
               <div className="col-span-3 space-y-6">
                 {/* タスク管理セクション */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                       タスク管理
                     </h3>
                     <button 
                       onClick={() => router.push('/tasks')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      すべて見る
+                      <Target className="w-4 h-4 text-gray-500 hover:text-gray-700" />
                     </button>
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">個人タスク</span>
-                      <span className="font-semibold text-gray-900">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-700">個人タスク</p>
+                      <p className="text-lg font-bold text-gray-800">
                         {displayPersonalTasks.filter(t => t.status === 'completed').length}/{displayPersonalTasks.length}
-                      </span>
+                      </p>
                     </div>
                     {displayPersonalTasks.length > 0 ? (
                       displayPersonalTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                          className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
                           onClick={() => router.push('/tasks')}
                         >
-                          <div className="w-4 h-4 mr-3 flex-shrink-0">
+                          <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}
                           </div>
-                          <span className="flex-1 text-sm text-gray-700">{task.title}</span>
+                          <span className="flex-1 text-sm font-medium text-gray-800">{task.title}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="p-2 text-center text-gray-400 text-xs">
+                      <div className="p-4 text-center text-gray-500 text-sm bg-white/40 rounded-2xl border border-white/30">
                         個人タスクなし ({personalTasks.length})
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between text-sm mt-4">
-                      <span className="text-gray-600">全体タスク</span>
-                      <span className="font-semibold text-gray-900">
+                    <div className="flex items-center justify-between mt-6">
+                      <p className="text-sm font-semibold text-gray-700">全体タスク</p>
+                      <p className="text-lg font-bold text-gray-800">
                         {allTasks.filter(t => t.status === 'completed').length}/{allTasks.length}
-                      </span>
+                      </p>
                     </div>
                     {allTasks.length > 0 ? (
                       allTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                          className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
                           onClick={() => router.push('/tasks')}
                         >
-                          <div className="w-4 h-4 mr-3 flex-shrink-0">
+                          <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm text-gray-700">{task.title}</div>
+                            <div className="text-sm font-medium text-gray-800">{task.title}</div>
                             {task.person && (
-                              <div className="text-xs text-gray-500">担当: {task.person}</div>
+                              <div className="text-xs text-gray-600 mt-1">担当: {task.person}</div>
                             )}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="p-2 text-center text-gray-400 text-xs">
+                      <div className="p-4 text-center text-gray-500 text-sm bg-white/40 rounded-2xl border border-white/30">
                         全体タスクなし ({companyTasks.length})
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* 通知 - 既存の通知セクションへのリンク */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <Bell className="w-5 h-5 mr-2 text-orange-600" />
+                {/* 通知 */}
+                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <Bell className="w-5 h-5 text-orange-600 mr-2" />
                       通知
                     </h3>
                     <button 
                       onClick={() => router.push('/notifications')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      すべて見る
+                      <MessageCircle className="w-4 h-4 text-gray-500 hover:text-gray-700" />
                     </button>
                   </div>
                   
@@ -985,20 +978,20 @@ const MainDashboard = () => {
                     {displayNotifications.slice(0, 3).map((notification) => (
                       <div
                         key={notification.id}
-                        className="flex items-start p-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
+                        className="flex items-start p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
                         onClick={() => router.push('/notifications')}
                       >
-                        <div className="w-4 h-4 mr-3 flex-shrink-0 mt-0.5">
+                        <div className="w-6 h-6 mr-4 flex-shrink-0 mt-0.5">
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm text-gray-700">{notification.message}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-sm font-medium text-gray-800">{notification.message}</div>
+                          <div className="text-xs text-gray-600 mt-1">
                             {notification.user} • {notification.time}
                           </div>
                         </div>
                         {notification.unread && (
-                          <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 mt-2"></div>
+                          <div className="w-3 h-3 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex-shrink-0 mt-2 pulse-glow"></div>
                         )}
                       </div>
                     ))}
@@ -1008,24 +1001,24 @@ const MainDashboard = () => {
 
               {/* センターメイン - 工程管理 */}
               <div className="col-span-6">
-                {/* 背景画像付き時刻エリア */}
+                {/* 背景画像付き時刻エリア - おしゃれなデザイン */}
                 <div 
-                  className="relative h-48 rounded-lg mb-6 overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"
+                  className="relative h-52 rounded-3xl mb-8 overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex items-center justify-center shadow-xl"
                   style={{
                     backgroundImage: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=300&fit=crop")',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
                   }}
                 >
-                  <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-                  <div className="relative text-center text-white">
-                    <div className="text-5xl font-light mb-2">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-purple-900/50 to-indigo-900/60 backdrop-blur-[1px]"></div>
+                  <div className="relative text-center text-white z-10">
+                    <div className="text-6xl font-extralight mb-3 tracking-wider drop-shadow-2xl">
                       {currentTime.toLocaleTimeString("ja-JP", {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
                     </div>
-                    <div className="text-xl opacity-90">
+                    <div className="text-2xl opacity-95 mb-4 font-light">
                       {currentTime.toLocaleDateString("ja-JP", {
                         month: "long",
                         day: "numeric",
@@ -1033,21 +1026,23 @@ const MainDashboard = () => {
                       })}
                     </div>
                     {nextSchedule && (
-                      <div className="mt-4 text-sm bg-white bg-opacity-20 rounded-full px-4 py-2">
+                      <div className="mt-6 inline-flex items-center text-sm bg-white/25 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/20">
+                        <Clock className="w-4 h-4 mr-2" />
                         次: {nextSchedule.time} {nextSchedule.title}
                       </div>
                     )}
                   </div>
+                  <div className="absolute top-4 right-4 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                 </div>
 
 
                 {/* 工程カードリスト */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900">本日の工程</h2>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">本日の工程</h2>
                     <button 
                       onClick={() => router.push('/tasks')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 hover:border-blue-300/50"
                     >
                       詳細管理
                     </button>
@@ -1076,18 +1071,21 @@ const MainDashboard = () => {
                       {processes.length > 3 && (
                         <button
                           onClick={() => router.push('/tasks')}
-                          className="w-full mt-3 py-2 px-4 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors"
+                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-700 hover:from-blue-500/20 hover:to-purple-500/20 rounded-2xl border border-blue-200/50 hover:border-blue-300/50 transition-all duration-300 backdrop-blur-sm interactive-scale"
                         >
-                          他 {processes.length - 3} 件の工程を表示
+                          他 {processes.length - 3} 件の工程を表示 →
                         </button>
                       )}
                     </>
                   ) : (
-                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                    <div className="bg-white rounded-3xl p-8 modern-shadow-lg border border-gray-200/50">
                       <div className="text-center text-gray-500">
-                        <p className="text-lg mb-2">工程データを読み込み中...</p>
-                        <p className="text-sm">現在のデータ件数: {processes.length}</p>
-                        <p className="text-xs mt-1">Firebase接続状態を確認してください</p>
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center floating-animation">
+                          <Clock className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <p className="text-xl font-semibold mb-3 text-gray-700">工程データを読み込み中...</p>
+                        <p className="text-sm mb-2">現在のデータ件数: {processes.length}</p>
+                        <p className="text-xs text-gray-400">Firebase接続状態を確認してください</p>
                       </div>
                     </div>
                   )}
@@ -1097,31 +1095,31 @@ const MainDashboard = () => {
               {/* 右サイド - カレンダー・予定・全体連絡 */}
               <div className="col-span-3 space-y-6">
                 {/* カレンダー */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <Calendar className="w-5 h-5 text-blue-600 mr-2" />
                       {monthNames[today.getMonth()]} {today.getFullYear()}
                     </h3>
                     <button 
                       onClick={() => router.push('/calendar')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      カレンダー
+                      <Clock className="w-4 h-4 text-gray-500 hover:text-gray-700" />
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-7 gap-1 mb-4">
+                  <div className="grid grid-cols-7 gap-2 mb-4">
                     {dayNames.map((day) => (
-                      <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                      <div key={day} className="text-center text-xs font-semibold text-gray-600 py-3 bg-gray-50 rounded-lg">
                         {day}
                       </div>
                     ))}
                   </div>
                   
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-2">
                     {[...Array(startingDayOfWeek)].map((_, i) => (
-                      <div key={`empty-${i}`} className="h-8"></div>
+                      <div key={`empty-${i}`} className="h-10"></div>
                     ))}
                     {[...Array(daysInMonth)].map((_, i) => {
                       const day = i + 1;
@@ -1130,12 +1128,12 @@ const MainDashboard = () => {
                       return (
                         <div
                           key={day}
-                          className={`h-8 flex items-center justify-center text-sm rounded cursor-pointer transition-colors ${
+                          className={`h-10 flex items-center justify-center text-sm rounded-xl cursor-pointer transition-all duration-200 font-medium interactive-scale ${
                             isToday
-                              ? "bg-blue-600 text-white"
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30"
                               : hasSchedule
-                              ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                              : "text-gray-700 hover:bg-gray-100"
+                              ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 hover:from-blue-200 hover:to-blue-300 shadow-sm"
+                              : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
                           }`}
                         >
                           {day}
@@ -1146,59 +1144,64 @@ const MainDashboard = () => {
                 </div>
 
 
-                {/* 全体連絡 - フラットエリア */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <MessageCircle className="w-5 h-5 mr-2 text-green-600" />
+                {/* 全体連絡 */}
+                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <MessageCircle className="w-5 h-5 text-green-600 mr-2" />
                       全体連絡
                     </h3>
                     <button 
                       onClick={() => router.push('/announcements')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      すべて見る
+                      <Bell className="w-4 h-4 text-gray-500 hover:text-gray-700" />
                     </button>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {displayAnnouncements.length > 0 ? (
                       displayAnnouncements.slice(0, 3).map((announcement) => {
-                        const priorityColor = announcement.priority === 'high' ? 'border-l-red-500' :
-                                             announcement.priority === 'medium' ? 'border-l-orange-500' :
-                                             'border-l-blue-500';
+                        const priorityGradient = announcement.priority === 'high' ? 'from-red-500 to-red-600' :
+                                             announcement.priority === 'medium' ? 'from-orange-500 to-orange-600' :
+                                             'from-blue-500 to-blue-600';
+                        const priorityBg = announcement.priority === 'high' ? 'bg-red-50' :
+                                             announcement.priority === 'medium' ? 'bg-orange-50' :
+                                             'bg-blue-50';
                         return (
                           <div
                             key={announcement.id}
-                            className={`border-l-4 ${priorityColor} bg-gray-50 hover:bg-gray-100 p-3 transition-colors cursor-pointer`}
+                            className={`relative ${priorityBg} hover:scale-[1.02] p-4 transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/50 modern-shadow overflow-hidden group`}
                             onClick={() => {
                               router.push('/announcements');
                             }}
                           >
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="text-sm font-medium text-gray-900 flex-1">
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${priorityGradient} rounded-l-2xl`}></div>
+                            <div className="flex items-start justify-between mb-3">
+                              <h4 className="text-sm font-semibold text-gray-900 flex-1 pr-2 group-hover:text-gray-800">
                                 {announcement.title}
                               </h4>
-                              <span className={`px-2 py-1 text-xs font-medium rounded ml-2 ${
-                                announcement.priority === 'high' ? 'bg-red-100 text-red-700' : 
-                                announcement.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 
-                                'bg-gray-100 text-gray-600'
+                              <span className={`px-3 py-1 text-xs font-semibold rounded-full border-2 ${
+                                announcement.priority === 'high' ? 'bg-red-100 text-red-700 border-red-200' : 
+                                announcement.priority === 'medium' ? 'bg-orange-100 text-orange-700 border-orange-200' : 
+                                'bg-blue-100 text-blue-700 border-blue-200'
                               }`}>
                                 {announcement.priority === 'high' ? '重要' : 
                                  announcement.priority === 'medium' ? '通常' : '参考'}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-600 line-clamp-2">
+                            <p className="text-sm text-gray-700 line-clamp-2 mb-2 leading-relaxed">
                               {announcement.content}
                             </p>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-gray-500 font-medium">
                               {formatRelativeTime((announcements.find(a => a.id === announcement.id) as Announcement)?.createdAt)}
                             </div>
                           </div>
                         );
                       })
                     ) : (
-                      <div className="p-3 text-center text-gray-400 text-sm">
+                      <div className="p-6 text-center text-gray-500 text-sm bg-gray-50 rounded-2xl border border-gray-200/50">
+                        <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                         全体連絡なし ({announcements.length}件)
                       </div>
                     )}
@@ -1273,6 +1276,10 @@ const MainDashboard = () => {
           notifications={displayNotifications}
           show={showNotifications}
           onClose={() => setShowNotifications(false)}
+          onNotificationRead={(id) => {
+            // 通知が既読になったときの処理（Firebaseのリアルタイム更新で自動的に反映される）
+            console.log('通知が既読になりました:', id);
+          }}
         />
       </div>
     </div>

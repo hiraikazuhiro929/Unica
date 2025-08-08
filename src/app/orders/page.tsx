@@ -36,7 +36,6 @@ import {
   generateManagementNumber,
   type OrderItem
 } from "@/lib/firebase/orders";
-import { runFirebaseIntegrationTest } from "@/lib/firebase/testConnection";
 
 const OrderManagement = () => {
   const router = useRouter();
@@ -201,25 +200,6 @@ const OrderManagement = () => {
     }
   };
 
-  // Firebase connection test
-  const runSystemTests = async () => {
-    setIsSaving(true);
-    try {
-      console.log('🔥 Firebase統合テストを実行中...');
-      const testResults = await runFirebaseIntegrationTest();
-      
-      const message = testResults.overall 
-        ? `Firebase統合テスト完了！\n\n✅ 接続テスト: 成功\n✅ コレクションテスト: 成功\n\n🎉 すべてのFirebaseサービスが正常に動作しています！`
-        : `Firebase統合テスト完了\n\n❌ 接続テスト: ${testResults.connection.success ? '成功' : '失敗'}\n❌ コレクションテスト: ${testResults.collections.success ? '成功' : '失敗'}\n\n⚠️ Firebase接続に問題があります。`;
-      
-      alert(message);
-    } catch (error: any) {
-      console.error('Firebase test error:', error);
-      alert('Firebaseテストの実行中にエラーが発生しました。');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // Process and work hours creation without navigation
   const createProcessAndWorkHours = async (order: OrderItem) => {
@@ -413,48 +393,59 @@ const OrderManagement = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
+        {/* Header - 統一されたスタイル */}
+        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
                 <Building2 className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">受注案件管理</h1>
-                <p className="text-gray-600 mt-1">
-                  すべての受注案件を一元管理し、工程・工数管理への橋渡しを行います
+                <h1 className="text-2xl font-bold text-gray-900">受注案件管理</h1>
+                <p className="text-sm text-gray-600">
+                  受注案件の一元管理と工程・工数管理への連携
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              {/* Search bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="案件を検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
-                />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="案件を検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 w-80 border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+
+        </div>
+
+        {/* Main content - テーブル形式 */}
+        <div className="flex-1 overflow-auto bg-gray-50">
+          <div className="p-6">
+            {/* アクションバー */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-gray-900">案件一覧</h2>
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Package className="w-4 h-4" />
+                    <span>{statistics.totalOrders}件</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="w-4 h-4" />
+                    <span>¥{(statistics.totalAmount / 1000000).toFixed(1)}M</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                    <span className="text-red-600">{statistics.urgentOrders}件緊急</span>
+                  </div>
+                </div>
               </div>
-              
-              {/* Test button */}
               <Button
-                variant="outline"
-                size="sm"
-                onClick={runSystemTests}
-                disabled={isSaving}
-                className="border-purple-300 text-purple-600 hover:bg-purple-50"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                テスト実行
-              </Button>
-              
-              {/* New order button */}
-              <Button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-6 shadow-lg hover:shadow-xl transition-all"
                 onClick={async () => {
                   const newOrder = await createNewOrder();
                   setSelectedOrder(newOrder);
@@ -463,328 +454,144 @@ const OrderManagement = () => {
                 disabled={isSaving}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                新規受注
+                新規受注登録
               </Button>
             </div>
-          </div>
 
-          {/* Statistics cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-blue-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">総案件数</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {statistics.totalOrders}
-                    </p>
-                  </div>
-                  <Package className="w-8 h-8 text-blue-500" />
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                  <span className="text-red-700">{error}</span>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-green-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">総金額</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      ¥{statistics.totalAmount.toLocaleString()}
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-red-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">緊急案件</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {statistics.urgentOrders}
-                    </p>
-                    <p className="text-xs text-gray-500">納期1週間以内</p>
-                  </div>
-                  <AlertCircle className="w-8 h-8 text-red-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-purple-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">平均案件単価</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      ¥{Math.round(statistics.avgOrderValue).toLocaleString()}
-                    </p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 overflow-auto p-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                <span className="text-red-700">{error}</span>
               </div>
-            </div>
-          )}
+            )}
 
-          {groupedOrders.length === 0 ? (
-            <div className="text-center py-16">
-              <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-xl text-gray-500 mb-2">
-                該当する受注案件が見つかりません
-              </p>
-              <p className="text-gray-400">
-                検索条件を変更するか、新しい案件を追加してください
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {groupedOrders.map((group) => (
-                <Card
-                  key={group.client}
-                  className="bg-white border-gray-200 shadow-lg overflow-hidden rounded-xl"
-                >
-                  <CardHeader className="py-4 px-6 bg-gradient-to-r from-gray-50 to-white border-b">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Building2
-                          className="w-5 h-5"
-                          style={{ color: getClientColor(group.client) }}
-                        />
-                        <span className="font-medium text-gray-800 text-lg">
-                          {group.client}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Package className="w-4 h-4" />
-                          <span>{group.orders.length}件</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />
-                          <span>
-                            ¥{group.orders
-                              .reduce((sum, o) => sum + (o.estimatedAmount || 0), 0)
-                              .toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="px-6 pt-0 pb-4">
-                    <div className="space-y-2">
-                      {group.orders.map((order) => {
-                        const orderRelatedData = relatedData[order.id || ''];
-                        return (
-                          <div
-                            key={order.id}
-                            className="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-6 flex-1">
-                                {/* Management number */}
-                                <div className="flex items-center space-x-2 min-w-[120px]">
-                                  <Hash className="w-4 h-4 text-gray-500" />
-                                  <span className="font-mono text-sm text-gray-600">
-                                    {order.managementNumber}
-                                  </span>
-                                </div>
-
-                                {/* Project name */}
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-sm font-semibold text-gray-900 truncate">
-                                    {order.projectName}
-                                  </h3>
-                                </div>
-
-                                {/* Quantity */}
-                                <div className="flex items-center space-x-2 min-w-[80px]">
-                                  <Package className="w-4 h-4 text-gray-600" />
-                                  <span className="text-sm text-gray-700">
-                                    {order.quantity} {order.unit}
-                                  </span>
-                                </div>
-
-                                {/* Amount */}
-                                <div className="flex items-center space-x-2 min-w-[100px]">
-                                  <DollarSign className="w-4 h-4 text-gray-600" />
-                                  <span className="text-sm text-gray-700">
-                                    {order.estimatedAmount
-                                      ? `¥${order.estimatedAmount.toLocaleString()}`
-                                      : "-"}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Delivery date badge */}
-                              <div className="flex items-center space-x-2 min-w-[120px]">
-                                {(() => {
-                                  const daysUntilDelivery = Math.ceil(
-                                    (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                                  );
-                                  if (daysUntilDelivery <= 3) {
-                                    return <Badge variant="destructive" className="text-xs">緊急</Badge>;
-                                  } else if (daysUntilDelivery <= 7) {
-                                    return <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">注意</Badge>;
-                                  } else {
-                                    return <Badge variant="secondary" className="text-xs">余裕</Badge>;
-                                  }
-                                })()}
-                                <Calendar className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm text-gray-700">
-                                  {order.deliveryDate}
-                                </span>
-                              </div>
-
-                              {/* Action buttons */}
-                              <div className="flex items-center space-x-2 ml-4">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-blue-300 text-blue-600 hover:bg-blue-50 h-8 px-3"
-                                  onClick={() => {
-                                    setSelectedOrder(order);
-                                    setShowNewOrderModal(true);
-                                  }}
-                                  disabled={isSaving}
-                                >
-                                  <Edit className="w-3 h-3 mr-1" />
-                                  編集
-                                </Button>
-                                {order.status === 'data-work' ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="bg-green-50 border-green-300 text-green-700 hover:bg-green-100 h-8 px-3"
-                                    disabled
-                                  >
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    作成済み
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white h-8 px-3"
-                                    onClick={() => createProcessAndWorkHours(order)}
-                                    disabled={isSaving}
-                                  >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    工程・工数作成
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-red-300 text-red-600 hover:bg-red-50 h-8 px-3"
-                                  onClick={() => order.id && handleDeleteOrder(order.id)}
-                                  disabled={isSaving}
-                                >
-                                  <Trash2 className="w-3 h-3 mr-1" />
-                                </Button>
-                              </div>
+            {/* テーブル */}
+            {orders.length === 0 ? (
+              <div className="text-center py-16">
+                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-xl text-gray-500 mb-2">受注案件がありません</p>
+                <p className="text-gray-400">新しい案件を追加してください</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">管理番号</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">取引先</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">工事名</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">数量</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">見積金額</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">納期</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">ステータス</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {orders.filter(order => {
+                      const matchesSearch = order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                           order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                           order.client.toLowerCase().includes(searchQuery.toLowerCase());
+                      return matchesSearch;
+                    }).map((order, index) => {
+                      const daysUntilDelivery = Math.ceil(
+                        (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                      );
+                      return (
+                        <tr key={order.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                          <td className="px-6 py-4">
+                            <span className="font-mono text-sm font-medium text-gray-800 bg-gray-100 px-2 py-1 rounded">
+                              {order.managementNumber}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: getClientColor(order.client) }}
+                              ></div>
+                              <span className="text-sm font-medium text-gray-900">{order.client}</span>
                             </div>
-
-                            {/* Related processes and work hours info */}
-                            {(orderRelatedData || order.status === 'data-work') && (
-                              <div className="border-t pt-3 mt-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-6">
-                                    {/* Creation status */}
-                                    {order.status === 'data-work' && (
-                                      <div className="flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        <span className="text-xs text-green-600 font-medium">工程・工数作成済み</span>
-                                      </div>
-                                    )}
-
-                                    {/* Process status */}
-                                    {orderRelatedData && (
-                                      <>
-                                        <div className="flex items-center space-x-2">
-                                          <FileText className="w-4 h-4 text-green-600" />
-                                          <span className="text-xs text-gray-500">工程進捗:</span>
-                                          <div className="flex space-x-1">
-                                            {orderRelatedData.processes.map((process: any, index: number) => (
-                                              <div
-                                                key={index}
-                                                className={`w-2 h-2 rounded-full ${
-                                                  process.status === 'completed' ? 'bg-green-500' :
-                                                  process.status === 'processing' ? 'bg-blue-500' : 'bg-gray-300'
-                                                }`}
-                                                title={`${process.name}: ${process.progress}%`}
-                                              />
-                                            ))}
-                                          </div>
-                                          <span className="text-xs text-gray-600">
-                                            {Math.round(orderRelatedData.processes.reduce((sum: number, p: any) => sum + p.progress, 0) / orderRelatedData.processes.length)}%
-                                          </span>
-                                        </div>
-
-                                        {/* Work hours efficiency */}
-                                        <div className="flex items-center space-x-2">
-                                          <Clock className="w-4 h-4 text-purple-600" />
-                                          <span className="text-xs text-gray-500">工数効率:</span>
-                                          <span className={`text-xs font-medium ${
-                                            orderRelatedData.workHours.efficiency <= 100 ? 'text-green-600' :
-                                            orderRelatedData.workHours.efficiency <= 120 ? 'text-yellow-600' : 'text-red-600'
-                                          }`}>
-                                            {orderRelatedData.workHours.efficiency.toFixed(1)}%
-                                          </span>
-                                          <span className="text-xs text-gray-600">
-                                            ({orderRelatedData.workHours.totalActual}h / {orderRelatedData.workHours.totalPlanned}h)
-                                          </span>
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-
-                                  {/* Quick navigation buttons */}
-                                  <div className="flex items-center space-x-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-green-600 hover:bg-green-50"
-                                      onClick={() => router.push(`/tasks?fromOrder=${order.id}`)}
-                                    >
-                                      <FileText className="w-3 h-3 mr-1" />
-                                      工程管理
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-purple-600 hover:bg-purple-50"
-                                      onClick={() => router.push(`/work-hours?orderId=${order.id}`)}
-                                    >
-                                      <BarChart3 className="w-3 h-3 mr-1" />
-                                      工数管理
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-medium text-gray-900">{order.projectName}</span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-sm text-gray-700">{order.quantity} {order.unit}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {order.estimatedAmount ? `¥${order.estimatedAmount.toLocaleString()}` : "-"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                daysUntilDelivery <= 3 ? 'bg-red-500' :
+                                daysUntilDelivery <= 7 ? 'bg-orange-500' : 'bg-green-500'
+                              }`}></div>
+                              <span className="text-sm text-gray-700">{order.deliveryDate}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {order.status === 'data-work' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircle2 className="w-3 h-3" />
+                                作成済み
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Clock className="w-3 h-3" />
+                                計画中
+                              </span>
                             )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowNewOrderModal(true);
+                                }}
+                                disabled={isSaving}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {order.status !== 'data-work' && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 px-3 text-xs bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                                  onClick={() => createProcessAndWorkHours(order)}
+                                  disabled={isSaving}
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  工程作成
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                onClick={() => order.id && handleDeleteOrder(order.id)}
+                                disabled={isSaving}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Order form modal */}

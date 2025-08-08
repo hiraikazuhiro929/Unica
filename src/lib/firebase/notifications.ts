@@ -51,7 +51,7 @@ export interface Notification {
 // =============================================================================
 
 /**
- * 通知を作成
+ * 通知を作成（自動クリーンアップ付き）
  */
 export const createNotification = async (
   notificationData: Omit<Notification, 'id' | 'createdAt' | 'updatedAt' | 'isRead' | 'readAt'>
@@ -63,6 +63,9 @@ export const createNotification = async (
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+
+    // 新しい通知作成後、古い通知をクリーンアップ
+    await cleanupOldNotifications(notificationData.recipientId);
 
     return { id: docRef.id, error: null };
   } catch (error: any) {
@@ -490,4 +493,166 @@ export const createProcessNotification = async (data: {
     priority: data.priority || 'normal',
     ...data
   });
+};
+
+// =============================================================================
+// NOTIFICATION CLEANUP UTILITIES
+// =============================================================================
+
+/**
+ * 通知の保存上限数
+ */
+const NOTIFICATION_RETENTION_LIMIT = 100;
+
+/**
+ * 古い既読通知を自動削除してストレージを最適化
+ */
+export const cleanupOldNotifications = async (
+  recipientId: string,
+  retentionLimit: number = NOTIFICATION_RETENTION_LIMIT
+): Promise<{ error: string | null; deletedCount: number }> => {
+  try {
+    // 該当ユーザーの全通知を取得（作成日時順）
+    const { data: allNotifications, error } = await getNotifications({
+      recipientId,
+      limit: 1000 // 十分に大きな数で取得
+    });
+
+    if (error) throw new Error(error);
+
+    // 保存上限を超えている場合のみクリーンアップ
+    if (allNotifications.length <= retentionLimit) {
+      return { error: null, deletedCount: 0 };
+    }
+
+    // 削除対象を決定: 最新の通知は保持、古い既読通知を優先削除
+    const sortedNotifications = allNotifications.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return bDate.getTime() - aDate.getTime(); // 新しい順
+    });
+
+    const toDelete = [];
+    const toKeep = [];
+
+    // 削除対象の選定ロジック
+    for (const notification of sortedNotifications) {
+      if (toKeep.length < retentionLimit) {
+        // まず未読通知と重要な通知を保持
+        if (!notification.isRead || notification.priority === 'urgent') {
+          toKeep.push(notification);
+        } else if (toKeep.length + toDelete.length < retentionLimit) {
+          toKeep.push(notification);
+        } else {
+          toDelete.push(notification);
+        }
+      } else {
+        toDelete.push(notification);
+      }
+    }
+
+    // 既読通知から削除（未読通知は保持優先）
+    const readNotificationsToDelete = toDelete.filter(n => n.isRead);
+    const deleteCount = Math.max(0, allNotifications.length - retentionLimit);
+    const finalDeleteList = readNotificationsToDelete.slice(0, deleteCount);
+
+    if (finalDeleteList.length === 0) {
+      return { error: null, deletedCount: 0 };
+    }
+
+    // 一括削除実行
+    const deletePromises = finalDeleteList.map(notification => 
+      deleteNotification(notification.id)
+    );
+
+    const results = await Promise.all(deletePromises);
+    const successCount = results.filter(result => result.error === null).length;
+
+    console.log(`通知クリーンアップ完了: ${successCount}件の古い通知を削除 (対象ユーザー: ${recipientId})`);
+
+    return { error: null, deletedCount: successCount };
+  } catch (error: any) {
+    console.error('Error cleaning up old notifications:', error);
+    return { error: error.message, deletedCount: 0 };
+  }
+};
+
+/**
+ * 手動で通知クリーンアップを実行
+ */
+export const manualCleanupNotifications = async (
+  recipientId: string,
+  options?: {
+    retentionLimit?: number;
+    deleteOnlyRead?: boolean;
+    olderThanDays?: number;
+  }
+): Promise<{ error: string | null; deletedCount: number }> => {
+  try {
+    const retentionLimit = options?.retentionLimit || NOTIFICATION_RETENTION_LIMIT;
+    const deleteOnlyRead = options?.deleteOnlyRead || true;
+    const olderThanDays = options?.olderThanDays;
+
+    const { data: notifications, error } = await getNotifications({
+      recipientId,
+      limit: 1000
+    });
+
+    if (error) throw new Error(error);
+
+    let candidatesForDeletion = notifications;
+
+    // 既読のみ削除する場合
+    if (deleteOnlyRead) {
+      candidatesForDeletion = notifications.filter(n => n.isRead);
+    }
+
+    // 指定日数より古い通知のみ削除
+    if (olderThanDays) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+      
+      candidatesForDeletion = candidatesForDeletion.filter(notification => {
+        const notificationDate = notification.createdAt?.toDate?.() || new Date(notification.createdAt);
+        return notificationDate < cutoffDate;
+      });
+    }
+
+    // 保存上限を考慮した削除
+    const totalAfterDeletion = notifications.length - candidatesForDeletion.length;
+    if (totalAfterDeletion >= retentionLimit) {
+      // 削除不要
+      return { error: null, deletedCount: 0 };
+    }
+
+    const deleteCount = Math.min(
+      candidatesForDeletion.length,
+      Math.max(0, notifications.length - retentionLimit)
+    );
+
+    if (deleteCount === 0) {
+      return { error: null, deletedCount: 0 };
+    }
+
+    // 古い順に削除
+    const sortedCandidates = candidatesForDeletion.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return aDate.getTime() - bDate.getTime(); // 古い順
+    });
+
+    const toDelete = sortedCandidates.slice(0, deleteCount);
+
+    const deletePromises = toDelete.map(notification => 
+      deleteNotification(notification.id)
+    );
+
+    const results = await Promise.all(deletePromises);
+    const successCount = results.filter(result => result.error === null).length;
+
+    return { error: null, deletedCount: successCount };
+  } catch (error: any) {
+    console.error('Error in manual cleanup:', error);
+    return { error: error.message, deletedCount: 0 };
+  }
 };

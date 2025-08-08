@@ -283,7 +283,7 @@ export default function IntegratedWorkTimeTable({
   };
 
   // アクティブな作業内容タイプ（重複除去）
-  const activeWorkContentTypes = workContentTypes
+  const activeWorkContentTypes = (workContentTypes || [])
     .filter(wc => wc.isActive)
     .filter((wc, index, self) => self.findIndex(item => item.id === wc.id) === index);
 
