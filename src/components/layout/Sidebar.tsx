@@ -313,7 +313,7 @@ export default function ModernSidebar() {
           {/* タスク管理 */}
           <button 
             className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700/30 group"
-            onClick={() => router.push("/company-tasks")}
+            onClick={() => router.push("/task")}
           >
             <CheckSquare className="w-6 h-6 text-slate-400 group-hover:text-orange-400 transition-all duration-300 flex-shrink-0" />
             <div className={`ml-3 flex items-center flex-1 transition-all duration-300 ${
