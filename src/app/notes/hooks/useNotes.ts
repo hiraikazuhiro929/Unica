@@ -80,7 +80,15 @@ export const useNotes = ({
       const unsubscribe = subscribeToUserActiveNotes(
         userId,
         (data) => {
-          setNotes(data);
+          // orderフィールドでソート、存在しない場合はcreatedAtでソート
+          const sortedData = [...data].sort((a, b) => {
+            if (a.order !== undefined && b.order !== undefined) {
+              return a.order - b.order;
+            }
+            // orderが存在しない場合は作成日時でソート
+            return b.createdAt?.toMillis?.() - a.createdAt?.toMillis?.() || 0;
+          });
+          setNotes(sortedData);
           setIsLoading(false);
         },
         limit
@@ -97,7 +105,14 @@ export const useNotes = ({
           if (result.error) {
             setError(result.error);
           } else {
-            setNotes(result.data);
+            // orderフィールドでソート、存在しない場合はcreatedAtでソート
+            const sortedData = [...result.data].sort((a, b) => {
+              if (a.order !== undefined && b.order !== undefined) {
+                return a.order - b.order;
+              }
+              return b.createdAt?.toMillis?.() - a.createdAt?.toMillis?.() || 0;
+            });
+            setNotes(sortedData);
           }
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Unknown error');
@@ -317,7 +332,14 @@ export const useNotes = ({
         if (result.error) {
           setError(result.error);
         } else {
-          setNotes(result.data);
+          // orderフィールドでソート、存在しない場合はcreatedAtでソート
+          const sortedData = [...result.data].sort((a, b) => {
+            if (a.order !== undefined && b.order !== undefined) {
+              return a.order - b.order;
+            }
+            return b.createdAt?.toMillis?.() - a.createdAt?.toMillis?.() || 0;
+          });
+          setNotes(sortedData);
           setError(null);
         }
       } catch (err) {

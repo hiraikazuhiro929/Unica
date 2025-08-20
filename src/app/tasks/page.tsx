@@ -4,24 +4,32 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Search,
   Filter,
   ClipboardList,
-  Building2,
   Clock,
   BarChart3,
   Grid3X3,
   AlertCircle,
+  TrendingUp,
+  Users,
+  Calendar,
+  Package,
+  Activity,
+  Target,
+  Zap,
+  Bell,
+  MoreVertical,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 
 // 型とコンポーネントのインポート
@@ -41,22 +49,28 @@ const ProcessList = () => {
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<Process["status"] | "all">(
-    "all"
-  );
+  const [filterStatus, setFilterStatus] = useState<Process["status"] | "all">("all");
   const [showNewProcessModal, setShowNewProcessModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("list");
-  const [ganttViewType] = useState<
-    "machine" | "person" | "project"
-  >("machine");
-  const [orderInfo, setOrderInfo] = useState<any>(null);
+  const [activeView, setActiveView] = useState("list");
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [showSidePanel, setShowSidePanel] = useState(true);
+  const [companySortOrder, setCompanySortOrder] = useState<"custom" | "name" | "processCount" | "totalHours">("custom");
+  
+  // ガントチャート用のstate
+  const [ganttViewType, setGanttViewType] = useState<"machine" | "person" | "project">("machine");
+  const [ganttPeriod, setGanttPeriod] = useState<"week" | "month" | "quarter">("month");
+  const [showWeekends, setShowWeekends] = useState(true);
+  
+  // 看板用のstate
+  const [kanbanGroupBy, setKanbanGroupBy] = useState<"status" | "priority" | "assignee">("status");
+  const [kanbanSortBy, setKanbanSortBy] = useState<"dueDate" | "priority" | "progress">("dueDate");
+  const [showCompleted, setShowCompleted] = useState(true);
 
   // カスタムフックを使用
   const {
     companies,
     isLoading: isProcessesLoading,
     error: processesError,
-    companySortOrder,
     generateLineNumber,
     createNewProcess,
     updateProcess,
@@ -68,68 +82,9 @@ const ProcessList = () => {
     updateDate,
     reorderProcesses,
     reorderCompanies,
-    changeCompanySortOrder,
     toggleCompany,
     getStatistics,
   } = useProcessManagement();
-
-  // 受注情報からの工程作成処理
-  useEffect(() => {
-    if (fromOrderId && !orderInfo) {
-      // 受注情報を取得
-      fetchOrderInfo(fromOrderId);
-    }
-  }, [fromOrderId, orderInfo]);
-
-  // URLパラメータで指定された工程を表示
-  useEffect(() => {
-    const processId = searchParams.get('processId');
-    if (processId && companies.length > 0) {
-      // 作成された工程を探して詳細表示
-      const foundProcess = companies
-        .flatMap(company => company.processes)
-        .find(process => process.id === processId);
-      
-      if (foundProcess) {
-        setSelectedProcess(foundProcess);
-        setShowDetail(true);
-      }
-    }
-  }, [searchParams, companies]);
-
-  const fetchOrderInfo = async (orderId: string) => {
-    try {
-      // Firebase から受注情報を取得
-      const { getOrder } = await import('@/lib/firebase/orders');
-      const orderResult = await getOrder(orderId);
-      
-      if (orderResult.success && orderResult.data) {
-        const orderData = orderResult.data;
-        setOrderInfo(orderData);
-        
-        // 受注情報メッセージを表示
-        if (orderData.projectName && orderData.managementNumber) {
-          // 既に作成済みの場合はメッセージだけ表示
-          console.log(`受注案件「${orderData.projectName}」(${orderData.managementNumber})から工程が作成されました。`);
-        }
-      } else {
-        console.warn('受注情報の取得に失敗しました:', orderResult.error);
-        // フォールバック：模擬データ
-        const mockOrderInfo = {
-          id: orderId,
-          projectName: "受注案件からの工程作成",
-          client: "クライアント名",
-          managementNumber: `ORD-2025-${orderId.padStart(3, '0')}`,
-          deliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          estimatedAmount: 500000,
-          description: "受注管理から移行された案件"
-        };
-        setOrderInfo(mockOrderInfo);
-      }
-    } catch (error) {
-      console.error('受注情報の取得に失敗しました:', error);
-    }
-  };
 
   // キーボードショートカット
   useKeyboardShortcuts({
@@ -138,9 +93,7 @@ const ProcessList = () => {
       setShowNewProcessModal(true);
     },
     onSearch: () => {
-      const searchInput = document.querySelector(
-        'input[placeholder*="検索"]'
-      ) as HTMLInputElement;
+      const searchInput = document.querySelector('input[placeholder*="検索"]') as HTMLInputElement;
       searchInput?.focus();
     },
     onClose: () => {
@@ -152,10 +105,49 @@ const ProcessList = () => {
     isModalOpen: showDetail || showNewProcessModal,
   });
 
-  // イベントハンドラー
-  const openDetail = (process: Process) => {
-    setSelectedProcess(process);
-    setShowDetail(true);
+  // フィルタリング
+  const filteredCompanies = companies
+    .map((company) => ({
+      ...company,
+      processes: company.processes.filter((process) => {
+        const matchesSearch =
+          searchQuery === "" ||
+          process.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          process.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          process.fieldPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          process.orderClient.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesStatus =
+          filterStatus === "all" || process.status === filterStatus;
+
+        return matchesSearch && matchesStatus;
+      }),
+    }))
+    .filter((company) => company.processes.length > 0);
+
+  const allProcesses = companies.flatMap((company) => company.processes);
+
+  const stats = getStatistics();
+
+  // 本日期限の工程
+  const todayDeadlines = allProcesses
+    .filter(p => {
+      const today = new Date().toISOString().split('T')[0];
+      return p.shipmentDate === today || p.dueDate?.split('T')[0] === today;
+    })
+    .slice(0, 5);
+
+  // ステータス別カラー
+  const getStatusColor = (status: Process["status"]) => {
+    const colors = {
+      planning: "bg-blue-50 text-blue-600 border-blue-200",
+      "data-work": "bg-purple-50 text-purple-600 border-purple-200",
+      processing: "bg-amber-50 text-amber-600 border-amber-200",
+      finishing: "bg-green-50 text-green-600 border-green-200",
+      completed: "bg-gray-50 text-gray-600 border-gray-200",
+      delayed: "bg-red-50 text-red-600 border-red-200",
+    };
+    return colors[status];
   };
 
   const handleProcessUpdate = (updatedProcess: Process) => {
@@ -168,241 +160,336 @@ const ProcessList = () => {
     setShowNewProcessModal(false);
   };
 
-  // フィルタリング
-  const filteredCompanies = companies
-    .map((company) => ({
-      ...company,
-      processes: company.processes.filter((process) => {
-        const matchesSearch =
-          process.projectName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          process.managementNumber
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          process.fieldPerson
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          process.orderClient.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesStatus =
-          filterStatus === "all" || process.status === filterStatus;
-
-        return matchesSearch && matchesStatus;
-      }),
-    }))
-    .filter((company) => company.processes.length > 0);
-
-  // 全プロセスを取得
-  const allProcesses = companies.flatMap((company) => company.processes);
-  const stats = getStatistics();
+  const openDetail = (process: Process) => {
+    setSelectedProcess(process);
+    setShowDetail(true);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="ml-16 h-screen overflow-hidden flex flex-col">
-        {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="ml-16 h-screen flex flex-col">
+        {/* シンプルなヘッダー */}
+        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-4">
               <ClipboardList className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  工程管理システム
-                  {fromOrderId && (
-                    <span className="ml-3 text-sm font-normal text-orange-600 bg-orange-100 px-2 py-1 rounded">
-                      受注案件から作成中
-                    </span>
-                  )}
-                </h1>
+                <h1 className="text-2xl font-bold text-gray-900">工程管理</h1>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                  {orderInfo && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-700 font-medium">
-                        {orderInfo.managementNumber} - {orderInfo.projectName}
-                      </span>
-                      {orderInfo.client && (
-                        <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">
-                          {orderInfo.client}
-                        </span>
-                      )}
-                      {orderInfo.deliveryDate && (
-                        <span className="text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
-                          納期: {orderInfo.deliveryDate}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <span>
-                    総工程数:{" "}
-                    <span className="font-bold text-blue-600">
-                      {stats.total}
-                    </span>
-                  </span>
-                  <span>
-                    総工数:{" "}
-                    <span className="font-bold text-green-600">
-                      {stats.totalHours}H
-                    </span>
-                  </span>
-                  <span>
-                    平均進捗:{" "}
-                    <span className="font-bold text-purple-600">
-                      {stats.avgProgress.toFixed(1)}%
-                    </span>
-                  </span>
+                  <span>総工程数: <span className="font-bold text-blue-600">{stats.total}</span></span>
+                  <span>総工数: <span className="font-bold text-green-600">{stats.totalHours}H</span></span>
+                  <span>平均進捗: <span className="font-bold text-purple-600">{stats.avgProgress.toFixed(1)}%</span></span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              {/* 検索バー */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="工程を検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
-                />
-              </div>
-
-              {/* フィルター */}
-              <Select
-                value={filterStatus}
-                onValueChange={(value: string) =>
-                  setFilterStatus(value as Process["status"] | "all")
-                }
-              >
-                <SelectTrigger className="w-40 border-2 border-gray-300">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="ステータス" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて ({stats.total})</SelectItem>
-                  <SelectItem value="planning">
-                    計画 ({stats.byStatus.planning})
-                  </SelectItem>
-                  <SelectItem value="data-work">
-                    データ ({stats.byStatus["data-work"]})
-                  </SelectItem>
-                  <SelectItem value="processing">
-                    加工 ({stats.byStatus.processing})
-                  </SelectItem>
-                  <SelectItem value="finishing">
-                    仕上 ({stats.byStatus.finishing})
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    完了 ({stats.byStatus.completed})
-                  </SelectItem>
-                  <SelectItem value="delayed">
-                    遅延 ({stats.byStatus.delayed})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
+            
+            {/* 検索バー */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="工程を検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
+              />
             </div>
           </div>
         </div>
 
-        {/* メインコンテンツ */}
-        <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {/* タブナビゲーション */}
-            <div className="bg-white border-b border-gray-200 px-6">
-              <div className="flex items-center justify-between py-3">
-                <TabsList className="grid grid-cols-3 w-auto">
-                  <TabsTrigger value="list" className="flex items-center gap-2 px-4">
-                    <ClipboardList className="w-4 h-4" />
-                    工程リスト
-                  </TabsTrigger>
-                  <TabsTrigger value="gantt" className="flex items-center gap-2 px-4">
-                    <BarChart3 className="w-4 h-4" />
-                    ガントチャート
-                  </TabsTrigger>
-                  <TabsTrigger value="kanban" className="flex items-center gap-2 px-4">
-                    <Grid3X3 className="w-4 h-4" />
-                    看板
-                  </TabsTrigger>
-                </TabsList>
-
-                <div className="flex items-center gap-3">
-                  {/* 会社ソート機能 */}
-                  <Select
-                    value={companySortOrder}
-                    onValueChange={(value) => changeCompanySortOrder(value as typeof companySortOrder)}
-                  >
-                    <SelectTrigger className="w-40 h-8 text-sm">
-                      <SelectValue placeholder="並び順" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="custom">自由並び替え</SelectItem>
-                      <SelectItem value="name">会社名順</SelectItem>
-                      <SelectItem value="processCount">工程数順</SelectItem>
-                      <SelectItem value="totalHours">工数順</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* 新規工程ボタン */}
-                  <Button
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
-                    onClick={() => {
-                      setSelectedProcess(createNewProcess());
-                      setShowNewProcessModal(true);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    新規工程
-                  </Button>
-                </div>
+        {/* メインコンテンツエリア */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* 左サイドパネル - 開閉可能 */}
+          {showSidePanel && (
+            <div className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {activeView === 'list' && 'フィルター'}
+                  {activeView === 'gantt' && 'ガント設定'}
+                  {activeView === 'kanban' && '看板設定'}
+                </h3>
+                <button
+                  onClick={() => setShowSidePanel(false)}
+                  className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <PanelLeftClose className="w-4 h-4 text-gray-500" />
+                </button>
               </div>
-            </div>
-
-            {/* 工程リスト */}
-            <TabsContent value="list" className="m-0 flex h-full">
-              {/* 左サイドバー */}
-              <div className="w-64 bg-white border-r border-gray-200 p-4">
+              
+              {/* 工程リスト用フィルター */}
+              {activeView === 'list' && (
+                <div className="space-y-1">
+                  <div className="text-xs text-gray-500 mb-2">ステータス</div>
+                  <button 
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      filterStatus === 'all' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setFilterStatus('all')}
+                  >
+                    すべて ({stats.total})
+                  </button>
+                  <button 
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      filterStatus === 'planning' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setFilterStatus('planning')}
+                  >
+                    計画 ({stats.byStatus.planning})
+                  </button>
+                  <button 
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      filterStatus === 'processing' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setFilterStatus('processing')}
+                  >
+                    加工 ({stats.byStatus.processing})
+                  </button>
+                  <button 
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      filterStatus === 'completed' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setFilterStatus('completed')}
+                  >
+                    完了 ({stats.byStatus.completed})
+                  </button>
+                  {stats.byStatus.delayed > 0 && (
+                    <button 
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        filterStatus === 'delayed' ? 'text-red-600 bg-red-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setFilterStatus('delayed')}
+                    >
+                      遅延 ({stats.byStatus.delayed})
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {/* ガントチャート用設定 */}
+              {activeView === 'gantt' && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900">フィルター</h3>
-                  <div className="space-y-1">
-                    <button 
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                        filterStatus === 'all' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setFilterStatus('all')}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">表示モード</div>
+                    <div className="space-y-1">
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttViewType === 'machine' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttViewType('machine')}
+                      >
+                        機械別
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttViewType === 'person' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttViewType('person')}
+                      >
+                        担当者別
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttViewType === 'project' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttViewType('project')}
+                      >
+                        プロジェクト別
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">表示期間</div>
+                    <div className="space-y-1">
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttPeriod === 'week' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttPeriod('week')}
+                      >
+                        今週
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttPeriod === 'month' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttPeriod('month')}
+                      >
+                        今月
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          ganttPeriod === 'quarter' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setGanttPeriod('quarter')}
+                      >
+                        3ヶ月
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={showWeekends}
+                        onChange={(e) => setShowWeekends(e.target.checked)}
+                      />
+                      <span>週末を表示</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              
+              {/* 看板用設定 */}
+              {activeView === 'kanban' && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">グループ化</div>
+                    <div className="space-y-1">
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanGroupBy === 'status' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanGroupBy('status')}
+                      >
+                        ステータス別
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanGroupBy === 'priority' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanGroupBy('priority')}
+                      >
+                        優先度別
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanGroupBy === 'assignee' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanGroupBy('assignee')}
+                      >
+                        担当者別
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500 mb-2">ソート順</div>
+                    <div className="space-y-1">
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanSortBy === 'dueDate' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanSortBy('dueDate')}
+                      >
+                        納期順
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanSortBy === 'priority' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanSortBy('priority')}
+                      >
+                        優先度順
+                      </button>
+                      <button 
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          kanbanSortBy === 'progress' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setKanbanSortBy('progress')}
+                      >
+                        進捗順
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={showCompleted}
+                        onChange={(e) => setShowCompleted(e.target.checked)}
+                      />
+                      <span>完了を表示</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* メインビューエリア */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* タブとアクションバー */}
+            <div className="bg-white border-b border-gray-200 px-6 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* サイドパネルが閉じられている場合の開くボタン */}
+                  {!showSidePanel && (
+                    <button
+                      onClick={() => setShowSidePanel(true)}
+                      className="p-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
                     >
-                      すべて ({stats.total})
+                      <PanelLeft className="w-4 h-4 text-gray-600" />
                     </button>
-                    <button 
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                        filterStatus === 'planning' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                  )}
+                  
+                  <div className="flex items-center gap-6">
+                    <button
+                      onClick={() => setActiveView("list")}
+                      className={`flex items-center gap-2 px-2 py-1 text-sm transition-colors border-b-2 ${
+                        activeView === "list" 
+                          ? 'text-blue-600 border-blue-600 font-medium' 
+                          : 'text-gray-600 border-transparent hover:text-gray-800'
                       }`}
-                      onClick={() => setFilterStatus('planning')}
                     >
-                      計画 ({stats.byStatus.planning})
+                      <ClipboardList className="w-4 h-4" />
+                      工程リスト
                     </button>
-                    <button 
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                        filterStatus === 'processing' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    <button
+                      onClick={() => setActiveView("gantt")}
+                      className={`flex items-center gap-2 px-2 py-1 text-sm transition-colors border-b-2 ${
+                        activeView === "gantt" 
+                          ? 'text-blue-600 border-blue-600 font-medium' 
+                          : 'text-gray-600 border-transparent hover:text-gray-800'
                       }`}
-                      onClick={() => setFilterStatus('processing')}
                     >
-                      加工 ({stats.byStatus.processing})
+                      <BarChart3 className="w-4 h-4" />
+                      ガントチャート
                     </button>
-                    <button 
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                        filterStatus === 'completed' ? 'text-blue-600 bg-blue-50 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                    <button
+                      onClick={() => setActiveView("kanban")}
+                      className={`flex items-center gap-2 px-2 py-1 text-sm transition-colors border-b-2 ${
+                        activeView === "kanban" 
+                          ? 'text-blue-600 border-blue-600 font-medium' 
+                          : 'text-gray-600 border-transparent hover:text-gray-800'
                       }`}
-                      onClick={() => setFilterStatus('completed')}
                     >
-                      完了 ({stats.byStatus.completed})
+                      <Grid3X3 className="w-4 h-4" />
+                      看板
                     </button>
                   </div>
                 </div>
-              </div>
 
-              {/* メインコンテンツエリア */}
-              <div className="flex-1 overflow-auto p-6">
+                {/* 新規工程ボタン */}
+                <Button
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
+                  onClick={() => {
+                    setSelectedProcess(createNewProcess());
+                    setShowNewProcessModal(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  新規工程
+                </Button>
+              </div>
+            </div>
+
+            {/* コンテンツエリア */}
+            <div className="flex-1 overflow-y-auto p-6">
               {isProcessesLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -412,163 +499,146 @@ const ProcessList = () => {
                 </div>
               ) : (
                 <>
-                {processesError && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center">
-                      <AlertCircle className="w-5 h-5 text-yellow-500 mr-2" />
-                      <span className="text-yellow-700">Firebase接続エラー: サンプルデータを表示しています</span>
+                  {processesError && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                      <div className="flex items-center">
+                        <AlertCircle className="w-5 h-5 text-yellow-500 mr-2" />
+                        <span className="text-yellow-700">Firebase接続エラー: サンプルデータを表示しています</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {filteredCompanies.length === 0 ? (
-                <div className="text-center py-16">
-                  <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500 mb-2">
-                    該当する工程が見つかりません
-                  </p>
-                  <p className="text-gray-400">
-                    検索条件を変更するか、新しい工程を追加してください
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {filteredCompanies.map((company) => (
-                    <Card
-                      key={company.id}
-                      className="bg-white border-gray-200 shadow-lg overflow-hidden rounded-xl p-0 cursor-move"
-                      draggable={true}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("company-drag", company.id);
-                        e.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragOver={(e) => {
-                        const hasCompanyDrag = e.dataTransfer.types.includes("company-drag");
-                        if (hasCompanyDrag) {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                        }
-                      }}
-                      onDrop={async (e) => {
-                        const draggedId = e.dataTransfer.getData("company-drag");
-                        if (draggedId && draggedId !== company.id) {
-                          e.preventDefault();
-                          await reorderCompanies(draggedId, company.id);
-                        }
-                      }}
-                    >
-                      <CardHeader
-                        className="py-5 px-4 cursor-pointer bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-colors border-b flex items-center"
-                        onClick={() => toggleCompany(company.id)}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <Building2
-                              className="w-5 h-5"
-                              style={{ color: getClientColor(company.name) }}
-                            />
-                            <span className="font-medium text-gray-800">
-                              {company.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              <span>
-                                {company.processes.reduce(
-                                  (sum, p) =>
-                                    sum +
-                                    (p.workDetails.setup +
-                                      p.workDetails.machining +
-                                      p.workDetails.finishing),
-                                  0
-                                )}
-                                H
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <BarChart3 className="w-4 h-4" />
-                              <span>
-                                {(
-                                  company.processes.reduce(
-                                    (sum, p) => sum + p.progress,
-                                    0
-                                  ) / company.processes.length
-                                ).toFixed(0)}
-                                %
-                              </span>
-                            </div>
-                          </div>
+                  )}
+
+                  {activeView === "list" && (
+                    <>
+                      {filteredCompanies.length === 0 ? (
+                        <div className="text-center py-16">
+                          <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-xl text-gray-500 mb-2">
+                            該当する工程が見つかりません
+                          </p>
+                          <p className="text-gray-400">
+                            検索条件を変更するか、新しい工程を追加してください
+                          </p>
                         </div>
-                      </CardHeader>
-
-                      {company.isExpanded && (
-                        <CardContent className="px-4 pt-0 pb-4">
-                          <div className="space-y-2">
-                            {company.processes.map((process) => (
-                              <ProcessRow
-                                key={process.id}
-                                process={process}
-                                companyId={company.id}
-                                onProcessClick={openDetail}
-                                onDateChange={(processId, key, date) =>
-                                  updateDate(company.id, processId, key, date)
-                                }
-                                onDuplicate={duplicateProcess}
-                                onDelete={deleteProcess}
-                                onReorder={reorderProcesses}
-                                onProgressChange={updateProgress}
-                              />
-                            ))}
-                          </div>
-                        </CardContent>
+                      ) : (
+                        <div className="space-y-6">
+                          {filteredCompanies.map((company) => (
+                            <div key={company.id} className="relative">
+                              {/* 会社セクションヘッダー */}
+                              <div className="flex items-center gap-4 mb-4 px-1">
+                                <div className="flex items-center gap-2">
+                                  <Building2
+                                    className="w-5 h-5"
+                                    style={{ color: getClientColor(company.name) }}
+                                  />
+                                  <span className="font-semibold text-gray-900 text-lg">{company.name}</span>
+                                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                    {company.processes.length}件
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4" />
+                                    <span className="font-medium">
+                                      {company.processes.reduce(
+                                        (sum, p) =>
+                                          sum +
+                                          (p.workDetails.setup +
+                                            p.workDetails.machining +
+                                            p.workDetails.finishing),
+                                        0
+                                      )}
+                                      H
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <BarChart3 className="w-4 h-4" />
+                                    <span className="font-medium">
+                                      {(
+                                        company.processes.reduce(
+                                          (sum, p) => sum + p.progress,
+                                          0
+                                        ) / company.processes.length
+                                      ).toFixed(0)}
+                                      %
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+                              </div>
+                              
+                              {/* 工程リスト */}
+                              <div className="space-y-2">
+                                {company.processes.map((process) => (
+                                  <div key={process.id} className="bg-white/90 backdrop-blur rounded-lg border border-gray-200/60 hover:border-blue-300 hover:shadow-lg transition-all duration-200 p-1">
+                                    <ProcessRow
+                                      process={process}
+                                      companyId={company.id}
+                                      onProcessClick={openDetail}
+                                      onDateChange={(processId, key, date) =>
+                                        updateDate(company.id, processId, key, date)
+                                      }
+                                      onDuplicate={duplicateProcess}
+                                      onDelete={deleteProcess}
+                                      onReorder={reorderProcesses}
+                                      onProgressChange={updateProgress}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </Card>
-                  ))}
-                </div>
-              )}
-              </>
-              )}
-              </div>
-            </TabsContent>
+                    </>
+                  )}
 
-            {/* ガントチャート */}
-            <TabsContent value="gantt" className="m-0 p-6">
-              {isProcessesLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">工程データを読み込み中...</p>
-                  </div>
-                </div>
-              ) : activeTab === "gantt" ? (
-              <GanttChart
-                processes={allProcesses}
-                viewType={ganttViewType}
-                onProcessClick={openDetail}
-                onProcessUpdate={handleProcessUpdate}
-              />
-              ) : null}
-            </TabsContent>
+                  {activeView === "gantt" && (
+                    <GanttChart
+                      processes={showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed')}
+                      viewType={ganttViewType}
+                      showWeekends={showWeekends}
+                      period={ganttPeriod}
+                      onProcessClick={openDetail}
+                      onProcessUpdate={handleProcessUpdate}
+                    />
+                  )}
 
-            {/* 看板 */}
-            <TabsContent value="kanban" className="m-0 p-6">
-              {isProcessesLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">工程データを読み込み中...</p>
-                  </div>
-                </div>
-              ) : activeTab === "kanban" ? (
-              <KanbanBoard
-                processes={allProcesses}
-                onProcessClick={openDetail}
-                onStatusChange={updateStatus}
-                onProgressChange={updateProgress}
-              />
-              ) : null}
-            </TabsContent>
-          </Tabs>
+                  {activeView === "kanban" && (
+                    <div className="bg-transparent">
+                      <KanbanBoard
+                        processes={(() => {
+                          let filtered = showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed');
+                          
+                          // ソート処理
+                          return filtered.sort((a, b) => {
+                            switch (kanbanSortBy) {
+                              case 'dueDate':
+                                return new Date(a.dueDate || a.shipmentDate).getTime() - 
+                                       new Date(b.dueDate || b.shipmentDate).getTime();
+                              case 'priority':
+                                const priorityOrder = { high: 0, medium: 1, low: 2 };
+                                return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+                              case 'progress':
+                                return b.progress - a.progress;
+                              default:
+                                return 0;
+                            }
+                          });
+                        })()}
+                        groupBy={kanbanGroupBy}
+                        sortBy={kanbanSortBy}
+                        showCompleted={showCompleted}
+                        onProcessClick={openDetail}
+                        onStatusChange={updateStatus}
+                        onProgressChange={updateProgress}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* 詳細モーダル */}
@@ -577,7 +647,7 @@ const ProcessList = () => {
             process={selectedProcess}
             isOpen={showDetail}
             onClose={() => setShowDetail(false)}
-            onSave={handleProcessUpdate}
+            onSave={updateProcess}
             generateLineNumber={generateLineNumber}
             companies={companies}
           />

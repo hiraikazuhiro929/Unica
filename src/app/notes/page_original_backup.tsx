@@ -259,7 +259,7 @@ const NotesPage = () => {
   // フィルター結果をピン留め順でソート
   const displayNotes = useMemo(() => {
     const now = new Date();
-    const sorted = [...filteredNotes].sort((a, b) => {
+    return [...filteredNotes].sort((a, b) => {
       // 期限切れリマインダーを最上位に
       const aReminder = (a as any).reminder;
       const bReminder = (b as any).reminder;
@@ -270,24 +270,12 @@ const NotesPage = () => {
       if (!aOverdue && bOverdue) return 1;
       
       // ピン留めされたメモを上に
-      if (a.isPinned && !b.isPinned) {
-        console.log('📌 ピン留めソート:', a.title, '(pinned) > ', b.title);
-        return -1;
-      }
-      if (!a.isPinned && b.isPinned) {
-        console.log('📌 ピン留めソート:', b.title, '(pinned) > ', a.title);
-        return 1;
-      }
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
       
       // 作成日時で降順ソート
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-    
-    console.log('📋 ソート結果:');
-    sorted.forEach((note, index) => {
-      console.log(`${index}: ${note.title} - isPinned: ${note.isPinned}`);
-    });
-    return sorted;
   }, [filteredNotes]);
 
   // リマインダーチェック
@@ -1188,16 +1176,9 @@ const NotesPage = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={async () => {
-                      const newPinnedState = !noteData.isPinned;
-                      console.log('📌 編集モード内ピン留めクリック:', noteData.title, 'current:', noteData.isPinned, 'new:', newPinnedState);
-                      
-                      setEditingNoteData(prev => prev ? ({ ...prev, isPinned: newPinnedState }) : null);
-                      
-                      // 直接Firebaseに更新
-                      if (editingNoteId) {
-                        await updateExistingNote(editingNoteId, { isPinned: newPinnedState });
-                      }
+                    onClick={() => {
+                      setEditingNoteData(prev => prev ? ({ ...prev, isPinned: !prev.isPinned }) : null);
+                      autoSaveEditNote();
                     }}
                     className={`h-7 w-7 p-0 hover:bg-gray-200 ${noteData.isPinned ? 'text-blue-600' : ''}`}
                     title="ピン留め"
@@ -1544,7 +1525,6 @@ const NotesPage = () => {
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('📌 ピン留めクリック:', note.title, 'current:', note.isPinned, 'new:', !note.isPinned);
                       updateExistingNote(note.id, { isPinned: !note.isPinned });
                     }}
                     className="h-7 w-7 p-0 hover:bg-gray-200"

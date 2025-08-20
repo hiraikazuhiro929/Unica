@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Firebase configuration with hardcoded values for production stability
 const firebaseConfig = {
@@ -17,6 +18,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 
 try {
   // Check if Firebase app already exists
@@ -33,11 +35,13 @@ try {
   // Initialize services
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
   
   console.log('✅ Firebase services initialized:', {
     app: !!app,
     auth: !!auth,
     firestore: !!db,
+    storage: !!storage,
     projectId: firebaseConfig.projectId
   });
 
@@ -47,12 +51,12 @@ try {
 }
 
 // Export Firebase instances
-export { auth, db, app };
+export { auth, db, storage, app };
 export default app;
 
 // Export Firebase status for debugging
 export const firebaseStatus = {
-  initialized: !!(app && auth && db),
+  initialized: !!(app && auth && db && storage),
   projectId: firebaseConfig.projectId,
   config: firebaseConfig
 };

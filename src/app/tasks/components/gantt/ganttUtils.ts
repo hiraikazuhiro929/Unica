@@ -30,6 +30,35 @@ export const calculateTotalHours = (details: Process['workDetails']): number => 
   );
 };
 
+// 期間に基づいた日付範囲を取得
+export const getDateRangeByPeriod = (period: "week" | "month" | "quarter") => {
+  const today = new Date();
+  const startDate = new Date(today);
+  const endDate = new Date(today);
+  
+  switch (period) {
+    case "week":
+      // 今週の月曜日から日曜日まで
+      const dayOfWeek = today.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startDate.setDate(today.getDate() + diff);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    case "month":
+      // 今月の初日から末日まで
+      startDate.setDate(1);
+      endDate.setMonth(today.getMonth() + 1, 0);
+      break;
+    case "quarter":
+      // 今日から3ヶ月後まで
+      startDate.setMonth(today.getMonth() - 1);
+      endDate.setMonth(today.getMonth() + 2);
+      break;
+  }
+  
+  return { startDate, endDate };
+};
+
 // 日付範囲生成
 export const generateDateRange = (
   startDate: Date, 

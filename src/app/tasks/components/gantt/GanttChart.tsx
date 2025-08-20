@@ -139,6 +139,8 @@ interface DropZone {
 interface GanttChartProps {
   processes?: Process[];
   viewType?: "machine" | "person" | "project";
+  showWeekends?: boolean;
+  period?: "week" | "month" | "quarter";
   onProcessClick?: (process: Process) => void;
   onProcessUpdate?: (process: Process) => void;
   onProcessEdit?: (process: Process) => void;
@@ -161,6 +163,8 @@ const StatusBadge = ({ status }: { status: Process["status"] }) => {
 const GanttChartComponent: React.FC<GanttChartProps> = ({
   processes = [],
   viewType: initialViewType = "machine",
+  showWeekends: propsShowWeekends = true,
+  period: propsPeriod = "month",
   onProcessClick = () => {},
   onProcessUpdate = () => {},
   onProcessEdit = () => {},
@@ -171,7 +175,16 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
     initialViewType
   );
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
-  const [showWeekends, setShowWeekends] = useState(true);
+  const [showWeekends, setShowWeekends] = useState(propsShowWeekends);
+  
+  // propsが変更された時にstateを更新
+  useEffect(() => {
+    setViewType(initialViewType);
+  }, [initialViewType]);
+  
+  useEffect(() => {
+    setShowWeekends(propsShowWeekends);
+  }, [propsShowWeekends]);
   const [showMinimap, setShowMinimap] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Process["status"] | "all">(
@@ -664,7 +677,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
           });
 
           return (
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div className="bg-transparent">
               {/* ヘッダー */}
               <GanttHeader
                 viewType={viewType}
@@ -693,7 +706,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               {/* ミニマップ */}
               {showMinimap && (
-                <div className="mx-6 mt-4 p-3 bg-gray-50 rounded-lg border">
+                <div className="mx-6 mt-4 p-3 bg-white/60 backdrop-blur rounded-lg border border-gray-200/50">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
                       <MapIcon className="w-3 h-3" />
@@ -707,7 +720,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                   </div>
                   <div
                     ref={minimapRef}
-                    className="relative h-20 bg-white border rounded-lg cursor-pointer overflow-hidden group"
+                    className="relative h-20 bg-white/80 border border-gray-200/50 rounded-lg cursor-pointer overflow-hidden group"
                     onClick={handleMinimapClick}
                   >
                     {/* 月表示 */}
@@ -836,8 +849,8 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               <div className="flex mt-4 overflow-hidden">
                 {/* リソースリスト */}
-                <div className="w-80 bg-gray-50 border-r border-gray-200 flex-shrink-0">
-                  <div className="p-4 border-t border-b border-gray-200 bg-white">
+                <div className="w-80 bg-white/60 backdrop-blur border-r border-gray-200/50 flex-shrink-0 rounded-l-lg">
+                  <div className="p-4 border-t border-b border-gray-200/50 bg-white/80">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-800">
                         {viewType === "machine"
@@ -934,7 +947,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                     }}
                   >
                     {/* 日付タイムライン（sticky固定） */}
-                    <div className="sticky top-0 z-20 border-t border-b border-gray-200 bg-white">
+                    <div className="sticky top-0 z-20 border-t border-b border-gray-200/50 bg-white/90 backdrop-blur">
                       <div
                         className="flex"
                         style={{ minWidth: `${dates.length * zoomLevel}px` }}

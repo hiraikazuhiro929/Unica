@@ -34,6 +34,8 @@ import {
   PlayCircle,
   Home,
   Save,
+  Square,
+  CheckSquare,
 } from "lucide-react";
 
 const MainDashboard = () => {
@@ -58,11 +60,32 @@ const MainDashboard = () => {
   // デバッグ用：サンプルデータをFirebaseに投入する関数（削除予定）
   const seedFirebaseData = async () => {
     console.log('Firebase にサンプルデータを投入中...');
+  };
+
+  // デバッグ用：タスクサンプルデータを削除する関数
+  const clearTaskData = async () => {
+    console.log('Firebase からタスクデータを削除中...');
+    try {
+      const { deleteAllPersonalTasks, deleteAllCompanyTasks } = await import('@/lib/firebase/tasks');
+      
+      const personalResult = await deleteAllPersonalTasks();
+      const companyResult = await deleteAllCompanyTasks();
+      
+      if (personalResult.error) {
+        console.error('個人タスク削除エラー:', personalResult.error);
+      }
+      if (companyResult.error) {
+        console.error('会社タスク削除エラー:', companyResult.error);
+      }
+      
+      console.log('タスクデータの削除が完了しました');
+    } catch (error) {
+      console.error('タスクデータ削除中にエラー:', error);
+    }
     
     try {
       // Firebase functions をインポート
       const { createProcess } = await import('@/lib/firebase/processes');
-      const { createCompanyTask, createPersonalTask } = await import('@/lib/firebase/tasks');
       const { createNotification } = await import('@/lib/firebase/notifications');
       const { createAnnouncement } = await import('@/lib/firebase/announcements');
       const { createCalendarEvent } = await import('@/lib/firebase/calendar');
@@ -167,62 +190,6 @@ const MainDashboard = () => {
         console.log(`工程 ${process.projectName} 作成:`, result.id ? '成功' : '失敗', result.error);
       }
 
-      // タスクデータを作成
-      const sampleTasks = [
-        {
-          title: '手順書更新',
-          description: '新製品の製造手順書を更新する',
-          status: 'completed' as const,
-          priority: 'medium' as const,
-          assignee: '田中一郎',
-          assigneeId: 'user-123',
-          createdBy: '管理者',
-          createdById: 'admin-123',
-          category: 'general' as const,
-          completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          title: '設備点検',
-          description: '月次設備点検の実施',
-          status: 'progress' as const,
-          priority: 'high' as const,
-          assignee: '佐藤五郎',
-          assigneeId: 'user-456',
-          createdBy: '管理者',
-          createdById: 'admin-123',
-          category: 'maintenance' as const
-        }
-      ];
-
-      for (const task of sampleTasks) {
-        const result = await createCompanyTask(task);
-        console.log(`タスク ${task.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
-
-      // 個人タスクデータを作成
-      const personalTaskData = [
-        {
-          title: '資料準備',
-          description: '明日の会議用資料を準備',
-          status: 'pending' as const,
-          priority: 'medium' as const,
-          userId: 'user-123',
-          category: 'work' as const
-        },
-        {
-          title: 'メール返信',
-          description: '顧客からの問い合わせに返信',
-          status: 'progress' as const,
-          priority: 'high' as const,
-          userId: 'user-123',
-          category: 'work' as const
-        }
-      ];
-
-      for (const task of personalTaskData) {
-        const result = await createPersonalTask(task);
-        console.log(`個人タスク ${task.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
 
       // 通知データを作成
       const notificationData = [
@@ -560,8 +527,10 @@ const MainDashboard = () => {
   // デバッグ用：Windowオブジェクトに関数を追加（削除予定）
   useEffect(() => {
     (window as any).seedFirebaseData = seedFirebaseData;
+    (window as any).clearTaskData = clearTaskData;
     console.log('🔧 デバッグ用関数を追加しました。');
     console.log('コンソールで window.seedFirebaseData() を実行してFirebaseにサンプルデータを投入できます。');
+    console.log('コンソールで window.clearTaskData() を実行してタスクデータを削除できます。');
   }, []);
 
   // データ変換関数
@@ -685,13 +654,13 @@ const MainDashboard = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="w-3 h-3 text-green-600" />;
+        return <CheckSquare className="w-4 h-4 text-green-600" />;
       case "progress":
-        return <Clock className="w-3 h-3 text-blue-600" />;
+        return <PlayCircle className="w-4 h-4 text-blue-600" />;
       case "pending":
-        return <FileText className="w-3 h-3 text-gray-500" />;
+        return <Square className="w-4 h-4 text-gray-400" />;
       default:
-        return <FileText className="w-3 h-3 text-gray-500" />;
+        return <Square className="w-4 h-4 text-gray-400" />;
     }
   };
 
@@ -894,7 +863,7 @@ const MainDashboard = () => {
                       タスク管理
                     </h3>
                     <button 
-                      onClick={() => router.push('/tasks')}
+                      onClick={() => router.push('/task')}
                       className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                     >
                       <Target className="w-4 h-4 text-gray-500 hover:text-gray-700" />
@@ -913,7 +882,7 @@ const MainDashboard = () => {
                         <div
                           key={task.id}
                           className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
-                          onClick={() => router.push('/tasks')}
+                          onClick={() => router.push('/task?tab=personal')}
                         >
                           <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}
@@ -938,7 +907,7 @@ const MainDashboard = () => {
                         <div
                           key={task.id}
                           className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
-                          onClick={() => router.push('/tasks')}
+                          onClick={() => router.push('/task?tab=company')}
                         >
                           <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}

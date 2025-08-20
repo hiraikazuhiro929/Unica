@@ -80,6 +80,7 @@ export interface Note {
   isPinned?: boolean; // ピン留め状態
   isArchived: boolean;
   isActive: boolean;
+  order?: number; // 並び順
   createdAt: any;
   updatedAt: any;
 }

@@ -431,6 +431,46 @@ export const subscribeToPersonalTasks = (
 };
 
 // =============================================================================
+// BULK OPERATIONS
+// =============================================================================
+
+/**
+ * 全ての個人タスクを削除（開発用）
+ */
+export const deleteAllPersonalTasks = async (): Promise<{ error: string | null }> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, TASK_COLLECTIONS.PERSONAL_TASKS));
+    
+    const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    console.log(`${querySnapshot.docs.length} 個の個人タスクを削除しました`);
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error deleting all personal tasks:', error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * 全ての会社タスクを削除（開発用）
+ */
+export const deleteAllCompanyTasks = async (): Promise<{ error: string | null }> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, TASK_COLLECTIONS.COMPANY_TASKS));
+    
+    const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    console.log(`${querySnapshot.docs.length} 個の会社タスクを削除しました`);
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error deleting all company tasks:', error);
+    return { error: error.message };
+  }
+};
+
+// =============================================================================
 // DASHBOARD UTILITIES
 // =============================================================================
 

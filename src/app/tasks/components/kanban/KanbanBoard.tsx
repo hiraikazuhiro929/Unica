@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import {
   Select,
@@ -29,6 +29,9 @@ import { ClientBadge } from "../cards/ClientBadge";
 
 interface KanbanBoardProps {
   processes: Process[];
+  groupBy?: "status" | "priority" | "assignee";
+  sortBy?: "dueDate" | "priority" | "progress";
+  showCompleted?: boolean;
   onProcessClick: (process: Process) => void;
   onStatusChange: (processId: string, newStatus: Process["status"]) => void;
   onProgressChange: (processId: string, progress: number) => void;
@@ -36,6 +39,9 @@ interface KanbanBoardProps {
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   processes,
+  groupBy = "status",
+  sortBy: propsSortBy = "dueDate", 
+  showCompleted = true,
   onProcessClick,
   onStatusChange,
   onProgressChange,
@@ -48,8 +54,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   >("all");
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"dueDate" | "priority" | "progress">(
-    "dueDate"
+    propsSortBy
   );
+  
+  // propsが変更された時にstateを更新
+  useEffect(() => {
+    setSortBy(propsSortBy);
+  }, [propsSortBy]);
 
   const columns = [
     {
@@ -210,17 +221,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden border">
-      <div className="p-6 border-b space-y-4 bg-gradient-to-r from-gray-50 to-white">
+    <div className="bg-transparent">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-xl flex items-center gap-3">
-            <Grid3X3 className="w-6 h-6 text-blue-600" />
+          <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+            <Grid3X3 className="w-5 h-5 text-gray-600" />
             看板ビュー
           </h3>
 
           <div className="flex items-center gap-3">
             {/* フィルター */}
-            <div className="flex items-center gap-3 bg-white rounded-lg border p-2">
+            <div className="flex items-center gap-3 bg-white/80 backdrop-blur rounded-lg border border-gray-200 p-2">
               <Select
                 value={filterPriority}
                 onValueChange={(value: string) =>
@@ -276,8 +287,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="grid grid-cols-5 gap-6">
+      <div>
+        <div className="grid grid-cols-5 gap-4">
           {columns.map((column) => {
             const columnProcesses = getColumnProcesses(column.status);
             const stats = getColumnStats(column.status);
@@ -286,10 +297,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return (
               <div
                 key={column.id}
-                className={`rounded-xl border-2 transition-all ${
-                  column.color
-                } ${
-                  isDropTarget ? "border-blue-400 bg-blue-100 scale-105" : ""
+                className={`rounded-lg bg-white/60 backdrop-blur border border-gray-200/50 transition-all ${
+                  isDropTarget ? "border-blue-400 bg-blue-50/50 scale-102" : ""
                 }`}
                 onDragOver={(e) => handleDragOver(e, column.status)}
                 onDragLeave={handleDragLeave}
