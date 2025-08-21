@@ -1,12 +1,22 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 // Firebase imports
-import { getTodayEvents, getMonthEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/lib/firebase/calendar';
+import { 
+  getTodayEvents, 
+  getMonthEvents, 
+  createCalendarEvent, 
+  updateCalendarEvent, 
+  deleteCalendarEvent,
+  initializeGoogleCalendarAuth,
+  syncGoogleCalendarEvents,
+  checkGoogleCalendarAuth,
+  signInToGoogle,
+  signOutFromGoogle
+} from '@/lib/firebase/calendar';
 import type { CalendarEvent as FirebaseCalendarEvent } from '@/lib/firebase/calendar';
 import {
   Select,
@@ -30,6 +40,8 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Plus,
   Search,
   Settings,
@@ -59,6 +71,7 @@ import {
   Coffee,
   Truck,
   HardHat,
+  Palette,
 } from "lucide-react";
 
 // 型定義
@@ -102,9 +115,66 @@ const GoogleLikeCalendar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
   const [isNewEvent, setIsNewEvent] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [showIntegrationDialog, setShowIntegrationDialog] = useState(false);
+  
+  // Google連携の状態管理
+  const [googleAuthStatus, setGoogleAuthStatus] = useState<{
+    isAuthenticated: boolean;
+    userEmail?: string;
+    isLoading: boolean;
+  }>({
+    isAuthenticated: false,
+    userEmail: undefined,
+    isLoading: false
+  });
+  const [syncStatus, setSyncStatus] = useState<{
+    isLoading: boolean;
+    lastSync?: Date;
+    syncedCount?: number;
+  }>({
+    isLoading: false
+  });
 
-  // 製造業特化のイベントカテゴリ
-  const eventCategories: EventCategory[] = [
+  // セクションの開閉状態
+  const [sectionCollapsed, setSectionCollapsed] = useState({
+    miniCalendar: false,
+    myCalendar: false,
+    todayEvents: false
+  });
+
+  // 利用可能なアイコンのリスト
+  const availableIcons = [
+    { name: 'Target', icon: Target, label: '生産・目標' },
+    { name: 'Wrench', icon: Wrench, label: 'メンテナンス' },
+    { name: 'HardHat', icon: HardHat, label: '安全・研修' },
+    { name: 'Users', icon: Users, label: '会議・打ち合わせ' },
+    { name: 'Truck', icon: Truck, label: '配送・物流' },
+    { name: 'CheckCircle', icon: CheckCircle, label: '品質・確認' },
+    { name: 'Coffee', icon: Coffee, label: '休憩・イベント' },
+    { name: 'FileText', icon: FileText, label: '文書・報告' },
+    { name: 'Calendar', icon: CalendarIcon, label: 'スケジュール' },
+    { name: 'Bell', icon: Bell, label: '通知・リマインダー' },
+    { name: 'Building2', icon: Building2, label: '施設・建物' },
+    { name: 'Clock', icon: Clock, label: '時間・期限' },
+    { name: 'AlertTriangle', icon: AlertTriangle, label: '警告・注意' },
+    { name: 'Zap', icon: Zap, label: '緊急・重要' },
+    { name: 'Share2', icon: Share2, label: '共有・連携' }
+  ];
+
+  // カテゴリ編集用の状態
+  const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
+  const [showAddCategoryDialog, setShowAddCategoryDialog] = useState(false);
+  const [newCategoryData, setNewCategoryData] = useState({
+    name: '',
+    description: '',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100 border-blue-300',
+    iconName: 'FileText'
+  });
+
+  // 製造業特化のイベントカテゴリ（編集可能な状態管理）
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>([
     {
       id: "production",
       name: "生産スケジュール",
@@ -161,7 +231,84 @@ const GoogleLikeCalendar = () => {
       icon: Coffee,
       description: "休憩時間・社内イベント",
     },
-  ];
+  ]);
+
+  // カテゴリ編集関数
+  const handleAddCategory = () => {
+    if (!newCategoryData.name.trim()) return;
+    
+    const selectedIcon = availableIcons.find(icon => icon.name === newCategoryData.iconName);
+    
+    const newCategory: EventCategory = {
+      id: `custom_${Date.now()}`,
+      name: newCategoryData.name,
+      description: newCategoryData.description,
+      color: newCategoryData.color,
+      bgColor: newCategoryData.bgColor,
+      icon: selectedIcon?.icon || FileText
+    };
+    
+    setEventCategories(prev => [...prev, newCategory]);
+    setNewCategoryData({
+      name: '',
+      description: '',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100 border-blue-300',
+      iconName: 'FileText'
+    });
+    setShowAddCategoryDialog(false);
+  };
+
+  const handleEditCategory = (category: EventCategory) => {
+    setEditingCategory(category);
+    // 既存カテゴリのアイコン名を取得
+    const currentIconName = availableIcons.find(icon => icon.icon === category.icon)?.name || 'FileText';
+    setNewCategoryData({
+      name: category.name,
+      description: category.description,
+      color: category.color,
+      bgColor: category.bgColor,
+      iconName: currentIconName
+    });
+    setShowAddCategoryDialog(true);
+  };
+
+  const handleUpdateCategory = () => {
+    if (!editingCategory || !newCategoryData.name.trim()) return;
+    
+    const selectedIcon = availableIcons.find(icon => icon.name === newCategoryData.iconName);
+    
+    setEventCategories(prev => prev.map(cat => 
+      cat.id === editingCategory.id 
+        ? {
+            ...cat,
+            name: newCategoryData.name,
+            description: newCategoryData.description,
+            color: newCategoryData.color,
+            bgColor: newCategoryData.bgColor,
+            icon: selectedIcon?.icon || cat.icon
+          }
+        : cat
+    ));
+    
+    setEditingCategory(null);
+    setNewCategoryData({
+      name: '',
+      description: '',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100 border-blue-300',
+      iconName: 'FileText'
+    });
+    setShowAddCategoryDialog(false);
+  };
+
+  const handleDeleteCategory = (categoryId: string) => {
+    if (confirm('このカテゴリを削除しますか？')) {
+      setEventCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      // 削除されたカテゴリを表示リストからも削除
+      setVisibleCategories(prev => prev.filter(id => id !== categoryId));
+    }
+  };
 
   // サンプルイベントデータ
   const [events, setEvents] = useState<CalendarEvent[]>([
@@ -267,6 +414,23 @@ const GoogleLikeCalendar = () => {
       status: "confirmed",
       isShared: true,
     },
+    {
+      id: "7",
+      title: "3日間研修プログラム",
+      description: "新人研修（3日間連続）",
+      start: new Date(2025, 1, 17, 9, 0),
+      end: new Date(2025, 1, 19, 17, 0), // 3日間
+      category: eventCategories[2],
+      priority: "high",
+      location: "研修室",
+      attendees: ["新入社員"],
+      isAllDay: false,
+      reminderMinutes: [1440],
+      createdBy: "人事部",
+      department: "人事部",
+      status: "confirmed",
+      isShared: true,
+    },
   ]);
 
   // 初期表示カテゴリの設定
@@ -338,13 +502,59 @@ const GoogleLikeCalendar = () => {
     return events.filter(event => {
       if (!visibleCategories.includes(event.category.id)) return false;
       
-      const eventStart = new Date(event.start).toDateString();
-      const eventEnd = new Date(event.end).toDateString();
-      const targetDate = date.toDateString();
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      const targetDate = new Date(date);
       
-      return eventStart === targetDate || 
-             (event.isAllDay && (eventStart <= targetDate && eventEnd >= targetDate));
+      // 日付を比較するため、時間を00:00:00に設定
+      const eventStartDate = new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate());
+      const eventEndDate = new Date(eventEnd.getFullYear(), eventEnd.getMonth(), eventEnd.getDate());
+      const checkDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      
+      // イベントの開始日から終了日の間に対象日が含まれるかチェック
+      return checkDate >= eventStartDate && checkDate <= eventEndDate;
     });
+  };
+
+  // Google Calendar風の貫通イベント処理
+  const getSpanningEventInfo = (event: CalendarEvent, dayIndex: number) => {
+    const eventStartDate = new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate());
+    const eventEndDate = new Date(event.end.getFullYear(), event.end.getMonth(), event.end.getDate());
+    const currentDay = calendarDays[dayIndex];
+    const currentDate = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
+    
+    const isMultiDay = eventEndDate.getTime() > eventStartDate.getTime();
+    if (!isMultiDay) {
+      return { shouldShow: true, isSpanning: false };
+    }
+    
+    // イベントが今日の日付に該当するかチェック
+    if (currentDate < eventStartDate || currentDate > eventEndDate) {
+      return { shouldShow: false, isSpanning: false };
+    }
+    
+    // 現在の日から週末（または月末）まで何日続くかを計算
+    const weekEnd = Math.floor(dayIndex / 7) * 7 + 6; // 現在の週の最後の日のインデックス
+    const monthEnd = calendarDays.length - 1;
+    const maxIndex = Math.min(weekEnd, monthEnd);
+    
+    let spanDays = 1;
+    for (let i = dayIndex + 1; i <= maxIndex; i++) {
+      const nextDay = calendarDays[i];
+      const nextDate = new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate());
+      if (nextDate <= eventEndDate) {
+        spanDays++;
+      } else {
+        break;
+      }
+    }
+    
+    return {
+      shouldShow: currentDate.getTime() === eventStartDate.getTime(), // 開始日のみ表示
+      isSpanning: true,
+      spanDays,
+      width: `${spanDays * 100}%`
+    };
   };
 
   // 優先度の色を取得
@@ -448,6 +658,88 @@ const GoogleLikeCalendar = () => {
     );
   };
 
+  // Google連携関数
+  const handleGoogleAuth = async () => {
+    setGoogleAuthStatus(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      // まずGoogle API初期化
+      const initResult = await initializeGoogleCalendarAuth();
+      if (!initResult.success) {
+        throw new Error(initResult.error || 'API initialization failed');
+      }
+
+      // サインイン実行
+      const signInResult = await signInToGoogle();
+      if (signInResult.success) {
+        setGoogleAuthStatus({
+          isAuthenticated: true,
+          userEmail: signInResult.userEmail || 'unknown@example.com',
+          isLoading: false
+        });
+        alert(`Google認証が完了しました: ${signInResult.userEmail}`);
+      } else {
+        throw new Error(signInResult.error || 'Sign-in failed');
+      }
+    } catch (error: any) {
+      console.error('Google認証エラー:', error);
+      setGoogleAuthStatus(prev => ({ ...prev, isLoading: false }));
+      alert(`Google認証に失敗しました: ${error.message}`);
+    }
+  };
+
+  const handleGoogleSync = async () => {
+    setSyncStatus(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const result = await syncGoogleCalendarEvents();
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
+      setSyncStatus({
+        isLoading: false,
+        lastSync: new Date(),
+        syncedCount: result.synced
+      });
+      
+      // イベントリストを更新
+      // 実際の実装では、Firestoreからイベントを再取得してstateを更新
+      alert(`Google Calendarから ${result.synced} 件のイベントを同期しました`);
+    } catch (error: any) {
+      console.error('Google同期エラー:', error);
+      setSyncStatus(prev => ({ ...prev, isLoading: false }));
+      alert(`同期に失敗しました: ${error.message}`);
+    }
+  };
+
+  // 初回ロード時にGoogle認証状態をチェック
+  useEffect(() => {
+    const checkGoogleAuth = async () => {
+      try {
+        // Google API初期化を試行
+        await initializeGoogleCalendarAuth();
+        
+        // 認証状態をチェック
+        const authStatus = await checkGoogleCalendarAuth();
+        setGoogleAuthStatus({
+          isAuthenticated: authStatus.isAuthenticated,
+          userEmail: authStatus.userEmail,
+          isLoading: false
+        });
+      } catch (error) {
+        console.log('Google API初期化失敗 (認証情報未設定の可能性):', error);
+        setGoogleAuthStatus({
+          isAuthenticated: false,
+          userEmail: undefined,
+          isLoading: false
+        });
+      }
+    };
+    
+    checkGoogleAuth();
+  }, []);
+
   const calendarDays = generateCalendarDays();
   const today = new Date();
 
@@ -455,10 +747,10 @@ const GoogleLikeCalendar = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white border-b border-gray-300 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
                 <CalendarIcon className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -472,16 +764,16 @@ const GoogleLikeCalendar = () => {
               <Button
                 variant="outline"
                 onClick={goToToday}
-                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 rounded-lg"
               >
                 今日
               </Button>
-              <div className="flex items-center border border-gray-300 rounded-lg">
+              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigateDate("prev")}
-                  className="border-none"
+                  className="border-none rounded-none hover:bg-gray-100"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -500,7 +792,7 @@ const GoogleLikeCalendar = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigateDate("next")}
-                  className="border-none"
+                  className="border-none rounded-none hover:bg-gray-100"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -532,11 +824,14 @@ const GoogleLikeCalendar = () => {
                 </Button>
               </div>
               <Button
-                onClick={() => handleCreateEvent()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowIntegrationDialog(true)}
+                className="ml-3 rounded-lg"
+                title="外部カレンダー連携"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                予定を作成
+                <Share2 className="w-4 h-4 mr-1" />
+                連携
               </Button>
             </div>
           </div>
@@ -544,104 +839,206 @@ const GoogleLikeCalendar = () => {
 
         <div className="flex-1 flex">
           {/* サイドバー */}
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+          <div className="w-80 bg-white border-r border-gray-300 flex flex-col">
+            {/* 作成ボタン */}
+            <div className="p-4 bg-white border-b border-gray-200">
+              <Button
+                onClick={() => handleCreateEvent()}
+                variant="outline"
+                className="w-full font-medium py-2.5 transition-colors flex items-center justify-center rounded-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="text-sm">作成</span>
+              </Button>
+            </div>
+            
             {/* ミニカレンダー */}
-            <div className="p-4 border-b border-gray-200">
-              <div className="text-sm font-semibold text-gray-700 mb-3">
-                {currentDate.toLocaleDateString("ja-JP", { year: "numeric", month: "long" })}
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-xs text-center">
-                {["日", "月", "火", "水", "木", "金", "土"].map(day => (
-                  <div key={day} className="py-1 text-gray-500 font-medium">
-                    {day}
+            <div className="border-t border-b border-gray-300 bg-white">
+              <button
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                onClick={() => setSectionCollapsed(prev => ({ ...prev, miniCalendar: !prev.miniCalendar }))}
+              >
+                <div className="text-sm font-semibold text-gray-700">
+                  {currentDate.toLocaleDateString("ja-JP", { year: "numeric", month: "long" })}
+                </div>
+                {sectionCollapsed.miniCalendar ? (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+              {!sectionCollapsed.miniCalendar && (
+                <div className="px-4 pb-4">
+                  <div className="grid grid-cols-7 gap-1 text-xs text-center">
+                    {["日", "月", "火", "水", "木", "金", "土"].map(day => (
+                      <div key={day} className="py-1 text-gray-500 font-medium">
+                        {day}
+                      </div>
+                    ))}
+                    {calendarDays.slice(0, 42).map((day, index) => {
+                      const isToday = day.toDateString() === today.toDateString();
+                      const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                      const hasEvents = getEventsForDate(day).length > 0;
+                      
+                      return (
+                        <button
+                          key={index}
+                          className={`
+                            py-1 text-xs transition-colors
+                            ${isToday ? "bg-blue-600 text-white font-bold" : ""}
+                            ${!isCurrentMonth ? "text-gray-300" : "text-gray-700 hover:bg-gray-100"}
+                            ${hasEvents && !isToday ? "bg-blue-50 text-blue-700 font-medium" : ""}
+                          `}
+                          onClick={() => setSelectedDate(day)}
+                        >
+                          {day.getDate()}
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
-                {calendarDays.slice(0, 42).map((day, index) => {
-                  const isToday = day.toDateString() === today.toDateString();
-                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                  const hasEvents = getEventsForDate(day).length > 0;
-                  
-                  return (
-                    <button
-                      key={index}
-                      className={`
-                        py-1 text-xs rounded transition-colors
-                        ${isToday ? "bg-blue-600 text-white font-bold" : ""}
-                        ${!isCurrentMonth ? "text-gray-300" : "text-gray-700 hover:bg-gray-100"}
-                        ${hasEvents && !isToday ? "bg-blue-50 text-blue-700 font-medium" : ""}
-                      `}
-                      onClick={() => setSelectedDate(day)}
-                    >
-                      {day.getDate()}
-                    </button>
-                  );
-                })}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* カテゴリフィルター */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                  <Filter className="w-4 h-4 mr-2" />
-                  カテゴリ
-                </h3>
-                <div className="space-y-2">
-                  {eventCategories.map(category => {
-                    const Icon = category.icon;
-                    const isVisible = visibleCategories.includes(category.id);
-                    
-                    return (
-                      <button
-                        key={category.id}
-                        className="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                        onClick={() => toggleCategory(category.id)}
-                      >
-                        <div className="flex items-center space-x-2 flex-1">
-                          <Icon className={`w-4 h-4 ${category.color}`} />
-                          <span className="text-sm text-gray-700">{category.name}</span>
-                        </div>
-                        {isVisible ? (
-                          <Eye className="w-4 h-4 text-gray-400" />
-                        ) : (
-                          <EyeOff className="w-4 h-4 text-gray-400" />
-                        )}
-                      </button>
-                    );
-                  })}
+            <div className="flex-1 overflow-y-auto border-b border-gray-200">
+              <div className="bg-white">
+                <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                  <button
+                    className="flex items-center flex-1"
+                    onClick={() => setSectionCollapsed(prev => ({ ...prev, myCalendar: !prev.myCalendar }))}
+                  >
+                    <h3 className="text-sm font-semibold text-gray-700 flex items-center">
+                      <Filter className="w-4 h-4 mr-2" />
+                      マイカレンダー
+                    </h3>
+                  </button>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setNewCategoryData({
+                          name: '',
+                          description: '',
+                          color: 'text-blue-600',
+                          bgColor: 'bg-blue-100 border-blue-300',
+                          iconName: 'FileText'
+                        });
+                        setShowAddCategoryDialog(true);
+                      }}
+                      title="新しいカテゴリを追加"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                    <button
+                      onClick={() => setSectionCollapsed(prev => ({ ...prev, myCalendar: !prev.myCalendar }))}
+                    >
+                      {sectionCollapsed.myCalendar ? (
+                        <ChevronUp className="w-4 h-4 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      )}
+                    </button>
+                  </div>
                 </div>
+                {!sectionCollapsed.myCalendar && (
+                  <div className="px-4 pb-4">
+                    <div className="space-y-2">
+                      {eventCategories.map(category => {
+                        const Icon = category.icon;
+                        const isVisible = visibleCategories.includes(category.id);
+                        
+                        return (
+                          <div
+                            key={category.id}
+                            className="w-full flex items-center space-x-3 p-2 hover:bg-gray-100 transition-colors group"
+                          >
+                            <button
+                              className="flex items-center space-x-2 flex-1"
+                              onClick={() => toggleCategory(category.id)}
+                            >
+                              <Icon className={`w-4 h-4 ${category.color}`} />
+                              <span className="text-sm text-gray-700">{category.name}</span>
+                            </button>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                onClick={() => handleEditCategory(category)}
+                                title="編集"
+                              >
+                                <Edit className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+                              </button>
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                onClick={() => handleDeleteCategory(category.id)}
+                                title="削除"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-400 hover:text-red-600" />
+                              </button>
+                              <button onClick={() => toggleCategory(category.id)} className="p-1">
+                                {isVisible ? (
+                                  <Eye className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                                ) : (
+                                  <EyeOff className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 今日の予定 */}
-              <div className="p-4 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                  今日の予定 ({getEventsForDate(today).length})
-                </h3>
-                <div className="space-y-2">
-                  {getEventsForDate(today).map(event => {
-                    const Icon = event.category.icon;
-                    return (
-                      <div
-                        key={event.id}
-                        className={`p-2 rounded border-l-3 cursor-pointer hover:bg-gray-50 ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
-                        onClick={() => handleEditEvent(event)}
-                      >
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Icon className={`w-3 h-3 ${event.category.color}`} />
-                          <span className="text-xs font-medium text-gray-900 truncate">
-                            {event.title}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {event.isAllDay ? "終日" : 
-                            `${event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} - ${event.end.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`
-                          }
-                        </div>
+              <div>
+                <div className="bg-white">
+                  <button
+                    onClick={() => setSectionCollapsed(prev => ({ ...prev, todayEvents: !prev.todayEvents }))}
+                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                  >
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    今日の予定 ({getEventsForDate(today).length})
+                  </h3>
+                  {sectionCollapsed.todayEvents ? 
+                    <ChevronDown className="w-4 h-4 text-gray-500" /> : 
+                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                  }
+                </button>
+                  {!sectionCollapsed.todayEvents && (
+                    <div className="px-4 pb-4">
+                      <div className="space-y-2">
+                        {getEventsForDate(today).map(event => {
+                          const Icon = event.category.icon;
+                          return (
+                            <div
+                              key={event.id}
+                              className={`p-2 border-l-4 cursor-pointer hover:bg-gray-50 ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
+                              onClick={() => handleEditEvent(event)}
+                            >
+                              <div className="flex items-center space-x-2 mb-1">
+                                <Icon className={`w-3 h-3 ${event.category.color}`} />
+                                <span className="text-xs font-medium text-gray-900 truncate">
+                                  {event.title}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {event.isAllDay ? "終日" : 
+                                  `${event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} - ${event.end.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`
+                                }
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {getEventsForDate(today).length === 0 && (
+                          <p className="text-xs text-gray-500">予定はありません</p>
+                        )}
                       </div>
-                    );
-                  })}
-                  {getEventsForDate(today).length === 0 && (
-                    <p className="text-xs text-gray-500">予定はありません</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -651,10 +1048,10 @@ const GoogleLikeCalendar = () => {
           {/* メインカレンダー表示 */}
           <div className="flex-1 overflow-auto">
             {viewMode === "month" && (
-              <div className="p-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-0">
+                <div className="bg-transparent">
                   {/* 曜日ヘッダー */}
-                  <div className="grid grid-cols-7 border-b border-gray-200">
+                  <div className="grid grid-cols-7 border-b border-gray-300 bg-gray-50">
                     {["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"].map((day, index) => (
                       <div key={day} className={`p-4 text-center font-semibold ${index === 0 ? "text-red-600" : index === 6 ? "text-blue-600" : "text-gray-700"}`}>
                         {day}
@@ -662,63 +1059,83 @@ const GoogleLikeCalendar = () => {
                     ))}
                   </div>
                   
-                  {/* カレンダーグリッド */}
-                  <div className="grid grid-cols-7">
-                    {calendarDays.map((day, index) => {
+                  {/* カレンダーグリッド - Google Calendar風貫通表示 */}
+                  <div className="relative">
+                    {/* 日付セルのグリッド */}
+                    <div className="grid grid-cols-7">
+                      {calendarDays.map((day, index) => {
+                        const isToday = day.toDateString() === today.toDateString();
+                        const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`min-h-[120px] p-2 border-r border-b border-gray-100 ${
+                              !isCurrentMonth ? "bg-gray-50/50" : "hover:bg-gray-50/30"
+                            } cursor-pointer transition-colors relative`}
+                            onClick={() => handleCreateEvent(day)}
+                          >
+                            <div className={`text-sm mb-2 ${
+                              isToday ? "w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold" :
+                              !isCurrentMonth ? "text-gray-400" :
+                              index % 7 === 0 ? "text-red-600" :
+                              index % 7 === 6 ? "text-blue-600" : "text-gray-700"
+                            }`}>
+                              {day.getDate()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 貫通イベントバーの描画 */}
+                    {calendarDays.map((day, dayIndex) => {
                       const dayEvents = getEventsForDate(day);
-                      const isToday = day.toDateString() === today.toDateString();
-                      const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                      
-                      return (
-                        <div
-                          key={index}
-                          className={`min-h-[120px] p-2 border-r border-b border-gray-100 ${
-                            !isCurrentMonth ? "bg-gray-50" : "bg-white hover:bg-gray-50"
-                          } cursor-pointer transition-colors`}
-                          onClick={() => handleCreateEvent(day)}
-                        >
-                          <div className={`text-sm mb-2 ${
-                            isToday ? "w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold" :
-                            !isCurrentMonth ? "text-gray-400" :
-                            index % 7 === 0 ? "text-red-600" :
-                            index % 7 === 6 ? "text-blue-600" : "text-gray-700"
-                          }`}>
-                            {day.getDate()}
+                      return dayEvents.map((event, eventIndex) => {
+                        const spanInfo = getSpanningEventInfo(event, dayIndex);
+                        
+                        if (!spanInfo.shouldShow) return null;
+                        
+                        const Icon = event.category.icon;
+                        const row = Math.floor(dayIndex / 7);
+                        const col = dayIndex % 7;
+                        
+                        return (
+                          <div
+                            key={`${event.id}-${dayIndex}`}
+                            className={`absolute text-xs px-2 py-1 rounded-md cursor-pointer transition-all hover:shadow-md ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
+                            style={{
+                              top: `${row * 120 + 35 + eventIndex * 22}px`,
+                              left: `${(col / 7) * 100}%`,
+                              width: spanInfo.isSpanning ? spanInfo.width : `${(1/7) * 100}%`,
+                              zIndex: 10,
+                              height: '18px'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditEvent(event);
+                            }}
+                            title={`${event.title} ${event.description ? `- ${event.description}` : ''}`}
+                          >
+                            <div className="flex items-center space-x-1 h-full">
+                              <Icon className={`w-3 h-3 ${event.category.color} flex-shrink-0`} />
+                              <span className="font-medium truncate text-xs">
+                                {spanInfo.isSpanning && (
+                                  <span className="bg-white/30 px-1 rounded mr-1">
+                                    {spanInfo.spanDays}日
+                                  </span>
+                                )}
+                                {event.isAllDay ? event.title : 
+                                  `${event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${event.title}`
+                                }
+                              </span>
+                              {event.priority === "urgent" && (
+                                <Zap className="w-3 h-3 text-red-500 flex-shrink-0" />
+                              )}
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            {dayEvents.slice(0, 3).map(event => {
-                              const Icon = event.category.icon;
-                              return (
-                                <div
-                                  key={event.id}
-                                  className={`text-xs p-1 rounded border cursor-pointer hover:shadow-sm transition-shadow ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditEvent(event);
-                                  }}
-                                >
-                                  <div className="flex items-center space-x-1">
-                                    <Icon className={`w-2 h-2 ${event.category.color}`} />
-                                    <span className="truncate font-medium">
-                                      {event.isAllDay ? event.title : 
-                                        `${event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${event.title}`
-                                      }
-                                    </span>
-                                    {event.priority === "urgent" && (
-                                      <Zap className="w-2 h-2 text-red-500" />
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {dayEvents.length > 3 && (
-                              <div className="text-xs text-gray-500 text-center py-1">
-                                +{dayEvents.length - 3} 件
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
+                        );
+                      });
                     })}
                   </div>
                 </div>
@@ -728,22 +1145,323 @@ const GoogleLikeCalendar = () => {
             {/* 週表示と日表示は簡略化 */}
             {(viewMode === "week" || viewMode === "day") && (
               <div className="p-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="text-center text-gray-500">
-                      <CalendarViewIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        {viewMode === "week" ? "週表示" : "日表示"}
-                      </h3>
-                      <p>この表示モードは開発中です。</p>
-                      <p className="text-sm mt-2">月表示をご利用ください。</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="bg-gray-50/50 p-6">
+                  <div className="text-center text-gray-500">
+                    <CalendarViewIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      {viewMode === "week" ? "週表示" : "日表示"}
+                    </h3>
+                    <p>この表示モードは開発中です。</p>
+                    <p className="text-sm mt-2">月表示をご利用ください。</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* カテゴリ編集ダイアログ */}
+        <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>カテゴリ管理</DialogTitle>
+              <DialogDescription>
+                カレンダーのカテゴリを追加、編集、削除できます
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {eventCategories.map(category => {
+                  const Icon = category.icon;
+                  return (
+                    <div key={category.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-5 h-5 ${category.color}`} />
+                        <div>
+                          <span className="font-medium text-gray-900">{category.name}</span>
+                          <p className="text-sm text-gray-500">{category.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditCategory(category)}
+                          title="編集"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          title="削除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                閉じる
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* カテゴリ追加・編集ダイアログ */}
+        <Dialog open={showAddCategoryDialog} onOpenChange={setShowAddCategoryDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCategory ? 'カテゴリを編集' : '新しいカテゴリを追加'}
+              </DialogTitle>
+              <DialogDescription>
+                カテゴリの名前と説明を設定してください
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="categoryName" className="text-right">
+                  カテゴリ名
+                </Label>
+                <Input
+                  id="categoryName"
+                  value={newCategoryData.name}
+                  onChange={(e) => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="カテゴリ名を入力"
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="categoryDescription" className="text-right mt-2">
+                  説明
+                </Label>
+                <Textarea
+                  id="categoryDescription"
+                  value={newCategoryData.description}
+                  onChange={(e) => setNewCategoryData(prev => ({ ...prev, description: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="カテゴリの説明（オプション）"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="categoryColor" className="text-right">
+                  カラー
+                </Label>
+                <Select
+                  value={newCategoryData.color}
+                  onValueChange={(value) => {
+                    const colorMap: Record<string, string> = {
+                      'text-blue-600': 'bg-blue-100 border-blue-300',
+                      'text-green-600': 'bg-green-100 border-green-300',
+                      'text-red-600': 'bg-red-100 border-red-300',
+                      'text-yellow-600': 'bg-yellow-100 border-yellow-300',
+                      'text-purple-600': 'bg-purple-100 border-purple-300',
+                      'text-orange-600': 'bg-orange-100 border-orange-300',
+                      'text-gray-600': 'bg-gray-100 border-gray-300'
+                    };
+                    setNewCategoryData(prev => ({ 
+                      ...prev, 
+                      color: value,
+                      bgColor: colorMap[value] || 'bg-blue-100 border-blue-300'
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="カラーを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text-blue-600">ブルー</SelectItem>
+                    <SelectItem value="text-green-600">グリーン</SelectItem>
+                    <SelectItem value="text-red-600">レッド</SelectItem>
+                    <SelectItem value="text-yellow-600">イエロー</SelectItem>
+                    <SelectItem value="text-purple-600">パープル</SelectItem>
+                    <SelectItem value="text-orange-600">オレンジ</SelectItem>
+                    <SelectItem value="text-gray-600">グレー</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="categoryIcon" className="text-right">
+                  アイコン
+                </Label>
+                <Select
+                  value={newCategoryData.iconName}
+                  onValueChange={(value) => setNewCategoryData(prev => ({ ...prev, iconName: value }))}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="アイコンを選択" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {availableIcons.map(iconOption => {
+                      const IconComponent = iconOption.icon;
+                      return (
+                        <SelectItem key={iconOption.name} value={iconOption.name}>
+                          <div className="flex items-center space-x-2">
+                            <IconComponent className={`w-4 h-4 ${newCategoryData.color}`} />
+                            <span>{iconOption.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* プレビュー */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">プレビュー</Label>
+                <div className="col-span-3">
+                  <div className={`inline-flex items-center space-x-2 px-3 py-2 rounded-md ${newCategoryData.bgColor}`}>
+                    {(() => {
+                      const selectedIconComponent = availableIcons.find(icon => icon.name === newCategoryData.iconName)?.icon || FileText;
+                      const PreviewIcon = selectedIconComponent;
+                      return <PreviewIcon className={`w-4 h-4 ${newCategoryData.color}`} />;
+                    })()}
+                    <span className="text-sm font-medium text-gray-900">
+                      {newCategoryData.name || 'カテゴリ名'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddCategoryDialog(false)}>
+                キャンセル
+              </Button>
+              <Button 
+                onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
+                disabled={!newCategoryData.name.trim()}
+              >
+                {editingCategory ? '更新' : '追加'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 外部連携ダイアログ */}
+        <Dialog open={showIntegrationDialog} onOpenChange={setShowIntegrationDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>外部カレンダー連携</DialogTitle>
+              <DialogDescription>
+                GoogleカレンダーやOutlookと連携してスケジュールを同期
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <div className="space-y-4">
+                {/* Google Calendar連携セクション */}
+                <div className={`p-4 border rounded-lg ${googleAuthStatus.isAuthenticated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${googleAuthStatus.isAuthenticated ? 'bg-green-600' : 'bg-blue-600'}`}>
+                        <CalendarIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-900">Google カレンダー</span>
+                          {googleAuthStatus.isAuthenticated && (
+                            <Badge variant="outline" className="text-green-600 border-green-300">
+                              連携済み
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {googleAuthStatus.isAuthenticated 
+                            ? `連携中: ${googleAuthStatus.userEmail}` 
+                            : 'Googleアカウントと連携してカレンダーを同期'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      {!googleAuthStatus.isAuthenticated ? (
+                        <Button 
+                          onClick={handleGoogleAuth}
+                          disabled={googleAuthStatus.isLoading}
+                        >
+                          {googleAuthStatus.isLoading ? (
+                            <>読み込み中...</>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-2" />
+                              連携する
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={handleGoogleSync}
+                          disabled={syncStatus.isLoading}
+                          variant="outline"
+                        >
+                          {syncStatus.isLoading ? (
+                            <>同期中...</>
+                          ) : (
+                            <>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              同期
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {googleAuthStatus.isAuthenticated && (
+                    <div className="text-sm text-gray-600">
+                      {syncStatus.lastSync && (
+                        <p>最終同期: {syncStatus.lastSync.toLocaleString('ja-JP')}</p>
+                      )}
+                      {syncStatus.syncedCount !== undefined && (
+                        <p>同期済みイベント: {syncStatus.syncedCount} 件</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Outlook連携（準備中） */}
+                <div className="p-4 border rounded-lg opacity-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                        <CalendarIcon className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-900">Outlook カレンダー</span>
+                        <p className="text-sm text-gray-500">Microsoft Outlookとの連携（準備中）</p>
+                      </div>
+                    </div>
+                    <Button disabled>
+                      準備中
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowIntegrationDialog(false)}>
+                閉じる
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* イベント作成・編集ダイアログ */}
         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
@@ -783,6 +1501,68 @@ const GoogleLikeCalendar = () => {
                   placeholder="詳細説明（オプション）"
                   rows={3}
                 />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="startDate" className="text-right">
+                  開始日時
+                </Label>
+                <div className="col-span-3 flex gap-2">
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={newEvent.start ? newEvent.start.toISOString().split('T')[0] : ''}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      const oldStart = newEvent.start || new Date();
+                      date.setHours(oldStart.getHours(), oldStart.getMinutes());
+                      setNewEvent({...newEvent, start: date});
+                    }}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="time"
+                    value={newEvent.start ? `${String(newEvent.start.getHours()).padStart(2, '0')}:${String(newEvent.start.getMinutes()).padStart(2, '0')}` : ''}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':');
+                      const date = newEvent.start || new Date();
+                      date.setHours(parseInt(hours), parseInt(minutes));
+                      setNewEvent({...newEvent, start: date});
+                    }}
+                    className="w-32"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="endDate" className="text-right">
+                  終了日時
+                </Label>
+                <div className="col-span-3 flex gap-2">
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={newEvent.end ? newEvent.end.toISOString().split('T')[0] : ''}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      const oldEnd = newEvent.end || new Date();
+                      date.setHours(oldEnd.getHours(), oldEnd.getMinutes());
+                      setNewEvent({...newEvent, end: date});
+                    }}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="time"
+                    value={newEvent.end ? `${String(newEvent.end.getHours()).padStart(2, '0')}:${String(newEvent.end.getMinutes()).padStart(2, '0')}` : ''}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':');
+                      const date = newEvent.end || new Date();
+                      date.setHours(parseInt(hours), parseInt(minutes));
+                      setNewEvent({...newEvent, end: date});
+                    }}
+                    className="w-32"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">

@@ -9,6 +9,7 @@ Next.js 14 App Router + Firebase + TypeScriptを使用した製造業務管理�
 - 工数管理 (`/work-hours`) - 日報との自動連携
 - 日報管理 (`/daily-reports`) - 作業時間追跡
 - **メモ管理 (`/notes`) - Google Keep風UI、画像対応** ✨ NEW
+- **カレンダー管理 (`/calendar`) - Google Calendar連携対応** ✨ NEW
 
 ## 技術スタック
 - **Frontend**: Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui
@@ -31,17 +32,22 @@ src/
 │   │   ├── hooks/useDailyReportSync.ts
 │   │   └── components/
 │   ├── daily-reports/                  # 日報管理
-│   └── notes/                          # メモ管理 ✨ NEW
-│       ├── page.tsx                    # Google Keep風UI
-│       ├── page_backup.tsx            # シンプル版バックアップ
-│       └── hooks/useNotes.ts          # メモ操作フック
+│   ├── notes/                          # メモ管理 ✨ NEW
+│   │   ├── page.tsx                    # Google Keep風UI
+│   │   ├── page_backup.tsx            # シンプル版バックアップ
+│   │   └── hooks/useNotes.ts          # メモ操作フック
+│   └── calendar/                       # カレンダー管理 ✨ NEW
+│       └── page.tsx                    # Google Calendar風UI
 ├── lib/firebase/                       # Firebase関連
 │   ├── config.ts
 │   ├── orders.ts
 │   ├── processes.ts                    # COLLECTIONS export
 │   ├── workHours.ts                    # WORK_HOURS_COLLECTIONS export
 │   ├── dailyReports.ts
-│   └── notes.ts                        # NOTE_COLLECTIONS export ✨ NEW
+│   ├── notes.ts                        # NOTE_COLLECTIONS export
+│   └── calendar.ts                     # CALENDAR_COLLECTIONS export ✨ NEW
+├── types/
+│   └── google-api.d.ts                 # Google API型定義 ✨ NEW
 └── components/ui/                      # UI部品
 ```
 
@@ -113,6 +119,35 @@ npm run dev
 
 ## システム連携フロー
 受注管理 → 工程作成 → 工数管理 ← 日報システム（自動同期）
+Google Calendar ← カレンダー管理（一方向同期）
+
+## Google Calendar連携機能 ✨ NEW
+
+### 実装済み機能
+- **Google Identity Services API使用**: 新しいOAuth2認証方式
+- **一方向同期**: Google Calendar → Unica Calendar
+- **アクセストークン永続化**: ローカルストレージで1時間保持
+- **自動初期化**: ページリロード時のトークン復元
+- **エラーハンドリング**: undefinedフィールドの安全な処理
+
+### 設定要件
+```bash
+# .env.local に設定が必要
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+NEXT_PUBLIC_GOOGLE_API_KEY=your_google_api_key
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+
+### Google Cloud Console設定
+1. Google Calendar API有効化
+2. OAuth 2.0 クライアント ID作成
+3. 承認済みJavaScript生成元: `http://localhost:3000`
+4. 承認済みリダイレクトURI: `http://localhost:3000`
+
+### 使用方法
+1. 「連携」ボタン → Google認証
+2. 「同期」ボタン → イベント取得・表示
+3. リロード後も認証状態維持（1時間）
 
 ## 今後実装予定の機能（データ管理・アーカイブ）
 
