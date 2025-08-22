@@ -173,8 +173,16 @@ const GoogleLikeCalendar = () => {
     iconName: 'FileText'
   });
 
-  // 製造業特化のイベントカテゴリ（編集可能な状態管理）
-  const [eventCategories, setEventCategories] = useState<EventCategory[]>([
+  // デフォルトカテゴリー定義
+  const DEFAULT_CATEGORIES: EventCategory[] = [
+    {
+      id: "none",
+      name: "カテゴリーなし",
+      color: "text-gray-600",
+      bgColor: "bg-gray-50 border-gray-300",
+      icon: CalendarIcon,
+      description: "カテゴリー未設定",
+    },
     {
       id: "production",
       name: "生産スケジュール",
@@ -231,7 +239,42 @@ const GoogleLikeCalendar = () => {
       icon: Coffee,
       description: "休憩時間・社内イベント",
     },
-  ]);
+  ];
+
+  // localStorageからカテゴリーを読み込む関数
+  const loadCategoriesFromStorage = (): EventCategory[] => {
+    if (typeof window === 'undefined') return DEFAULT_CATEGORIES;
+    
+    const stored = localStorage.getItem('calendarCategories');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // アイコンの復元（文字列から実際のコンポーネントに変換）
+        return parsed.map((cat: any) => ({
+          ...cat,
+          icon: availableIcons.find(i => i.name === cat.iconName)?.icon || CalendarIcon
+        }));
+      } catch (e) {
+        console.error('カテゴリー読み込みエラー:', e);
+      }
+    }
+    return DEFAULT_CATEGORIES;
+  };
+
+  // カテゴリーをlocalStorageに保存する関数
+  const saveCategoriesToStorage = (categories: EventCategory[]) => {
+    if (typeof window === 'undefined') return;
+    
+    // アイコンを文字列に変換して保存
+    const toSave = categories.map(cat => ({
+      ...cat,
+      iconName: availableIcons.find(i => i.icon === cat.icon)?.name || 'Calendar'
+    }));
+    localStorage.setItem('calendarCategories', JSON.stringify(toSave));
+  };
+
+  // カテゴリー状態管理（localStorageから初期値を読み込む）
+  const [eventCategories, setEventCategories] = useState<EventCategory[]>(loadCategoriesFromStorage());
 
   // カテゴリ編集関数
   const handleAddCategory = () => {
@@ -248,7 +291,10 @@ const GoogleLikeCalendar = () => {
       icon: selectedIcon?.icon || FileText
     };
     
-    setEventCategories(prev => [...prev, newCategory]);
+    const updatedCategories = [...eventCategories, newCategory];
+    setEventCategories(updatedCategories);
+    saveCategoriesToStorage(updatedCategories); // localStorageに保存
+    
     setNewCategoryData({
       name: '',
       description: '',
@@ -278,7 +324,7 @@ const GoogleLikeCalendar = () => {
     
     const selectedIcon = availableIcons.find(icon => icon.name === newCategoryData.iconName);
     
-    setEventCategories(prev => prev.map(cat => 
+    const updatedCategories = eventCategories.map(cat => 
       cat.id === editingCategory.id 
         ? {
             ...cat,
@@ -289,7 +335,9 @@ const GoogleLikeCalendar = () => {
             icon: selectedIcon?.icon || cat.icon
           }
         : cat
-    ));
+    );
+    setEventCategories(updatedCategories);
+    saveCategoriesToStorage(updatedCategories); // localStorageに保存
     
     setEditingCategory(null);
     setNewCategoryData({
@@ -303,8 +351,16 @@ const GoogleLikeCalendar = () => {
   };
 
   const handleDeleteCategory = (categoryId: string) => {
+    // カテゴリーなしは削除不可
+    if (categoryId === 'none') {
+      alert('「カテゴリーなし」は削除できません');
+      return;
+    }
+    
     if (confirm('このカテゴリを削除しますか？')) {
-      setEventCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      const updatedCategories = eventCategories.filter(cat => cat.id !== categoryId);
+      setEventCategories(updatedCategories);
+      saveCategoriesToStorage(updatedCategories); // localStorageに保存
       // 削除されたカテゴリを表示リストからも削除
       setVisibleCategories(prev => prev.filter(id => id !== categoryId));
     }
@@ -444,7 +500,7 @@ const GoogleLikeCalendar = () => {
     description: "",
     start: new Date(),
     end: new Date(),
-    category: eventCategories[0],
+    category: eventCategories[0], // デフォルト: カテゴリーなし
     priority: "normal",
     location: "",
     isAllDay: false,
@@ -499,7 +555,13 @@ const GoogleLikeCalendar = () => {
 
   // 日付のイベントを取得
   const getEventsForDate = (date: Date) => {
+    // events配列が未定義またはnullでないことを確認
+    if (!events || !Array.isArray(events)) return [];
+    
     return events.filter(event => {
+      // 安全性チェック: eventとcategoryが存在することを確認
+      if (!event || !event.category || !event.category.id) return false;
+      if (!event.start || !event.end) return false;
       if (!visibleCategories.includes(event.category.id)) return false;
       
       const eventStart = new Date(event.start);
@@ -703,8 +765,33 @@ const GoogleLikeCalendar = () => {
         syncedCount: result.synced
       });
       
-      // イベントリストを更新
-      // 実際の実装では、Firestoreからイベントを再取得してstateを更新
+      // Firebaseから最新のイベントを再取得してUIを更新
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      const { data: monthEvents } = await getMonthEvents(currentYear, currentMonth);
+      
+      // Firebase EventをUI用のCalendarEventに変換
+      const formattedEvents = monthEvents.map(fbEvent => ({
+        id: fbEvent.id,
+        title: fbEvent.title,
+        description: fbEvent.description || '',
+        start: new Date(`${fbEvent.date}T${fbEvent.startTime}`),
+        end: new Date(`${fbEvent.date}T${fbEvent.endTime}`),
+        category: eventCategories.find(cat => cat.name.includes(fbEvent.type)) || eventCategories[0],
+        priority: fbEvent.priority as "low" | "normal" | "high" | "urgent",
+        location: fbEvent.location || '',
+        attendees: fbEvent.attendees || [],
+        isAllDay: fbEvent.isAllDay,
+        isRecurring: fbEvent.isRecurring,
+        recurrenceRule: fbEvent.recurringPattern,
+        reminderMinutes: fbEvent.reminderMinutes ? [fbEvent.reminderMinutes] : [],
+        createdBy: fbEvent.createdBy,
+        department: '製造部',
+        status: 'confirmed' as const,
+        isShared: true
+      }));
+      
+      setEvents(formattedEvents);
       alert(`Google Calendarから ${result.synced} 件のイベントを同期しました`);
     } catch (error: any) {
       console.error('Google同期エラー:', error);
@@ -713,9 +800,9 @@ const GoogleLikeCalendar = () => {
     }
   };
 
-  // 初回ロード時にGoogle認証状態をチェック
+  // 初回ロード時にGoogle認証状態をチェックとイベント取得
   useEffect(() => {
-    const checkGoogleAuth = async () => {
+    const initializeCalendar = async () => {
       try {
         // Google API初期化を試行
         await initializeGoogleCalendarAuth();
@@ -735,10 +822,112 @@ const GoogleLikeCalendar = () => {
           isLoading: false
         });
       }
+      
+      // Firebaseからイベントを取得
+      try {
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const { data: monthEvents } = await getMonthEvents(currentYear, currentMonth);
+        
+        // Firebase EventをUI用のCalendarEventに変換
+        const formattedEvents = monthEvents.map(fbEvent => {
+          // カテゴリーの決定
+          let category = eventCategories[0]; // デフォルト: カテゴリーなし
+          
+          // Google Calendar同期イベントも「カテゴリーなし」を使用
+          // 手動作成のイベントのみtypeからカテゴリーを判定
+          if (fbEvent.type && fbEvent.createdBy !== 'Google Calendar' && fbEvent.createdById !== 'google_sync') {
+            // 既存のtypeがある場合は対応するカテゴリーを探す
+            category = eventCategories.find(cat => 
+              cat.id === fbEvent.type || 
+              cat.name.toLowerCase().includes(fbEvent.type.toLowerCase())
+            ) || eventCategories[0];
+          }
+          
+          return {
+            id: fbEvent.id,
+            title: fbEvent.title,
+            description: fbEvent.description || '',
+            start: new Date(`${fbEvent.date}T${fbEvent.startTime}`),
+            end: new Date(`${fbEvent.date}T${fbEvent.endTime}`),
+            category: category,
+            priority: fbEvent.priority as "low" | "normal" | "high" | "urgent",
+            location: fbEvent.location || '',
+            attendees: fbEvent.attendees || [],
+            isAllDay: fbEvent.isAllDay,
+            isRecurring: fbEvent.isRecurring,
+            recurrenceRule: fbEvent.recurringPattern,
+            reminderMinutes: fbEvent.reminderMinutes ? [fbEvent.reminderMinutes] : [],
+            createdBy: fbEvent.createdBy,
+            department: '製造部',
+            status: 'confirmed' as const,
+            isShared: true
+          };
+        });
+        
+        setEvents(formattedEvents);
+        console.log(`Firebaseから${formattedEvents.length}件のイベントを読み込みました`);
+      } catch (error) {
+        console.error('イベント取得エラー:', error);
+      }
     };
     
-    checkGoogleAuth();
+    initializeCalendar();
   }, []);
+
+  // 月が変更された時にイベントを再取得
+  useEffect(() => {
+    const loadMonthEvents = async () => {
+      try {
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const { data: monthEvents } = await getMonthEvents(currentYear, currentMonth);
+        
+        // Firebase EventをUI用のCalendarEventに変換
+        const formattedEvents = monthEvents.map(fbEvent => {
+          // カテゴリーの決定
+          let category = eventCategories[0]; // デフォルト: カテゴリーなし
+          
+          // Google Calendar同期イベントも「カテゴリーなし」を使用
+          // 手動作成のイベントのみtypeからカテゴリーを判定
+          if (fbEvent.type && fbEvent.createdBy !== 'Google Calendar' && fbEvent.createdById !== 'google_sync') {
+            // 既存のtypeがある場合は対応するカテゴリーを探す
+            category = eventCategories.find(cat => 
+              cat.id === fbEvent.type || 
+              cat.name.toLowerCase().includes(fbEvent.type.toLowerCase())
+            ) || eventCategories[0];
+          }
+          
+          return {
+            id: fbEvent.id,
+            title: fbEvent.title,
+            description: fbEvent.description || '',
+            start: new Date(`${fbEvent.date}T${fbEvent.startTime}`),
+            end: new Date(`${fbEvent.date}T${fbEvent.endTime}`),
+            category: category,
+            priority: fbEvent.priority as "low" | "normal" | "high" | "urgent",
+            location: fbEvent.location || '',
+            attendees: fbEvent.attendees || [],
+            isAllDay: fbEvent.isAllDay,
+            isRecurring: fbEvent.isRecurring,
+            recurrenceRule: fbEvent.recurringPattern,
+            reminderMinutes: fbEvent.reminderMinutes ? [fbEvent.reminderMinutes] : [],
+            createdBy: fbEvent.createdBy,
+            department: '製造部',
+            status: 'confirmed' as const,
+            isShared: true
+          };
+        });
+        
+        setEvents(formattedEvents);
+        console.log(`${currentYear}年${currentMonth + 1}月: ${formattedEvents.length}件のイベント`);
+      } catch (error) {
+        console.error('月変更時のイベント取得エラー:', error);
+      }
+    };
+    
+    loadMonthEvents();
+  }, [currentDate]);
 
   const calendarDays = generateCalendarDays();
   const today = new Date();

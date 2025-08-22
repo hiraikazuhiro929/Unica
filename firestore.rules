@@ -1,56 +1,36 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 受注案件
-    match /orders/{document} {
-      allow read, write: if true; // 開発中のため全許可（本番では適切な認証を設定）
+    // appUsers collection - 認証済みユーザーのみアクセス可能
+    match /appUsers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // 他のユーザー情報の読み取りは可能
     }
     
-    // 工数管理
-    match /work-hours/{document} {
-      allow read, write: if true;
+    // chatChannels - 認証済みユーザーのみ
+    match /chatChannels/{document} {
+      allow read, write: if request.auth != null;
     }
     
-    // 日報
-    match /daily-reports/{document} {
-      allow read, write: if true;
+    // chatMessages - 認証済みユーザーのみ
+    match /chatMessages/{document} {
+      allow read, write: if request.auth != null;
     }
     
-    // 日報下書き
-    match /daily-report-drafts/{document} {
-      allow read, write: if true;
+    // chatUsers - 認証済みユーザーのみ
+    match /chatUsers/{document} {
+      allow read, write: if request.auth != null;
     }
     
-    // 作業内容タイプ
-    match /work-content-types/{document} {
-      allow read, write: if true;
+    // unreadCounts - 認証済みユーザーのみ
+    match /unreadCounts/{document} {
+      allow read, write: if request.auth != null;
     }
     
-    // 工程管理
-    match /processes/{document} {
-      allow read, write: if true;
-    }
-    
-    // メモ（ユーザー専用）
-    match /notes/{document} {
-      allow read, write: if resource.data.userId == request.auth.uid || request.auth.uid != null;
-    }
-    
-    // 個人タスク（作成者のみアクセス可能）
-    match /personalTasks/{document} {
-      allow read, write: if request.auth != null && 
-        (resource == null || resource.data.userId == request.auth.uid);
-    }
-    
-    // 会社タスク（全員が閲覧可能、作成・編集は認証済みユーザーのみ）
-    match /companyTasks/{document} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    
-    // テスト用
-    match /test/{document} {
-      allow read, write: if true;
+    // その他のコレクション - 認証済みユーザーのみ
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

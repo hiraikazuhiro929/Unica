@@ -1,0 +1,241 @@
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Building2, AlertCircle } from "lucide-react";
+import { signInWithEmail } from "@/lib/firebase/auth";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 既にログイン済みの場合はリダイレクト
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/");
+    }
+  }, [user, authLoading, router]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // エラーをクリア
+    if (error) setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      setError("メールアドレスとパスワードを入力してください");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await signInWithEmail(formData.email, formData.password);
+      
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      console.log("✅ Login successful");
+      // AuthContextが自動的にリダイレクトを処理
+      
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError("ログインに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (email: string) => {
+    setFormData({
+      email,
+      password: "demo123",
+    });
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await signInWithEmail(email, "demo123");
+      
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      console.log("✅ Demo login successful");
+      
+    } catch (err: any) {
+      console.error("Demo login error:", err);
+      setError("デモログインに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 認証状態をチェック中
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">認証状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900">Unica</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            製造業務管理システム
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>ログイン</CardTitle>
+            <CardDescription>
+              アカウントにログインしてください
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">メールアドレス</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="例: tanaka@company.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">パスワード</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="パスワードを入力"
+                />
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ログイン中...
+                  </>
+                ) : (
+                  "ログイン"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">デモアカウント</span>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full text-sm"
+                  onClick={() => handleDemoLogin("tanaka@company.com")}
+                  disabled={loading}
+                >
+                  田中作業員でログイン
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-sm"
+                  onClick={() => handleDemoLogin("sato@company.com")}
+                  disabled={loading}
+                >
+                  佐藤班長でログイン
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-sm"
+                  onClick={() => handleDemoLogin("watanabe@company.com")}
+                  disabled={loading}
+                >
+                  渡辺部長でログイン
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center">
+              <Button
+                variant="link"
+                className="text-sm"
+                onClick={() => router.push("/register")}
+              >
+                新規アカウント作成
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-sm text-gray-500">
+          <p>© 2024 Unica製造業務管理システム</p>
+        </div>
+      </div>
+    </div>
+  );
+}
