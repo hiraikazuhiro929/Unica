@@ -58,7 +58,7 @@ interface CompanyProviderProps {
 }
 
 export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [currentMembership, setCurrentMembership] = useState<CompanyMember | null>(null);
@@ -69,6 +69,11 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
 
   // ユーザーの所属企業を取得
   useEffect(() => {
+    // 認証がまだ読み込み中の場合は待つ
+    if (authLoading) {
+      return;
+    }
+
     if (!user) {
       setCurrentCompany(null);
       setCurrentMembership(null);
@@ -79,7 +84,7 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
     }
 
     loadUserCompanies();
-  }, [user]);
+  }, [user, authLoading]);
 
   // 所属企業リストを読み込み
   const loadUserCompanies = async () => {

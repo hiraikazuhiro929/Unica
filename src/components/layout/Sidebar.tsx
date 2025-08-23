@@ -99,6 +99,7 @@ const menuItems: MenuItem[] = [
     label: "管理・設定",
     icon: Settings,
     subItems: [
+      { label: "メンバー管理", icon: Users, path: "/company/members" },
       { label: "外部連携設定", icon: Zap, path: "/integrations" },
       { label: "操作履歴", icon: Activity, path: "/audit-logs" },
       { label: "ヘルプ", icon: HelpCircle, path: "/help" },

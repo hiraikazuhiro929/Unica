@@ -17,6 +17,36 @@ Next.js 14 App Router + Firebase + TypeScriptを使用した製造業務管理�
 - **状態管理**: React useState/useEffect, カスタムフック
 - **UI**: Lucide React Icons, Radix UI primitives
 
+## 🎯 開発方針
+### UIパターンについて
+**重要**: 勝手にデザインパターンを決めつけない。ユーザーの要望を最優先にする。
+
+- 統計カード、ヘッダー統計、モダンUI、シンプルUI など、どれも適材適所
+- ユーザーが具体的な指示をした場合は、その通りに実装
+- 指示がない場合のみ、コンテキストに応じて適切と思われるパターンを**提案**する
+- 「毎回同じパターン」の押し付けは避ける
+
+### 利用可能なUIパターン例
+```tsx
+// パターン1: ヘッダー内統計
+<div className="text-sm text-gray-500 flex items-center gap-4">
+  <span>総件数: {total}件</span>
+</div>
+
+// パターン2: 統計カードレイアウト
+<div className="grid grid-cols-4 gap-4">
+  <div className="bg-white p-6 rounded-lg border">...</div>
+</div>
+
+// パターン3: モダンなグラデーション
+<div className="bg-gradient-to-r from-blue-500 to-purple-600">...</div>
+
+// パターン4: ミニマル
+<div className="border-l-4 border-blue-500 pl-4">...</div>
+```
+
+**原則**: 要望に応じて柔軟に対応する
+
 ## 重要なファイル構造
 ```
 src/

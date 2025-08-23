@@ -12,7 +12,7 @@ import {
   ArrowLeft, 
   ChevronRight,
 } from 'lucide-react';
-import { createCompany, joinCompanyWithInvite } from '@/lib/firebase/company';
+import { createCompany, joinCompanyWithInvite, getUserCompanies } from '@/lib/firebase/company';
 import { 
   PurposeStep,
   CompanyStep,
@@ -29,7 +29,7 @@ interface StepInfo {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { refreshCompanyData } = useCompany();
+  const { refreshCompanyData, userCompanies, loading: companyLoading } = useCompany();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     purpose: '',
@@ -40,28 +40,37 @@ export default function OnboardingPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingMembership, setCheckingMembership] = useState(true);
 
   // 初期チェック: 既に企業に所属している場合はダッシュボードへ
   useEffect(() => {
-    const checkExistingMembership = async () => {
-      if (!user) return;
-      
-      try {
-        const { getUserCompanies } = await import('@/lib/firebase/company');
-        const existingCompanies = await getUserCompanies(user.uid);
-        
-        if (existingCompanies.length > 0) {
-          console.log('🔄 User already has companies, redirecting to dashboard...');
-          await refreshCompanyData();
-          router.push('/');
-        }
-      } catch (err) {
-        console.error('Error checking existing membership:', err);
-      }
-    };
-    
-    checkExistingMembership();
-  }, [user, router, refreshCompanyData]);
+    // CompanyContextのローディングが完了するまで待つ
+    if (companyLoading) {
+      return;
+    }
+
+    // 既に企業に所属している場合はリダイレクト
+    if (userCompanies && userCompanies.length > 0) {
+      console.log('🔄 User already has companies, redirecting to dashboard...');
+      router.push('/');
+      return;
+    }
+
+    // チェック完了
+    setCheckingMembership(false);
+  }, [userCompanies, companyLoading, router]);
+
+  // ローディング中は何も表示しない
+  if (checkingMembership || companyLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   // フォームデータ更新ハンドラーを最適化
   const updateFormData = useCallback((updates: Partial<typeof formData>) => {
@@ -154,7 +163,6 @@ export default function OnboardingPage() {
       
       // 直接確認してみる
       console.log('🔍 Direct check: getting user companies...');
-      const { getUserCompanies } = await import('@/lib/firebase/company');
       const directCheck = await getUserCompanies(user.uid);
       console.log('📊 Direct getUserCompanies result:', directCheck);
       
