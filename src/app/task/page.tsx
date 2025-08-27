@@ -62,35 +62,35 @@ import { useTasks } from "./hooks/useTasks";
 
 // タスクカテゴリー設定
 const TASK_CATEGORIES = [
-  { value: "work", label: "仕事", icon: Building2, color: "bg-blue-100 text-blue-800" },
-  { value: "personal", label: "個人", icon: User, color: "bg-green-100 text-green-800" },
-  { value: "learning", label: "学習", icon: Target, color: "bg-purple-100 text-purple-800" },
-  { value: "meeting", label: "会議", icon: Users, color: "bg-orange-100 text-orange-800" },
-  { value: "reminder", label: "リマインダー", icon: Clock, color: "bg-yellow-100 text-yellow-800" },
+  { value: "work", label: "仕事", icon: Building2, color: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" },
+  { value: "personal", label: "個人", icon: User, color: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" },
+  { value: "learning", label: "学習", icon: Target, color: "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300" },
+  { value: "meeting", label: "会議", icon: Users, color: "bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300" },
+  { value: "reminder", label: "リマインダー", icon: Clock, color: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300" },
 ];
 
 const COMPANY_CATEGORIES = [
-  { value: "general", label: "一般", icon: Building2, color: "bg-gray-100 text-gray-800" },
-  { value: "manufacturing", label: "製造", icon: Target, color: "bg-blue-100 text-blue-800" },
-  { value: "quality", label: "品質", icon: CheckCircle, color: "bg-green-100 text-green-800" },
-  { value: "maintenance", label: "保守", icon: PlayCircle, color: "bg-orange-100 text-orange-800" },
-  { value: "safety", label: "安全", icon: AlertTriangle, color: "bg-red-100 text-red-800" },
+  { value: "general", label: "一般", icon: Building2, color: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300" },
+  { value: "manufacturing", label: "製造", icon: Target, color: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" },
+  { value: "quality", label: "品質", icon: CheckCircle, color: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" },
+  { value: "maintenance", label: "保守", icon: PlayCircle, color: "bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300" },
+  { value: "safety", label: "安全", icon: AlertTriangle, color: "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300" },
 ];
 
 // 優先度設定
 const PRIORITY_LEVELS = [
-  { value: "low", label: "低", color: "bg-gray-100 text-gray-600", icon: Circle },
-  { value: "medium", label: "中", color: "bg-blue-100 text-blue-600", icon: Circle },
-  { value: "high", label: "高", color: "bg-orange-100 text-orange-600", icon: AlertTriangle },
-  { value: "urgent", label: "緊急", color: "bg-red-100 text-red-600", icon: Flag },
+  { value: "low", label: "低", color: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400", icon: Circle },
+  { value: "medium", label: "中", color: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400", icon: Circle },
+  { value: "high", label: "高", color: "bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400", icon: AlertTriangle },
+  { value: "urgent", label: "緊急", color: "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400", icon: Flag },
 ];
 
 // ステータス設定
 const STATUS_CONFIG = {
-  pending: { label: "未着手", color: "bg-gray-100 text-gray-600", icon: Circle },
-  progress: { label: "進行中", color: "bg-blue-100 text-blue-600", icon: PlayCircle },
-  completed: { label: "完了", color: "bg-green-100 text-green-600", icon: CheckCircle },
-  cancelled: { label: "キャンセル", color: "bg-red-100 text-red-600", icon: XCircle },
+  pending: { label: "未着手", color: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400", icon: Circle },
+  progress: { label: "進行中", color: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400", icon: PlayCircle },
+  completed: { label: "完了", color: "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400", icon: CheckCircle },
+  cancelled: { label: "キャンセル", color: "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400", icon: XCircle },
 };
 
 // 表示モード
@@ -426,7 +426,7 @@ const TaskPage = () => {
 
     return (
       <div 
-        className={`group py-3 border-b border-gray-200 last:border-b-0 hover:bg-yellow-50/30 transition-colors cursor-pointer ${
+        className={`group py-3 border-b border-gray-200 dark:border-slate-700 last:border-b-0 hover:bg-yellow-50/30 dark:hover:bg-slate-700/30 transition-colors cursor-pointer ${
           task.status === 'completed' ? 'opacity-60' : ''
         }`}
         onContextMenu={(e) => handleTaskContextMenu(e, task)}
@@ -443,12 +443,12 @@ const TaskPage = () => {
               {task.status === 'completed' ? (
                 <CheckSquare className="w-4 h-4 text-green-600" />
               ) : (
-                <Square className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                <Square className="w-4 h-4 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400" />
               )}
             </button>
 
             <span className={`font-handwriting text-base ${
-              task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-800'
+              task.status === 'completed' ? 'line-through text-gray-500 dark:text-slate-500' : 'text-gray-800 dark:text-slate-200'
             }`}>
               {task.title}
             </span>
@@ -456,7 +456,7 @@ const TaskPage = () => {
             {/* 期限を控えめにタイトル右側に */}
             {task.dueDate && (
               <span className={`text-xs ml-4 ${
-                isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'
+                isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'
               }`}>
                 {new Date(task.dueDate).toLocaleDateString('ja-JP', {
                   month: 'numeric',
@@ -472,7 +472,7 @@ const TaskPage = () => {
           
           {/* 説明を下段に */}
           {task.description && (
-            <div className="text-sm text-gray-500 italic mt-1 pl-8">
+            <div className="text-sm text-gray-500 dark:text-slate-400 italic mt-1 pl-8">
               {task.description}
             </div>
           )}
@@ -767,9 +767,9 @@ const TaskPage = () => {
 
     return (
       <tr 
-        className={`group border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer ${
+        className={`group border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer ${
           task.status === 'completed' ? 'opacity-60' : ''
-        } ${isOverdue ? 'bg-red-50/20' : ''}`}
+        } ${isOverdue ? 'bg-red-50/20 dark:bg-red-900/20' : ''}`}
         onContextMenu={(e) => handleTaskContextMenu(e, task)}
         onDoubleClick={() => handleTaskDoubleClick(task)}
       >
@@ -787,25 +787,25 @@ const TaskPage = () => {
         <td className="py-3 px-2">
           <div>
             <span className={`text-sm font-medium ${
-              task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
+              task.status === 'completed' ? 'line-through text-gray-500 dark:text-slate-500' : 'text-gray-900 dark:text-white'
             }`}>
               {task.title}
             </span>
             {task.description && (
-              <span className="text-xs text-gray-500 ml-2">- {task.description}</span>
+              <span className="text-xs text-gray-500 dark:text-slate-400 ml-2">- {task.description}</span>
             )}
           </div>
         </td>
 
         {/* 担当者 */}
         <td className="py-3 px-2">
-          <span className="text-xs text-gray-700">{task.assignee}</span>
+          <span className="text-xs text-gray-700 dark:text-slate-300">{task.assignee}</span>
         </td>
 
         {/* 期限 */}
         <td className="py-3 px-2">
           {task.dueDate && (
-            <span className={`text-xs whitespace-nowrap ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+            <span className={`text-xs whitespace-nowrap ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}`}>
               {new Date(task.dueDate).toLocaleDateString('ja-JP', {
                 month: 'numeric',
                 day: 'numeric'
@@ -818,7 +818,7 @@ const TaskPage = () => {
         <td className="py-3 px-2">
           <div className="flex items-center gap-1">
             <categoryInfo.icon className="w-3 h-3" />
-            <span className="text-xs text-gray-500">{categoryInfo.label}</span>
+            <span className="text-xs text-gray-500 dark:text-slate-400">{categoryInfo.label}</span>
           </div>
         </td>
 
@@ -962,16 +962,16 @@ const TaskPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
+        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <CheckSquare className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">タスク管理</h1>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">タスク管理</h1>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-slate-400">
                   <span>総タスク数: <span className="font-bold text-blue-600">{currentStats.total}</span></span>
                   <span>完了: <span className="font-bold text-green-600">{currentStats.completed}</span></span>
                   <span>進行中: <span className="font-bold text-orange-600">{currentStats.inProgress}</span></span>
@@ -984,13 +984,13 @@ const TaskPage = () => {
             
             {/* 検索バー */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
               <Input
                 type="text"
                 placeholder="タスクを検索..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -999,7 +999,7 @@ const TaskPage = () => {
         {/* メインコンテンツ */}
         <div className="flex-1 overflow-hidden flex">
           {/* サイドバー */}
-          <div className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+          <div className="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600 scrollbar-track-gray-100 dark:scrollbar-track-slate-800">
             <div className="space-y-6">
               {/* 新規作成ボタン（全体タスクのみ） */}
               {activeTab === "company" && (
@@ -1018,12 +1018,12 @@ const TaskPage = () => {
 
               {/* フィルター */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">ステータス</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ステータス</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => setSelectedStatus("all")}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      selectedStatus === "all" ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-700 hover:bg-gray-50"
+                      selectedStatus === "all" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/50 font-medium" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     }`}
                   >
                     すべて ({currentStats.total})
@@ -1035,14 +1035,14 @@ const TaskPage = () => {
                         key={status}
                         onClick={() => setSelectedStatus(status)}
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                          selectedStatus === status ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-700 hover:bg-gray-50"
+                          selectedStatus === status ? "text-blue-600 bg-blue-50 dark:bg-blue-900/50 font-medium" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <config.icon className="w-4 h-4" />
                           {config.label}
                         </div>
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2 py-1 rounded-full dark:text-slate-300">
                           {count}
                         </span>
                       </button>
@@ -1053,12 +1053,12 @@ const TaskPage = () => {
 
               {/* カテゴリーフィルター */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">カテゴリー</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">カテゴリー</h3>
                 <div className="space-y-1">
                   <button
                     onClick={() => setSelectedCategory("all")}
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      selectedCategory === "all" ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-700 hover:bg-gray-50"
+                      selectedCategory === "all" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/50 font-medium" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     }`}
                   >
                     すべて
@@ -1071,14 +1071,14 @@ const TaskPage = () => {
                         key={category.value}
                         onClick={() => setSelectedCategory(category.value)}
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-                          selectedCategory === category.value ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-700 hover:bg-gray-50"
+                          selectedCategory === category.value ? "text-blue-600 bg-blue-50 dark:bg-blue-900/50 font-medium" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <Icon className="w-4 h-4" />
                           {category.label}
                         </div>
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2 py-1 rounded-full dark:text-slate-300">
                           {count}
                         </span>
                       </button>
@@ -1090,7 +1090,7 @@ const TaskPage = () => {
           </div>
 
           {/* タスクリスト */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600 scrollbar-track-gray-100 dark:scrollbar-track-slate-800">
             <div className="px-8 py-8">
               {/* タブとビューモード */}
               <div className="flex items-center justify-between mb-6">
@@ -1141,7 +1141,7 @@ const TaskPage = () => {
                   )}
 
                   {/* 表示モード切り替え */}
-                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                  <div className="flex items-center gap-2 bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
                     <Button
                       variant={viewMode === "todo" ? "default" : "ghost"}
                       size="sm"
@@ -1176,10 +1176,10 @@ const TaskPage = () => {
               {/* タイトルエリア */}
               <div className="mb-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900 ml-2">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white ml-2">
                     {activeTab === "personal" ? "個人タスク" : "全体タスク"}
                   </h2>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 dark:text-slate-400">
                     {filteredTasks.length} 件のタスク
                   </div>
                 </div>
@@ -1190,18 +1190,18 @@ const TaskPage = () => {
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">タスクを読み込み中...</p>
+                    <p className="text-gray-600 dark:text-slate-400">タスクを読み込み中...</p>
                   </div>
                 </div>
               ) : filteredTasks.length === 0 ? (
                 <div className="text-center py-16">
                   <CheckSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500 mb-2">
+                  <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">
                     {searchQuery || selectedStatus !== "all" || selectedCategory !== "all"
                       ? "該当するタスクが見つかりません" 
                       : "まだタスクがありません"}
                   </p>
-                  <p className="text-gray-400 mb-4">
+                  <p className="text-gray-400 dark:text-slate-500 mb-4">
                     {searchQuery || selectedStatus !== "all" || selectedCategory !== "all"
                       ? "フィルターを変更してみてください"
                       : activeTab === "personal" 
@@ -1231,7 +1231,7 @@ const TaskPage = () => {
                         {showQuickAdd ? (
                           <div 
                             ref={quickAddRef}
-                            className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm"
+                            className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg p-4 shadow-sm"
                           >
                             <div className="space-y-3">
                               {/* タイトル */}
@@ -1250,7 +1250,7 @@ const TaskPage = () => {
                                     }
                                   }}
                                   placeholder="タスクのタイトル..."
-                                  className="w-full text-base border border-gray-200 rounded px-3 py-2 outline-none focus:border-blue-500 placeholder-gray-500"
+                                  className="w-full text-base border border-gray-200 dark:border-slate-600 rounded px-3 py-2 outline-none focus:border-blue-500 placeholder-gray-500 dark:placeholder-slate-400 dark:bg-slate-700 dark:text-white"
                                   autoFocus
                                 />
                               </div>
@@ -1261,7 +1261,7 @@ const TaskPage = () => {
                                 <select 
                                   value={formData.priority}
                                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
-                                  className="border border-gray-200 rounded px-2 py-1 text-sm"
+                                  className="border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm"
                                 >
                                   <option value="low">低</option>
                                   <option value="medium">中</option>
@@ -1273,7 +1273,7 @@ const TaskPage = () => {
                                 <select 
                                   value={formData.category}
                                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value as any }))}
-                                  className="border border-gray-200 rounded px-2 py-1 text-sm"
+                                  className="border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm"
                                 >
                                   {TASK_CATEGORIES.map((cat) => (
                                     <option key={cat.value} value={cat.value}>
@@ -1287,7 +1287,7 @@ const TaskPage = () => {
                                   type="date"
                                   value={formData.dueDate}
                                   onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                                  className="border border-gray-200 rounded px-2 py-1 text-sm"
+                                  className="border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm"
                                 />
                                 
                                 <div className="flex items-center gap-2 ml-auto">
@@ -1315,7 +1315,7 @@ const TaskPage = () => {
                         ) : (
                           <button
                             onClick={() => setShowQuickAdd(true)}
-                            className="w-full flex items-center gap-3 py-3 text-left text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all border-b border-gray-200"
+                            className="w-full flex items-center gap-3 py-3 text-left text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all border-b border-gray-200 dark:border-slate-700"
                           >
                             <Plus className="w-4 h-4" />
                             <span className="text-base">新しいタスクを追加...</span>
@@ -1344,14 +1344,14 @@ const TaskPage = () => {
                           <col style={{width: "14%"}} />
                         </colgroup>
                         <thead>
-                          <tr className="border-b-2 border-gray-300">
+                          <tr className="border-b-2 border-gray-300 dark:border-slate-600">
                             <th></th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">タスク名</th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">担当者</th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">期限</th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">カテゴリー</th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">優先度</th>
-                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600">ステータス</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">タスク名</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">担当者</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">期限</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">カテゴリー</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">優先度</th>
+                            <th className="text-left py-2 px-2 text-xs font-semibold text-gray-600 dark:text-slate-300">ステータス</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1371,7 +1371,7 @@ const TaskPage = () => {
         {/* カスタム右クリックメニュー */}
         {contextMenu?.show && (
           <div
-            className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
+            className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
             style={{
               left: `${contextMenu.x}px`,
               top: `${contextMenu.y}px`,
@@ -1382,7 +1382,7 @@ const TaskPage = () => {
                 startEditTask(contextMenu.task);
                 setContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
             >
               <Edit3 className="w-4 h-4" />
               編集
@@ -1395,7 +1395,7 @@ const TaskPage = () => {
                 );
                 setContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
             >
               <CheckSquare className="w-4 h-4" />
               {contextMenu.task.status === 'completed' ? '未完了にする' : '完了にする'}
@@ -1409,7 +1409,7 @@ const TaskPage = () => {
                   startEditTask(contextMenu.task);
                   setContextMenu(null);
                 }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 text-gray-900 dark:text-white"
               >
                 <Share2 className="w-4 h-4" />
                 共有タスクにする
@@ -1423,7 +1423,7 @@ const TaskPage = () => {
                 handleDeleteTask(contextMenu.task);
                 setContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600 flex items-center gap-2"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-red-600 dark:text-red-400 flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               削除
@@ -1442,9 +1442,9 @@ const TaskPage = () => {
             }
           }}
         >
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md dark:bg-slate-800 dark:border-slate-600">
             <DialogHeader className="pb-2">
-              <DialogTitle className="text-base">
+              <DialogTitle className="text-base dark:text-white">
                 {editingTask ? "タスクを編集" : "新しいタスク"}
               </DialogTitle>
             </DialogHeader>
@@ -1452,7 +1452,7 @@ const TaskPage = () => {
             <div className="space-y-4">
               {/* タイトル */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
                   タスク名 <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -1465,7 +1465,7 @@ const TaskPage = () => {
 
               {/* 説明（オプショナル） */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
                   詳細説明（任意）
                 </label>
                 <Textarea
@@ -1478,13 +1478,13 @@ const TaskPage = () => {
 
               {/* 設定 */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
                   タスク設定
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {/* カテゴリー */}
                   <div>
-                    <label className="text-xs text-gray-600 mb-1 block">カテゴリー</label>
+                    <label className="text-xs text-gray-600 dark:text-slate-400 mb-1 block">カテゴリー</label>
                     <Select 
                       value={formData.category} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
@@ -1507,7 +1507,7 @@ const TaskPage = () => {
 
                   {/* 優先度 */}
                   <div>
-                    <label className="text-xs text-gray-600 mb-1 block">優先度</label>
+                    <label className="text-xs text-gray-600 dark:text-slate-400 mb-1 block">優先度</label>
                     <Select 
                       value={formData.priority} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
@@ -1530,7 +1530,7 @@ const TaskPage = () => {
 
                   {/* 期限 */}
                   <div>
-                    <label className="text-xs text-gray-600 mb-1 block">期限（任意）</label>
+                    <label className="text-xs text-gray-600 dark:text-slate-400 mb-1 block">期限（任意）</label>
                     <Input
                       type="date"
                       value={formData.dueDate}
@@ -1542,7 +1542,7 @@ const TaskPage = () => {
                   {/* ステータス（編集時のみ） */}
                   {editingTask && (
                     <div>
-                      <label className="text-xs text-gray-600 mb-1 block">ステータス</label>
+                      <label className="text-xs text-gray-600 dark:text-slate-400 mb-1 block">ステータス</label>
                       <Select 
                         value={formData.status} 
                         onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
@@ -1570,7 +1570,7 @@ const TaskPage = () => {
               {/* タスクタイプ（新規作成時のみ、シンプル） */}
               {!editingTask && (
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="text-gray-600">タスクタイプ:</span>
+                  <span className="text-gray-600 dark:text-slate-400">タスクタイプ:</span>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -1581,7 +1581,7 @@ const TaskPage = () => {
                         onChange={(e) => setTaskType(e.target.value as "personal" | "company")}
                         className="w-3 h-3"
                       />
-                      <span>個人</span>
+                      <span className="dark:text-white">個人</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -1592,7 +1592,7 @@ const TaskPage = () => {
                         onChange={(e) => setTaskType(e.target.value as "personal" | "company")}
                         className="w-3 h-3"
                       />
-                      <span>全体</span>
+                      <span className="dark:text-white">全体</span>
                     </label>
                   </div>
                 </div>

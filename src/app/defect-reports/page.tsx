@@ -132,31 +132,31 @@ const DefectReportsPage = () => {
   // アイコン取得
   const getSeverityIcon = (severity: DefectReport["severity"]) => {
     switch (severity) {
-      case "critical": return <XCircle className="w-4 h-4 text-red-600" />;
-      case "high": return <AlertTriangle className="w-4 h-4 text-orange-600" />;
-      case "medium": return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-      case "low": return <Clock className="w-4 h-4 text-blue-600" />;
+      case "critical": return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+      case "high": return <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case "medium": return <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
+      case "low": return <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
     }
   };
 
   const getStatusIcon = (status: DefectReport["status"]) => {
     switch (status) {
-      case "open": return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case "investigating": return <Search className="w-4 h-4 text-orange-500" />;
-      case "in_progress": return <Wrench className="w-4 h-4 text-blue-500" />;
-      case "resolved": return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "closed": return <XCircle className="w-4 h-4 text-gray-500" />;
+      case "open": return <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />;
+      case "investigating": return <Search className="w-4 h-4 text-orange-500 dark:text-orange-400" />;
+      case "in_progress": return <Wrench className="w-4 h-4 text-blue-500 dark:text-blue-400" />;
+      case "resolved": return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
+      case "closed": return <XCircle className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
     }
   };
 
   const getCategoryIcon = (category: DefectReport["category"]) => {
     switch (category) {
-      case "quality": return <CheckCircle className="w-4 h-4" />;
-      case "equipment": return <Settings className="w-4 h-4" />;
-      case "process": return <Wrench className="w-4 h-4" />;
-      case "material": return <Building2 className="w-4 h-4" />;
-      case "safety": return <AlertTriangle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+      case "quality": return <CheckCircle className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
+      case "equipment": return <Settings className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
+      case "process": return <Wrench className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
+      case "material": return <Building2 className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
+      case "safety": return <AlertTriangle className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
+      default: return <AlertCircle className="w-4 h-4 text-gray-500 dark:text-slate-400" />;
     }
   };
 
@@ -199,18 +199,18 @@ const DefectReportsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">不具合報告管理</h1>
-                <p className="text-sm text-gray-600">
-                  総報告数: <span className="font-bold text-blue-600">{defectReports.length}</span>件 /
-                  未解決: <span className="font-bold text-red-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">不具合報告管理</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-300">
+                  総報告数: <span className="font-bold text-blue-600 dark:text-blue-400">{defectReports.length}</span>件 /
+                  未解決: <span className="font-bold text-red-600 dark:text-red-400">
                     {defectReports.filter(r => !["resolved", "closed"].includes(r.status)).length}
                   </span>件
                 </p>
@@ -220,7 +220,7 @@ const DefectReportsPage = () => {
             <div className="flex items-center space-x-3">
               {/* 検索バー */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="不具合報告を検索..."
@@ -264,7 +264,15 @@ const DefectReportsPage = () => {
                 </SelectContent>
               </Select>
 
-              {/* 新規追加ボタン */}
+            </div>
+          </div>
+        </div>
+
+        {/* 不具合報告リスト */}
+        <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-600">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">不具合報告一覧</h2>
               <Button
                 onClick={() => setShowNewReportModal(true)}
                 className="bg-red-600 hover:bg-red-700 text-white font-medium px-6"
@@ -274,22 +282,18 @@ const DefectReportsPage = () => {
               </Button>
             </div>
           </div>
-        </div>
-
-        {/* 不具合報告リスト */}
-        <div className="flex-1 overflow-auto">
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-slate-600">
             {filteredReports.length === 0 ? (
               <div className="text-center py-16">
-                <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 mb-2">該当する不具合報告がありません</p>
-                <p className="text-gray-400">検索条件を変更してください</p>
+                <AlertTriangle className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する不具合報告がありません</p>
+                <p className="text-gray-400 dark:text-slate-500">検索条件を変更してください</p>
               </div>
             ) : (
               filteredReports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-start p-6 hover:bg-gray-50 transition-colors"
+                  className="flex items-start p-6 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
                 >
                   {/* 重要度アイコン */}
                   <div className="flex-shrink-0 mr-4">
@@ -300,36 +304,36 @@ const DefectReportsPage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                           {report.title}
                         </h3>
-                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        <span className="text-sm text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
                           {report.reportNumber}
                         </span>
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(report.status)}
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 dark:text-slate-300">
                             {statusLabels[report.status]}
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-slate-400">
                         <span>重要度: {severityLabels[report.severity]}</span>
                         <span>{report.dateReported.toLocaleDateString("ja-JP")}</span>
                       </div>
                     </div>
                     
-                    <p className="text-gray-700 mb-3 line-clamp-2">
+                    <p className="text-gray-700 dark:text-slate-300 mb-3 line-clamp-2">
                       {report.description}
                     </p>
                     
-                    <div className="grid grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                    <div className="grid grid-cols-4 gap-4 text-sm text-gray-600 dark:text-slate-400 mb-3">
                       <div className="flex items-center space-x-1">
-                        <User className="w-4 h-4" />
+                        <User className="w-4 h-4 text-gray-500 dark:text-slate-500" />
                         <span>報告者: {report.reporter}</span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Building2 className="w-4 h-4" />
+                        <Building2 className="w-4 h-4 text-gray-500 dark:text-slate-500" />
                         <span>部門: {report.department}</span>
                       </div>
                       <div className="flex items-center space-x-1">
@@ -337,19 +341,19 @@ const DefectReportsPage = () => {
                         <span>分類: {categoryLabels[report.category]}</span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-4 h-4 text-gray-500 dark:text-slate-500" />
                         <span>場所: {report.location}</span>
                       </div>
                     </div>
 
                     {report.assignee && (
-                      <div className="text-sm text-blue-600 mb-2">
+                      <div className="text-sm text-blue-600 dark:text-blue-400 mb-2">
                         担当者: {report.assignee}
                       </div>
                     )}
 
                     {report.estimatedCost && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-slate-300">
                         推定費用: ¥{report.estimatedCost.toLocaleString()}
                         {report.actualCost && (
                           <span className="ml-2">

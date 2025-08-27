@@ -156,30 +156,30 @@ const AuditLogsPage = () => {
   // アイコン取得
   const getActionIcon = (actionType: AuditLog["actionType"]) => {
     switch (actionType) {
-      case "create": return <Plus className="w-4 h-4 text-green-600" />;
-      case "read": return <Eye className="w-4 h-4 text-blue-600" />;
-      case "update": return <Edit className="w-4 h-4 text-orange-600" />;
-      case "delete": return <Trash2 className="w-4 h-4 text-red-600" />;
-      case "login": return <LogIn className="w-4 h-4 text-purple-600" />;
-      case "logout": return <LogOut className="w-4 h-4 text-gray-600" />;
-      case "system": return <Settings className="w-4 h-4 text-indigo-600" />;
+      case "create": return <Plus className="w-4 h-4 text-green-600 dark:text-green-400" />;
+      case "read": return <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      case "update": return <Edit className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case "delete": return <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />;
+      case "login": return <LogIn className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case "logout": return <LogOut className="w-4 h-4 text-gray-600 dark:text-slate-400" />;
+      case "system": return <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
     }
   };
 
   const getStatusIcon = (status: AuditLog["status"]) => {
     switch (status) {
-      case "success": return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "failure": return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case "warning": return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+      case "success": return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
+      case "failure": return <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />;
+      case "warning": return <AlertTriangle className="w-4 h-4 text-yellow-500 dark:text-yellow-400" />;
     }
   };
 
   const getSeverityColor = (severity: AuditLog["severity"]) => {
     switch (severity) {
-      case "low": return "text-blue-600 bg-blue-50";
-      case "medium": return "text-yellow-600 bg-yellow-50";
-      case "high": return "text-orange-600 bg-orange-50";
-      case "critical": return "text-red-600 bg-red-50";
+      case "low": return "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30";
+      case "medium": return "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30";
+      case "high": return "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30";
+      case "critical": return "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30";
     }
   };
 
@@ -232,38 +232,40 @@ const AuditLogsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Activity className="w-8 h-8 text-indigo-600" />
+              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+                <Activity className="w-8 h-8 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">操作履歴</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">操作履歴</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-400">
                   システムの全操作を記録・監査します
                 </p>
               </div>
             </div>
             
-            <Button variant="outline" className="text-gray-600 border-gray-300">
+            <Button variant="outline" className="text-gray-600 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
               <Download className="w-4 h-4 mr-2" />
               エクスポート
             </Button>
           </div>
 
           {/* フィルターバー */}
-          <div className="mt-4 flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-4 flex items-center space-x-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="操作履歴を検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2"
+                  className="pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-slate-400 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400"
                 />
               </div>
             </div>
@@ -272,7 +274,7 @@ const AuditLogsPage = () => {
               value={filterActionType}
               onValueChange={(value: string) => setFilterActionType(value as any)}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32 bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white">
                 <SelectValue placeholder="操作種別" />
               </SelectTrigger>
               <SelectContent>
@@ -291,7 +293,7 @@ const AuditLogsPage = () => {
               value={filterSeverity}
               onValueChange={(value: string) => setFilterSeverity(value as any)}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32 bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white">
                 <SelectValue placeholder="重要度" />
               </SelectTrigger>
               <SelectContent>
@@ -307,7 +309,7 @@ const AuditLogsPage = () => {
               value={filterStatus}
               onValueChange={(value: string) => setFilterStatus(value as any)}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32 bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white">
                 <SelectValue placeholder="状態" />
               </SelectTrigger>
               <SelectContent>
@@ -321,19 +323,19 @@ const AuditLogsPage = () => {
         </div>
 
         {/* 操作履歴リスト */}
-        <div className="flex-1 overflow-auto">
-          <div className="divide-y divide-gray-200">
+        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
+          <div className="divide-y divide-gray-200 dark:divide-slate-700">
             {filteredLogs.length === 0 ? (
               <div className="text-center py-16">
-                <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 mb-2">該当する操作履歴がありません</p>
-                <p className="text-gray-400">検索条件を変更してください</p>
+                <Activity className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する操作履歴がありません</p>
+                <p className="text-gray-400 dark:text-slate-500">検索条件を変更してください</p>
               </div>
             ) : (
               filteredLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-start p-4 hover:bg-gray-50 transition-colors"
+                  className="flex items-start p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 last:border-b-0"
                 >
                   {/* 操作アイコン */}
                   <div className="flex-shrink-0 mr-4 mt-1">
@@ -344,12 +346,12 @@ const AuditLogsPage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center space-x-3">
-                        <h3 className="text-sm font-semibold text-gray-900">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                           {log.action}
                         </h3>
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(log.status)}
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-gray-600 dark:text-slate-400">
                             {statusLabels[log.status]}
                           </span>
                         </div>
@@ -357,7 +359,7 @@ const AuditLogsPage = () => {
                           {severityLabels[log.severity]}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">
                         {log.timestamp.toLocaleString("ja-JP", {
                           year: "numeric",
                           month: "short",
@@ -369,7 +371,7 @@ const AuditLogsPage = () => {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-4 gap-4 text-sm text-gray-600 mb-2">
+                    <div className="grid grid-cols-4 gap-4 text-sm text-gray-600 dark:text-slate-400 mb-2">
                       <div className="flex items-center space-x-1">
                         <User className="w-3 h-3" />
                         <span>{log.userName} ({log.userRole})</span>
@@ -389,7 +391,7 @@ const AuditLogsPage = () => {
                     </div>
                     
                     {log.details && (
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-gray-700 dark:text-slate-300">
                         {log.details}
                       </p>
                     )}

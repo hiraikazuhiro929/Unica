@@ -87,11 +87,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
   onZoom,
 }) => {
   return (
-    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+    <div className="p-6 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-700">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h3 className="font-bold text-xl flex items-center gap-3 text-gray-800">
-            <BarChart3 className="w-6 h-6 text-blue-600" />
+          <h3 className="font-bold text-xl flex items-center gap-3 text-gray-800 dark:text-white">
+            <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             {viewType === "machine"
               ? "機械別"
               : viewType === "person"
@@ -99,7 +99,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
               : "案件別"}{" "}
             ガントチャート
           </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
             <Calendar className="w-4 h-4" />
             <span>{datesLength}日間表示</span>
           </div>
@@ -112,7 +112,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
 
         <div className="flex items-center gap-4">
           {/* 表示切り替え */}
-          <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-600 p-1">
             <Button
               variant={viewType === "machine" ? "default" : "ghost"}
               size="sm"
@@ -142,10 +142,10 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
           {/* 検索とフィルタ */}
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
               <Input
                 placeholder="プロジェクト、管理番号で検索..."
-                className="pl-9 w-64"
+                className="pl-9 w-64 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
               />
@@ -231,14 +231,14 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
             </DropdownMenu>
           </div>
           {/* 表示オプション */}
-          <div className="flex items-center gap-4 px-4 py-2 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center gap-4 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-600">
             <div className="flex items-center gap-2">
               <Switch
                 checked={showWeekends}
                 onCheckedChange={onShowWeekendsChange}
                 id="weekends"
               />
-              <label htmlFor="weekends" className="text-sm text-gray-600">
+              <label htmlFor="weekends" className="text-sm text-gray-600 dark:text-slate-400">
                 週末表示
               </label>
             </div>
@@ -249,13 +249,13 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                 onCheckedChange={onShowMinimapChange}
                 id="minimap"
               />
-              <label htmlFor="minimap" className="text-sm text-gray-600">
+              <label htmlFor="minimap" className="text-sm text-gray-600 dark:text-slate-400">
                 ミニマップ
               </label>
             </div>
           </div>
           {/* ズームコントロール（一番右） */}
-          <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-600 p-1">
             <Button
               variant="ghost"
               size="sm"

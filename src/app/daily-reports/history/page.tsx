@@ -208,13 +208,13 @@ export default function DailyReportsHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-2 sm:p-4 md:p-6">
       <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         {/* ヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">日報一覧</h1>
-            <p className="text-sm sm:text-base text-gray-600">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">日報一覧</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-slate-400">
               作成済みの日報を確認・管理します
             </p>
           </div>
@@ -223,7 +223,7 @@ export default function DailyReportsHistoryPage() {
             <Button
               variant="outline"
               onClick={() => router.push("/daily-reports")}
-              className="w-full sm:w-auto bg-white border-gray-200 hover:bg-gray-50"
+              className="w-full sm:w-auto bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-900 dark:text-white"
             >
               <FileText className="w-4 h-4 mr-2" />
               新規作成
@@ -232,23 +232,23 @@ export default function DailyReportsHistoryPage() {
         </div>
 
         {/* フィルタ・検索セクション */}
-        <Card className="shadow border border-gray-200 bg-white">
+        <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <CardContent className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 検索 */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
                 <Input
                   placeholder="作業者名、製番、内容で検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-white border-gray-200 focus:border-blue-400"
+                  className="pl-10 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 text-gray-900 dark:text-white"
                 />
               </div>
 
               {/* ステータスフィルタ */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="bg-white border-gray-200 focus:border-blue-400">
+                <SelectTrigger className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 text-gray-900 dark:text-white">
                   <SelectValue placeholder="ステータス" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,7 +262,7 @@ export default function DailyReportsHistoryPage() {
 
               {/* 日付フィルタ */}
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="bg-white border-gray-200 focus:border-blue-400">
+                <SelectTrigger className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 text-gray-900 dark:text-white">
                   <SelectValue placeholder="期間" />
                 </SelectTrigger>
                 <SelectContent>
@@ -274,7 +274,7 @@ export default function DailyReportsHistoryPage() {
               </Select>
 
               {/* 結果件数 */}
-              <div className="flex items-center justify-center sm:justify-start text-sm text-gray-600">
+              <div className="flex items-center justify-center sm:justify-start text-sm text-gray-600 dark:text-slate-400">
                 {filteredReports.length}件の日報
               </div>
             </div>
@@ -284,13 +284,13 @@ export default function DailyReportsHistoryPage() {
         {/* 日報一覧 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredReports.map((report) => (
-            <Card key={report.id} className="shadow border border-gray-200 bg-white hover:shadow-lg transition-shadow">
+            <Card key={report.id} className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-gray-900 dark:text-white">
                         {new Date(report.date).toLocaleDateString("ja-JP", {
                           year: "numeric",
                           month: "long",
@@ -299,7 +299,7 @@ export default function DailyReportsHistoryPage() {
                       </span>
                       {getStatusBadge(report)}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                       <User className="w-4 h-4" />
                       <span>{report.workerName}</span>
                     </div>
@@ -326,7 +326,7 @@ export default function DailyReportsHistoryPage() {
                 </div>
 
                 {/* 今日の目標（省略版） */}
-                <div className="text-sm text-gray-700 line-clamp-2">
+                <div className="text-sm text-gray-700 dark:text-slate-300 line-clamp-2">
                   <strong>目標:</strong> {report.todaysGoals}
                 </div>
 
@@ -338,13 +338,13 @@ export default function DailyReportsHistoryPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedReport(report)}
-                        className="flex-1 bg-white hover:bg-gray-50"
+                        className="flex-1 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-900 dark:text-white border-gray-200 dark:border-slate-600"
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         詳細
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                           <FileText className="w-5 h-5" />
@@ -355,10 +355,10 @@ export default function DailyReportsHistoryPage() {
                         <div className="space-y-4 py-4">
                           {/* 基本情報 */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
+                            <div className="text-gray-900 dark:text-white">
                               <strong>作業者:</strong> {selectedReport.workerName}
                             </div>
-                            <div>
+                            <div className="text-gray-900 dark:text-white">
                               <strong>合計作業時間:</strong> {formatTime(selectedReport.totalWorkMinutes)}
                             </div>
                           </div>
@@ -367,11 +367,11 @@ export default function DailyReportsHistoryPage() {
                           <div className="space-y-2">
                             <div>
                               <strong>夢や希望:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-pink-50 rounded">{selectedReport.dreams}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-pink-50 dark:bg-pink-900/30 rounded">{selectedReport.dreams}</p>
                             </div>
                             <div>
                               <strong>今日の目標:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-green-50 rounded">{selectedReport.todaysGoals}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-green-50 dark:bg-green-900/30 rounded">{selectedReport.todaysGoals}</p>
                             </div>
                           </div>
 
@@ -380,7 +380,7 @@ export default function DailyReportsHistoryPage() {
                             <strong>作業時間詳細:</strong>
                             <div className="mt-2 space-y-2">
                               {selectedReport.workTimeEntries.map((entry) => (
-                                <div key={entry.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                                <div key={entry.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-700 rounded text-sm text-gray-900 dark:text-white">
                                   <div>
                                     <span className="font-medium">{entry.productionNumber}</span> - {entry.workContentName}
                                   </div>
@@ -396,19 +396,19 @@ export default function DailyReportsHistoryPage() {
                           <div className="space-y-2">
                             <div>
                               <strong>今日の結果:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-blue-50 rounded">{selectedReport.todaysResults}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-blue-50 dark:bg-blue-900/30 rounded">{selectedReport.todaysResults}</p>
                             </div>
                             <div>
                               <strong>うまくいったこと:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-green-50 rounded">{selectedReport.whatWentWell}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-green-50 dark:bg-green-900/30 rounded">{selectedReport.whatWentWell}</p>
                             </div>
                             <div>
                               <strong>うまくいかなかったこと:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-orange-50 rounded">{selectedReport.whatDidntGoWell}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-orange-50 dark:bg-orange-900/30 rounded">{selectedReport.whatDidntGoWell}</p>
                             </div>
                             <div>
                               <strong>社内への要望:</strong>
-                              <p className="text-sm text-gray-700 mt-1 p-2 bg-purple-50 rounded">{selectedReport.requestsToManagement}</p>
+                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-purple-50 dark:bg-purple-900/30 rounded">{selectedReport.requestsToManagement}</p>
                             </div>
                           </div>
                         </div>
@@ -421,7 +421,7 @@ export default function DailyReportsHistoryPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => router.push(`/daily-reports?edit=${report.id}`)}
-                      className="flex-1 bg-white hover:bg-gray-50"
+                      className="flex-1 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-900 dark:text-white border-gray-200 dark:border-slate-600"
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       編集
@@ -435,11 +435,11 @@ export default function DailyReportsHistoryPage() {
 
         {/* 空の状態 */}
         {filteredReports.length === 0 && (
-          <Card className="shadow border border-gray-200 bg-white">
+          <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <CardContent className="p-8 text-center">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">日報が見つかりません</h3>
-              <p className="text-gray-500 mb-4">検索条件を変更するか、新しい日報を作成してください。</p>
+              <FileText className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-300 mb-2">日報が見つかりません</h3>
+              <p className="text-gray-500 dark:text-slate-400 mb-4">検索条件を変更するか、新しい日報を作成してください。</p>
               <Button
                 onClick={() => router.push("/daily-reports")}
                 className="bg-blue-600 hover:bg-blue-700 text-white"

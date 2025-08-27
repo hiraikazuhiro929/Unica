@@ -166,7 +166,7 @@ const InventoryManagement = () => {
       id: "consumables",
       name: "消耗品",
       icon: Package,
-      color: "text-gray-600",
+      color: "text-gray-600 dark:text-slate-400",
       bgColor: "bg-gray-100 border-gray-300",
       description: "研磨剤、潤滑油、安全用品など",
     },
@@ -434,7 +434,7 @@ const InventoryManagement = () => {
       case "fair": return "text-yellow-600";
       case "poor": return "text-orange-600";
       case "broken": return "text-red-600";
-      default: return "text-gray-600";
+      default: return "text-gray-600 dark:text-slate-400";
     }
   };
 
@@ -497,18 +497,18 @@ const InventoryManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
                 <Package className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">工具管理</h1>
-                <p className="text-gray-600 mt-1">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">工具管理</h1>
+                <p className="text-gray-600 dark:text-slate-300 mt-1">
                   切削工具・測定器具・治具の在庫管理とメンテナンス追跡
                 </p>
               </div>
@@ -516,18 +516,18 @@ const InventoryManagement = () => {
             <div className="flex items-center space-x-3">
               {/* 検索バー */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="工具を検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-orange-500"
+                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-orange-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                 />
               </div>
               
               {/* 表示モード切り替え */}
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+              <div className="flex items-center border border-gray-300 dark:border-slate-600 rounded-lg overflow-hidden">
                 <Button
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
@@ -566,7 +566,7 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">総アイテム数</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">総アイテム数</p>
                     <p className="text-2xl font-bold text-blue-600">{statistics.totalItems}</p>
                   </div>
                   <Package className="w-8 h-8 text-blue-500" />
@@ -578,7 +578,7 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">総資産価値</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">総資産価値</p>
                     <p className="text-2xl font-bold text-green-600">
                       ¥{(statistics.totalValue / 10000).toFixed(0)}万
                     </p>
@@ -592,7 +592,7 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">利用可能</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">利用可能</p>
                     <p className="text-2xl font-bold text-purple-600">{statistics.availableItems}</p>
                   </div>
                   <CheckCircle className="w-8 h-8 text-purple-500" />
@@ -604,7 +604,7 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">使用中</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">使用中</p>
                     <p className="text-2xl font-bold text-yellow-600">{statistics.inUseItems}</p>
                   </div>
                   <Activity className="w-8 h-8 text-yellow-500" />
@@ -616,9 +616,9 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">メンテナンス予定</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">メンテナンス予定</p>
                     <p className="text-2xl font-bold text-red-600">{statistics.maintenanceDueItems}</p>
-                    <p className="text-xs text-gray-500">30日以内</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">30日以内</p>
                   </div>
                   <AlertTriangle className="w-8 h-8 text-red-500" />
                 </div>
@@ -629,10 +629,10 @@ const InventoryManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">平均使用年数</p>
-                    <p className="text-2xl font-bold text-gray-600">{statistics.averageAge.toFixed(1)}年</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-300">平均使用年数</p>
+                    <p className="text-2xl font-bold text-gray-600 dark:text-slate-400">{statistics.averageAge.toFixed(1)}年</p>
                   </div>
-                  <Clock className="w-8 h-8 text-gray-500" />
+                  <Clock className="w-8 h-8 text-gray-500 dark:text-slate-400" />
                 </div>
               </CardContent>
             </Card>
@@ -640,7 +640,7 @@ const InventoryManagement = () => {
         </div>
 
         {/* フィルター */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
           <div className="flex items-center space-x-4">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-48">
@@ -678,7 +678,7 @@ const InventoryManagement = () => {
 
             <div className="flex-1" />
             
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-slate-300">
               {filteredItems.length} / {items.length} 件表示
             </div>
           </div>
@@ -689,8 +689,8 @@ const InventoryManagement = () => {
           {filteredItems.length === 0 ? (
             <div className="text-center py-16">
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-xl text-gray-500 mb-2">該当する工具が見つかりません</p>
-              <p className="text-gray-400">検索条件を変更するか、新しい工具を登録してください</p>
+              <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する工具が見つかりません</p>
+              <p className="text-gray-400 dark:text-slate-500">検索条件を変更するか、新しい工具を登録してください</p>
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -700,14 +700,14 @@ const InventoryManagement = () => {
                   new Date(item.nextMaintenanceDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 
                 return (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-2">
                           <Icon className={`w-5 h-5 ${item.category.color}`} />
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                            <p className="text-sm text-gray-600">{item.brand} {item.model}</p>
+                            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{item.name}</h3>
+                            <p className="text-sm text-gray-600 dark:text-slate-300">{item.brand} {item.model}</p>
                           </div>
                         </div>
                         {isMaintenanceDue && (
@@ -724,7 +724,7 @@ const InventoryManagement = () => {
                           </span>
                         </div>
                         
-                        <div className="space-y-1 text-sm text-gray-600">
+                        <div className="space-y-1 text-sm text-gray-600 dark:text-slate-300">
                           <div className="flex items-center justify-between">
                             <span>現在価値:</span>
                             <span className="font-medium">¥{item.currentValue.toLocaleString()}</span>
@@ -798,31 +798,31 @@ const InventoryManagement = () => {
             </div>
           ) : (
             /* リスト表示 */
-            <div className="bg-white rounded-lg shadow">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
                   <tr>
-                    <th className="text-left p-4 font-semibold text-gray-700">名称</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">カテゴリ</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">ブランド・型番</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">ステータス</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">保管場所</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">現在価値</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">アクション</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">名称</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">カテゴリ</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ブランド・型番</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ステータス</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">保管場所</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">現在価値</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アクション</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map(item => {
                     const Icon = item.category.icon;
                     return (
-                      <tr key={item.id} className="border-b hover:bg-gray-50">
+                      <tr key={item.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
                             <Icon className={`w-4 h-4 ${item.category.color}`} />
                             <div>
-                              <div className="font-medium text-gray-900">{item.name}</div>
+                              <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
                               {item.serialNumber && (
-                                <div className="text-sm text-gray-500">S/N: {item.serialNumber}</div>
+                                <div className="text-sm text-gray-500 dark:text-slate-400">S/N: {item.serialNumber}</div>
                               )}
                             </div>
                           </div>
@@ -834,12 +834,12 @@ const InventoryManagement = () => {
                         </td>
                         <td className="p-4">
                           <div className="text-sm">
-                            <div className="font-medium">{item.brand}</div>
-                            <div className="text-gray-600">{item.model}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{item.brand}</div>
+                            <div className="text-gray-600 dark:text-slate-300">{item.model}</div>
                           </div>
                         </td>
                         <td className="p-4">{getStatusBadge(item.status)}</td>
-                        <td className="p-4 text-sm text-gray-600">{item.location}</td>
+                        <td className="p-4 text-sm text-gray-600 dark:text-slate-300">{item.location}</td>
                         <td className="p-4 text-sm font-medium">¥{item.currentValue.toLocaleString()}</td>
                         <td className="p-4">
                           <div className="flex items-center space-x-2">
@@ -935,8 +935,8 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           {item.id ? "工具編集" : "新規工具登録"}
         </h2>
 
@@ -1142,11 +1142,11 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <Icon className={`w-6 h-6 ${item.category.color}`} />
-            <h2 className="text-xl font-bold">{item.name}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{item.name}</h2>
           </div>
           <Button variant="outline" onClick={onClose}>
             ×
@@ -1156,7 +1156,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         <div className="grid grid-cols-2 gap-8">
           {/* 基本情報 */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b pb-2">基本情報</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2">基本情報</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="font-medium">カテゴリ:</span>
@@ -1191,7 +1191,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
           {/* ステータス・価値 */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b pb-2">ステータス・価値</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2">ステータス・価値</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between items-center">
                 <span className="font-medium">ステータス:</span>
@@ -1224,7 +1224,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         {/* 仕様 */}
         {Object.keys(item.specifications).length > 0 && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">仕様</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2 mb-4">仕様</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               {Object.entries(item.specifications).map(([key, value]) => (
                 <div key={key} className="flex justify-between">
@@ -1239,7 +1239,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         {/* タグ */}
         {item.tags.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">タグ</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2 mb-4">タグ</h3>
             <div className="flex flex-wrap gap-2">
               {item.tags.map(tag => (
                 <Badge key={tag} variant="outline">{tag}</Badge>
@@ -1251,10 +1251,10 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         {/* メンテナンス履歴 */}
         {item.maintenanceHistory.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">メンテナンス履歴</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2 mb-4">メンテナンス履歴</h3>
             <div className="space-y-3">
               {item.maintenanceHistory.map(record => (
-                <div key={record.id} className="bg-gray-50 p-3 rounded">
+                <div key={record.id} className="bg-gray-50 dark:bg-slate-700 p-3 rounded">
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-medium">{record.date}</span>
                     <Badge variant="outline">
@@ -1263,8 +1263,8 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                        record.type === 'replacement' ? '交換' : '校正'}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-700 mb-2">{record.description}</p>
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <p className="text-sm text-gray-700 dark:text-slate-300 mb-2">{record.description}</p>
+                  <div className="flex justify-between text-sm text-gray-600 dark:text-slate-400">
                     <span>担当: {record.technician}</span>
                     <span>費用: ¥{record.cost.toLocaleString()}</span>
                   </div>
@@ -1277,8 +1277,8 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         {/* 備考 */}
         {item.notes && (
           <div className="mt-6">
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">備考</h3>
-            <p className="text-sm text-gray-700">{item.notes}</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-slate-600 pb-2 mb-4">備考</h3>
+            <p className="text-sm text-gray-700 dark:text-slate-300">{item.notes}</p>
           </div>
         )}
       </div>

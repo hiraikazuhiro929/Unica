@@ -291,25 +291,25 @@ export default function IntegratedWorkTimeTable({
   const selectedProcess = availableProcesses.find(p => p.id === selectedProcessId);
 
   return (
-    <Card className="shadow border border-gray-200 bg-white">
+    <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-white">
           <Clock className="w-5 h-5 text-blue-600" />
           作業時間管理
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* 工程選択と進捗 */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-4 bg-blue-50 dark:bg-slate-700/50 border border-blue-200 dark:border-slate-600 rounded-lg">
           <div className="flex flex-col lg:flex-row lg:items-end gap-4">
             <div className="flex-1 space-y-2">
-              <Label>工程選択</Label>
+              <Label className="text-gray-700 dark:text-slate-300">工程選択</Label>
               <Select 
                 value={selectedProcessId} 
                 onValueChange={handleProcessSelect}
                 disabled={disabled || isLoadingProcesses}
               >
-                <SelectTrigger className="bg-white border-gray-200 focus:border-blue-400">
+                <SelectTrigger className="bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white">
                   <SelectValue placeholder="工程を選択してください" />
                 </SelectTrigger>
                 <SelectContent>
@@ -321,7 +321,7 @@ export default function IntegratedWorkTimeTable({
                 </SelectContent>
               </Select>
               {selectedProcess && (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-slate-400">
                   選択中: {selectedProcess.projectName}
                 </div>
               )}
@@ -329,7 +329,7 @@ export default function IntegratedWorkTimeTable({
             
             {selectedProcessId && (
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
+                <Label className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
                   <BarChart3 className="w-4 h-4" />
                   進捗
                 </Label>
@@ -339,7 +339,7 @@ export default function IntegratedWorkTimeTable({
                     onValueChange={(value) => handleProgressChange(Number(value))}
                     disabled={disabled}
                   >
-                    <SelectTrigger className="w-20 bg-white border-gray-200 focus:border-blue-400">
+                    <SelectTrigger className="w-20 bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-48">
@@ -350,7 +350,7 @@ export default function IntegratedWorkTimeTable({
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="bg-gray-200 rounded-full h-2.5 w-40">
+                  <div className="bg-gray-200 dark:bg-slate-600 rounded-full h-2.5 w-40">
                     <div 
                       className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(100, Math.max(0, processProgress))}%` }}
@@ -365,46 +365,46 @@ export default function IntegratedWorkTimeTable({
         {/* 既存エントリ一覧 */}
         {entries.length > 0 && (
           <div className="space-y-3">
-            <h3 className="font-medium text-gray-800">作業実績</h3>
+            <h3 className="font-medium text-gray-800 dark:text-white">作業実績</h3>
             {entries.map((entry, index) => (
               <div
                 key={entry.id}
-                className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4"
+                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-3 sm:p-4"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
                   {/* 開始時間 */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">開始時間</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">開始時間</Label>
                     <Input
                       type="time"
                       value={entry.startTime}
                       onChange={(e) => updateEntryTime(entry.id, "startTime", e.target.value)}
                       disabled={disabled}
-                      className="h-9 text-sm bg-white border-gray-200 focus:border-blue-400"
+                      className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white"
                     />
                   </div>
                   
                   {/* 終了時間 */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">終了時間</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">終了時間</Label>
                     <Input
                       type="time"
                       value={entry.endTime}
                       onChange={(e) => updateEntryTime(entry.id, "endTime", e.target.value)}
                       disabled={disabled}
-                      className="h-9 text-sm bg-white border-gray-200 focus:border-blue-400"
+                      className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white"
                     />
                   </div>
                   
                   {/* 作業内容 */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">作業内容</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">作業内容</Label>
                     <Select
                       value={entry.workContentId}
                       onValueChange={(value) => updateEntryWorkContent(entry.id, value)}
                       disabled={disabled}
                     >
-                      <SelectTrigger className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400">
+                      <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -419,13 +419,13 @@ export default function IntegratedWorkTimeTable({
                   
                   {/* 使用機械 */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">使用機械</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">使用機械</Label>
                     <Select
                       value={entry.machineId || "none"}
                       onValueChange={(value) => updateEntryMachine(entry.id, value)}
                       disabled={disabled}
                     >
-                      <SelectTrigger className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400">
+                      <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
                         <SelectValue placeholder="未選択" />
                       </SelectTrigger>
                       <SelectContent>
@@ -434,7 +434,7 @@ export default function IntegratedWorkTimeTable({
                           <SelectItem key={machine.id} value={machine.id}>
                             <div className="flex flex-col">
                               <span>{machine.name}</span>
-                              <span className="text-xs text-gray-500">{machine.type}</span>
+                              <span className="text-xs text-gray-500 dark:text-slate-400">{machine.type}</span>
                             </div>
                           </SelectItem>
                         ))}
@@ -444,8 +444,8 @@ export default function IntegratedWorkTimeTable({
                   
                   {/* 時間表示 */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">時間</Label>
-                    <div className="h-9 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
+                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">時間</Label>
+                    <div className="h-9 flex items-center px-3 bg-gray-50 dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded-md text-sm text-gray-700 dark:text-slate-300">
                       {formatDuration(entry.durationMinutes)}
                     </div>
                   </div>
@@ -458,7 +458,7 @@ export default function IntegratedWorkTimeTable({
                       size="sm"
                       onClick={() => removeEntry(entry.id)}
                       disabled={disabled}
-                      className="h-9 w-full sm:w-9 px-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      className="h-9 w-full sm:w-9 px-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
                       <span className="sm:hidden ml-2">削除</span>
@@ -471,8 +471,8 @@ export default function IntegratedWorkTimeTable({
         )}
 
         {/* 新規エントリ追加フォーム */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-          <h3 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-blue-50 dark:bg-slate-700/50 border border-blue-200 dark:border-slate-600 rounded-lg p-3 sm:p-4">
+          <h3 className="font-medium text-gray-800 dark:text-white mb-3 flex items-center gap-2">
             <Plus className="w-4 h-4" />
             新しい作業時間を追加
           </h3>
@@ -480,37 +480,37 @@ export default function IntegratedWorkTimeTable({
           <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
             {/* 開始時間 */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600">開始時間</Label>
+              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">開始時間</Label>
               <Input
                 type="time"
                 value={newEntry.startTime}
                 onChange={(e) => handleTimeChange("startTime", e.target.value)}
                 disabled={disabled}
-                className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400"
+                className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white"
               />
             </div>
             
             {/* 終了時間 */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600">終了時間</Label>
+              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">終了時間</Label>
               <Input
                 type="time"
                 value={newEntry.endTime}
                 onChange={(e) => handleTimeChange("endTime", e.target.value)}
                 disabled={disabled}
-                className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400"
+                className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white"
               />
             </div>
             
             {/* 作業内容 */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600">作業内容</Label>
+              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">作業内容</Label>
               <Select
                 value={newEntry.workContentId}
                 onValueChange={handleWorkContentChange}
                 disabled={disabled}
               >
-                <SelectTrigger className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400">
+                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
                   <SelectValue placeholder="選択" />
                 </SelectTrigger>
                 <SelectContent>
@@ -525,13 +525,13 @@ export default function IntegratedWorkTimeTable({
             
             {/* 使用機械 */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600">使用機械</Label>
+              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">使用機械</Label>
               <Select
                 value={newEntry.machineId || "none"}
                 onValueChange={handleMachineChange}
                 disabled={disabled || isLoadingMachines}
               >
-                <SelectTrigger className="h-9 text-sm bg-white border-gray-200 focus:border-indigo-400">
+                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
                   <SelectValue placeholder="未選択" />
                 </SelectTrigger>
                 <SelectContent>
@@ -540,7 +540,7 @@ export default function IntegratedWorkTimeTable({
                     <SelectItem key={machine.id} value={machine.id}>
                       <div className="flex flex-col">
                         <span>{machine.name}</span>
-                        <span className="text-xs text-gray-500">{machine.type}</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400">{machine.type}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -550,8 +550,8 @@ export default function IntegratedWorkTimeTable({
             
             {/* 時間表示 */}
             <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600">時間</Label>
-              <div className="h-9 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
+              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">時間</Label>
+              <div className="h-9 flex items-center px-3 bg-gray-50 dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded-md text-sm text-gray-700 dark:text-slate-300">
                 {newEntry.durationMinutes! > 0 ? formatDuration(newEntry.durationMinutes!) : "0分"}
               </div>
             </div>
@@ -562,7 +562,7 @@ export default function IntegratedWorkTimeTable({
               <Button
                 onClick={addEntry}
                 disabled={disabled || !newEntry.startTime || !newEntry.endTime || !newEntry.workContentId || newEntry.durationMinutes! <= 0}
-                className="h-9 w-full bg-blue-600 hover:bg-blue-700 text-white border-0"
+                className="h-9 w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white border-0"
               >
                 <Plus className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">追加</span>
@@ -573,9 +573,9 @@ export default function IntegratedWorkTimeTable({
 
         {/* 合計表示 */}
         {entries.length > 0 && (
-          <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3 text-center">
-            <div className="text-sm text-gray-600 mb-1">合計作業時間</div>
-            <div className="text-lg font-semibold text-blue-700">
+          <div className="bg-blue-50/50 dark:bg-slate-700/30 border border-blue-200 dark:border-slate-600 rounded-lg p-3 text-center">
+            <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">合計作業時間</div>
+            <div className="text-lg font-semibold text-blue-700 dark:text-blue-400">
               {formatDuration(entries.reduce((sum, entry) => sum + entry.durationMinutes, 0))}
             </div>
           </div>
@@ -583,7 +583,7 @@ export default function IntegratedWorkTimeTable({
 
         {/* 工程未選択時のメッセージ */}
         {!selectedProcessId && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-slate-400">
             <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p>工程を選択して作業実績を入力してください</p>
           </div>

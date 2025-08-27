@@ -330,7 +330,7 @@ const FileManagementSystem = () => {
       id: "consumables",
       name: "消耗品",
       icon: Package,
-      color: "text-gray-600",
+      color: "text-gray-600 dark:text-slate-400",
       bgColor: "bg-gray-100 border-gray-300",
       description: "研磨剤、潤滑油、安全用品など",
     },
@@ -484,18 +484,18 @@ const FileManagementSystem = () => {
 
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
                 <FileText className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">統合ファイル管理</h1>
-                <p className="text-gray-600 mt-1">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">統合ファイル管理</h1>
+                <p className="text-gray-600 dark:text-slate-300 mt-1">
                   ファイル・工具・図面・納品書の統合管理システム
                 </p>
               </div>
@@ -503,7 +503,7 @@ const FileManagementSystem = () => {
             <div className="flex items-center space-x-3">
               {/* 検索バー */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="検索..."
@@ -526,7 +526,7 @@ const FileManagementSystem = () => {
         </div>
 
         {/* タブナビゲーション */}
-        <div className="bg-white border-b border-gray-200 px-6">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="files" className="flex items-center space-x-2">
@@ -689,37 +689,37 @@ const FileManagementTab: React.FC<FileManagementTabProps> = ({
 
         <div className="flex-1" />
         
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-slate-300">
           {filteredFiles.length} / {files.length} 件表示
         </div>
       </div>
 
       {/* ファイル一覧テーブル */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/20 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
             <tr>
-              <th className="text-left p-4 font-semibold text-gray-700">ファイル名</th>
-              <th className="text-left p-4 font-semibold text-gray-700">カテゴリ</th>
-              <th className="text-left p-4 font-semibold text-gray-700">サイズ</th>
-              <th className="text-left p-4 font-semibold text-gray-700">更新日</th>
-              <th className="text-left p-4 font-semibold text-gray-700">アップロード者</th>
-              <th className="text-left p-4 font-semibold text-gray-700">ステータス</th>
-              <th className="text-left p-4 font-semibold text-gray-700">アクション</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ファイル名</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">カテゴリ</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">サイズ</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">更新日</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アップロード者</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ステータス</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アクション</th>
             </tr>
           </thead>
           <tbody>
             {filteredFiles.map(file => {
               const FileIcon = getFileIcon(file.type);
               return (
-                <tr key={file.id} className="border-b hover:bg-gray-50">
+                <tr key={file.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                   <td className="p-4">
                     <div className="flex items-center space-x-3">
-                      <FileIcon className="w-5 h-5 text-gray-500" />
+                      <FileIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
                       <div>
-                        <div className="font-medium text-gray-900">{file.name}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{file.name}</div>
                         {file.description && (
-                          <div className="text-sm text-gray-500">{file.description}</div>
+                          <div className="text-sm text-gray-500 dark:text-slate-400">{file.description}</div>
                         )}
                         {file.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -738,13 +738,13 @@ const FileManagementTab: React.FC<FileManagementTabProps> = ({
                       {file.category.name}
                     </Badge>
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
+                  <td className="p-4 text-sm text-gray-600 dark:text-slate-300">
                     {formatFileSize(file.size)}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
+                  <td className="p-4 text-sm text-gray-600 dark:text-slate-300">
                     {file.lastModified}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
+                  <td className="p-4 text-sm text-gray-600 dark:text-slate-300">
                     {file.uploadedBy}
                   </td>
                   <td className="p-4">
@@ -843,35 +843,35 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 
         <div className="flex-1" />
         
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-slate-300">
           {filteredInventory.length} / {inventory.length} 件表示
         </div>
       </div>
 
       {/* 工具一覧テーブル */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/20 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
             <tr>
-              <th className="text-left p-4 font-semibold text-gray-700">名称</th>
-              <th className="text-left p-4 font-semibold text-gray-700">カテゴリ</th>
-              <th className="text-left p-4 font-semibold text-gray-700">ブランド・型番</th>
-              <th className="text-left p-4 font-semibold text-gray-700">ステータス</th>
-              <th className="text-left p-4 font-semibold text-gray-700">保管場所</th>
-              <th className="text-left p-4 font-semibold text-gray-700">現在価値</th>
-              <th className="text-left p-4 font-semibold text-gray-700">アクション</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">名称</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">カテゴリ</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ブランド・型番</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ステータス</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">保管場所</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">現在価値</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アクション</th>
             </tr>
           </thead>
           <tbody>
             {filteredInventory.map(item => {
               const Icon = item.category.icon;
               return (
-                <tr key={item.id} className="border-b hover:bg-gray-50">
+                <tr key={item.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                   <td className="p-4">
                     <div className="flex items-center space-x-3">
                       <Icon className={`w-4 h-4 ${item.category.color}`} />
                       <div>
-                        <div className="font-medium text-gray-900">{item.name}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
                         {item.serialNumber && (
                           <div className="text-sm text-gray-500">S/N: {item.serialNumber}</div>
                         )}
@@ -886,13 +886,13 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                   <td className="p-4">
                     <div className="text-sm">
                       <div className="font-medium">{item.brand}</div>
-                      <div className="text-gray-600">{item.model}</div>
+                      <div className="text-gray-600 dark:text-slate-300">{item.model}</div>
                     </div>
                   </td>
                   <td className="p-4">
                     {getStatusBadge(item.status)}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">
+                  <td className="p-4 text-sm text-gray-600 dark:text-slate-300">
                     {item.location}
                   </td>
                   <td className="p-4 text-sm font-medium">
@@ -977,40 +977,40 @@ const DrawingManagementTab: React.FC<DrawingManagementTabProps> = ({
 
         <div className="flex-1" />
         
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-slate-300">
           {filteredDrawings.length} / {drawings.length} 件表示
         </div>
       </div>
 
       {/* 図面一覧テーブル */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/20 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
             <tr>
-              <th className="text-left p-4 font-semibold text-gray-700">図面番号</th>
-              <th className="text-left p-4 font-semibold text-gray-700">図面名</th>
-              <th className="text-left p-4 font-semibold text-gray-700">改訂版</th>
-              <th className="text-left p-4 font-semibold text-gray-700">種類</th>
-              <th className="text-left p-4 font-semibold text-gray-700">プロジェクト</th>
-              <th className="text-left p-4 font-semibold text-gray-700">ステータス</th>
-              <th className="text-left p-4 font-semibold text-gray-700">アクション</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">図面番号</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">図面名</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">改訂版</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">種類</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">プロジェクト</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ステータス</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アクション</th>
             </tr>
           </thead>
           <tbody>
             {filteredDrawings.map(drawing => (
-              <tr key={drawing.id} className="border-b hover:bg-gray-50">
+              <tr key={drawing.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                 <td className="p-4">
                   <div className="flex items-center space-x-3">
                     <FileText className="w-4 h-4 text-blue-500" />
                     <div>
-                      <div className="font-medium text-gray-900">{drawing.drawingNumber}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{drawing.drawingNumber}</div>
                       <div className="text-sm text-gray-500">縮尺: {drawing.scale}</div>
                     </div>
                   </div>
                 </td>
                 <td className="p-4">
                   <div>
-                    <div className="font-medium text-gray-900">{drawing.title}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{drawing.title}</div>
                     <div className="text-sm text-gray-500">{drawing.clientName}</div>
                   </div>
                 </td>
@@ -1095,33 +1095,33 @@ const DeliveryManagementTab: React.FC<DeliveryManagementTabProps> = ({
 
         <div className="flex-1" />
         
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-slate-300">
           {filteredDeliveries.length} / {deliveries.length} 件表示
         </div>
       </div>
 
       {/* 納品書一覧テーブル */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/20 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
             <tr>
-              <th className="text-left p-4 font-semibold text-gray-700">納品書番号</th>
-              <th className="text-left p-4 font-semibold text-gray-700">注文番号</th>
-              <th className="text-left p-4 font-semibold text-gray-700">顧客名</th>
-              <th className="text-left p-4 font-semibold text-gray-700">納品日</th>
-              <th className="text-left p-4 font-semibold text-gray-700">金額</th>
-              <th className="text-left p-4 font-semibold text-gray-700">ステータス</th>
-              <th className="text-left p-4 font-semibold text-gray-700">アクション</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">納品書番号</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">注文番号</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">顧客名</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">納品日</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">金額</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">ステータス</th>
+              <th className="text-left p-4 font-semibold text-gray-700 dark:text-slate-300">アクション</th>
             </tr>
           </thead>
           <tbody>
             {filteredDeliveries.map(delivery => (
-              <tr key={delivery.id} className="border-b hover:bg-gray-50">
+              <tr key={delivery.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                 <td className="p-4">
                   <div className="flex items-center space-x-3">
                     <Receipt className="w-4 h-4 text-green-500" />
                     <div>
-                      <div className="font-medium text-gray-900">{delivery.deliveryNumber}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{delivery.deliveryNumber}</div>
                       {delivery.trackingNumber && (
                         <div className="text-sm text-gray-500">追跡: {delivery.trackingNumber}</div>
                       )}
@@ -1133,7 +1133,7 @@ const DeliveryManagementTab: React.FC<DeliveryManagementTabProps> = ({
                 </td>
                 <td className="p-4">
                   <div>
-                    <div className="font-medium text-gray-900">{delivery.clientName}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{delivery.clientName}</div>
                     <div className="text-sm text-gray-500">
                       {delivery.clientAddress.substring(0, 20)}...
                     </div>
@@ -1224,7 +1224,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">ファイルアップロード</h2>
           <Button variant="outline" onClick={onClose}>
@@ -1243,7 +1243,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           {selectedFile ? (
             <div>
-              <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
               <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
             </div>
           ) : (

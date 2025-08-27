@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import {
 
 const OrderManagement = () => {
   const router = useRouter();
+  const { trackAction } = useActivityTracking();
   
   // State management
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -169,6 +171,14 @@ const OrderManagement = () => {
       }
       
       if (result.success) {
+        // Track the action
+        const action = selectedOrder?.id ? 'order_updated' : 'order_created';
+        trackAction(action, {
+          orderId: selectedOrder?.id || result.data?.id,
+          customerName: orderData.customerName,
+          orderValue: orderData.expectedRevenue
+        });
+        
         setShowNewOrderModal(false);
         setSelectedOrder(null);
         // Data will be updated via real-time subscription
@@ -186,10 +196,19 @@ const OrderManagement = () => {
   const handleDeleteOrder = async (id: string) => {
     if (!confirm("この受注案件を削除しますか？")) return;
     
+    const orderToDelete = orders.find(order => order.id === id);
+    
     setIsSaving(true);
     try {
       const result = await deleteOrder(id);
-      if (!result.success) {
+      if (result.success) {
+        // Track the deletion
+        trackAction('order_deleted', {
+          orderId: id,
+          customerName: orderToDelete?.customerName,
+          orderValue: orderToDelete?.expectedRevenue
+        });
+      } else {
         alert(`削除に失敗しました: ${result.error}`);
       }
       // Data will be updated via real-time subscription
@@ -379,11 +398,11 @@ const OrderManagement = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="ml-16 h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">データを読み込み中...</p>
+            <p className="text-gray-600 dark:text-gray-400">データを読み込み中...</p>
           </div>
         </div>
       </div>
@@ -391,30 +410,30 @@ const OrderManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* Header - 統一されたスタイル */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
                 <Building2 className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">受注案件管理</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">受注案件管理</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   受注案件の一元管理と工程・工数管理への連携
                 </p>
               </div>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
               <Input
                 type="text"
                 placeholder="案件を検索..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                className="pl-10 pr-4 py-2 w-80 border border-gray-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               />
             </div>
           </div>
@@ -423,13 +442,13 @@ const OrderManagement = () => {
         </div>
 
         {/* Main content - テーブル形式 */}
-        <div className="flex-1 overflow-auto bg-gray-50">
+        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
           <div className="p-6">
             {/* アクションバー */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <h2 className="text-lg font-semibold text-gray-900">案件一覧</h2>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">案件一覧</h2>
+                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-slate-400">
                   <div className="flex items-center gap-1">
                     <Package className="w-4 h-4" />
                     <span>{statistics.totalOrders}件</span>
@@ -440,12 +459,12 @@ const OrderManagement = () => {
                   </div>
                   <div className="flex items-center gap-1">
                     <AlertCircle className="w-4 h-4 text-red-500" />
-                    <span className="text-red-600">{statistics.urgentOrders}件緊急</span>
+                    <span className="text-red-600 dark:text-red-400">{statistics.urgentOrders}件緊急</span>
                   </div>
                 </div>
               </div>
               <Button
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-6 shadow-lg hover:shadow-xl transition-all"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-500 dark:to-purple-500 dark:hover:from-indigo-600 dark:hover:to-purple-600 text-white font-medium px-6 shadow-lg hover:shadow-xl transition-all"
                 onClick={async () => {
                   const newOrder = await createNewOrder();
                   setSelectedOrder(newOrder);
@@ -459,10 +478,10 @@ const OrderManagement = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-6">
                 <div className="flex items-center">
                   <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                  <span className="text-red-700">{error}</span>
+                  <span className="text-red-700 dark:text-red-300">{error}</span>
                 </div>
               </div>
             )}
@@ -470,26 +489,26 @@ const OrderManagement = () => {
             {/* テーブル */}
             {orders.length === 0 ? (
               <div className="text-center py-16">
-                <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 mb-2">受注案件がありません</p>
-                <p className="text-gray-400">新しい案件を追加してください</p>
+                <Building2 className="w-16 h-16 text-gray-300 dark:text-slate-500 mx-auto mb-4" />
+                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">受注案件がありません</p>
+                <p className="text-gray-400 dark:text-slate-500">新しい案件を追加してください</p>
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 border-b border-gray-200 dark:border-slate-600">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">管理番号</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">取引先</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">工事名</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">数量</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">見積金額</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">納期</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">ステータス</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">管理番号</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">取引先</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">工事名</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">数量</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">見積金額</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">納期</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">ステータス</th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                     {orders.filter(order => {
                       const matchesSearch = order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                            order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -500,9 +519,9 @@ const OrderManagement = () => {
                         (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
                       );
                       return (
-                        <tr key={order.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                        <tr key={order.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all ${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-gray-50/50 dark:bg-slate-700/50'}`}>
                           <td className="px-6 py-4">
-                            <span className="font-mono text-sm font-medium text-gray-800 bg-gray-100 px-2 py-1 rounded">
+                            <span className="font-mono text-sm font-medium text-gray-800 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
                               {order.managementNumber}
                             </span>
                           </td>
@@ -512,17 +531,17 @@ const OrderManagement = () => {
                                 className="w-3 h-3 rounded-full" 
                                 style={{ backgroundColor: getClientColor(order.client) }}
                               ></div>
-                              <span className="text-sm font-medium text-gray-900">{order.client}</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{order.client}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-sm font-medium text-gray-900">{order.projectName}</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{order.projectName}</span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="text-sm text-gray-700">{order.quantity} {order.unit}</span>
+                            <span className="text-sm text-gray-700 dark:text-slate-300">{order.quantity} {order.unit}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               {order.estimatedAmount ? `¥${order.estimatedAmount.toLocaleString()}` : "-"}
                             </span>
                           </td>
@@ -532,17 +551,17 @@ const OrderManagement = () => {
                                 daysUntilDelivery <= 3 ? 'bg-red-500' :
                                 daysUntilDelivery <= 7 ? 'bg-orange-500' : 'bg-green-500'
                               }`}></div>
-                              <span className="text-sm text-gray-700">{order.deliveryDate}</span>
+                              <span className="text-sm text-gray-700 dark:text-slate-300">{order.deliveryDate}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-center">
                             {order.status === 'data-work' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                 <CheckCircle2 className="w-3 h-3" />
                                 作成済み
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                                 <Clock className="w-3 h-3" />
                                 計画中
                               </span>
@@ -553,7 +572,7 @@ const OrderManagement = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
                                 onClick={() => {
                                   setSelectedOrder(order);
                                   setShowNewOrderModal(true);
@@ -565,7 +584,7 @@ const OrderManagement = () => {
                               {order.status !== 'data-work' && (
                                 <Button
                                   size="sm"
-                                  className="h-8 px-3 text-xs bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white"
+                                  className="h-8 px-3 text-xs bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 dark:from-emerald-400 dark:to-blue-400 dark:hover:from-emerald-500 dark:hover:to-blue-500 text-white"
                                   onClick={() => createProcessAndWorkHours(order)}
                                   disabled={isSaving}
                                 >
@@ -576,7 +595,7 @@ const OrderManagement = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
                                 onClick={() => order.id && handleDeleteOrder(order.id)}
                                 disabled={isSaving}
                               >
@@ -643,15 +662,15 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-700">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           {order.id ? "受注案件編集" : "新規受注案件"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">管理番号</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">管理番号</label>
               <Input
                 value={formData.managementNumber}
                 onChange={(e) =>
@@ -659,10 +678,11 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">工事名</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">工事名</label>
               <Input
                 value={formData.projectName}
                 onChange={(e) =>
@@ -670,12 +690,13 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">受注先</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">受注先</label>
             <Input
               value={formData.client}
               onChange={(e) =>
@@ -683,12 +704,13 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
               }
               required
               disabled={isSaving}
+              className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">数量</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">数量</label>
               <Input
                 type="number"
                 value={formData.quantity}
@@ -697,10 +719,11 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">単位</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">単位</label>
               <Input
                 value={formData.unit}
                 onChange={(e) =>
@@ -708,10 +731,11 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">見積金額</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">見積金額</label>
               <Input
                 type="number"
                 value={formData.estimatedAmount || ""}
@@ -723,13 +747,14 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 placeholder="円"
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">受注日</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">受注日</label>
               <Input
                 type="date"
                 value={formData.orderDate}
@@ -738,10 +763,11 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">納期</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">納期</label>
               <Input
                 type="date"
                 value={formData.deliveryDate}
@@ -750,14 +776,15 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                 }
                 required
                 disabled={isSaving}
+                className="bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">詳細・備考</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">詳細・備考</label>
             <textarea
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               value={formData.description || ""}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
@@ -778,7 +805,7 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
             </Button>
             <Button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
               disabled={isSaving}
             >
               {isSaving ? "保存中..." : "保存"}

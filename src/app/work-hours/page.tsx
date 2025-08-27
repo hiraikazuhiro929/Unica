@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ const WorkHoursManagement = () => {
   const searchParams = useSearchParams();
   const fromProcessId = searchParams?.get('fromProcess') || null;
   const fromOrderId = searchParams?.get('orderId') || null;
+  const { trackAction } = useActivityTracking();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<WorkHours["status"] | "all">("all");
@@ -531,30 +533,30 @@ const WorkHoursManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-6">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-lg">
                 <Clock className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                   工数管理
                   {fromProcessId && (
-                    <span className="ml-3 text-sm font-normal text-green-600 bg-green-100 px-2 py-1 rounded">
+                    <span className="ml-3 text-sm font-normal text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
                       工程から作成中
                     </span>
                   )}
                   {fromOrderId && (
-                    <span className="ml-3 text-sm font-normal text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                    <span className="ml-3 text-sm font-normal text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
                       受注案件から参照中
                     </span>
                   )}
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-600 dark:text-slate-400 mt-1">
                   計画と実績の工数を管理し、プロジェクトの効率性を追跡します
                 </p>
                 {processInfo && !processInfo.isOrderContext && (
@@ -579,13 +581,13 @@ const WorkHoursManagement = () => {
             <div className="flex items-center space-x-3">
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="工数データを検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-purple-500"
+                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 dark:focus:border-purple-400 dark:bg-slate-700 dark:text-white"
                 />
               </div>
               {/* Filter */}
@@ -604,13 +606,13 @@ const WorkHoursManagement = () => {
               {/* Sync Status */}
               <div className="flex items-center gap-2">
                 {syncStats.lastSyncTime && (
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-gray-600 dark:text-slate-400">
                     最終同期: {syncStats.lastSyncTime.toLocaleTimeString('ja-JP')}
                   </span>
                 )}
                 <Button
                   variant="outline"
-                  className="border-green-300 text-green-600 hover:bg-green-50 font-medium px-4"
+                  className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 font-medium px-4"
                   onClick={triggerManualSync}
                   disabled={isSyncing || isLoading}
                 >
@@ -621,7 +623,7 @@ const WorkHoursManagement = () => {
               {/* Analytics Button */}
               <Button
                 variant="outline"
-                className="border-orange-300 text-orange-600 hover:bg-orange-50 font-medium px-4"
+                className="border-orange-300 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 font-medium px-4"
                 onClick={() => setShowAnalyticsModal(true)}
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
@@ -648,7 +650,7 @@ const WorkHoursManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">総プロジェクト</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">総プロジェクト</p>
                     <p className="text-2xl font-bold text-purple-600">
                       {statistics.totalProjects}
                     </p>
@@ -662,7 +664,7 @@ const WorkHoursManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">計画工数</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">計画工数</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {statistics.totalPlannedHours}h
                     </p>
@@ -676,7 +678,7 @@ const WorkHoursManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">実績工数</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">実績工数</p>
                     <p className="text-2xl font-bold text-green-600">
                       {statistics.totalActualHours}h
                     </p>
@@ -690,7 +692,7 @@ const WorkHoursManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">効率性</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">効率性</p>
                     <p className="text-2xl font-bold text-yellow-600">
                       {statistics.averageEfficiency.toFixed(1)}%
                     </p>
@@ -704,7 +706,7 @@ const WorkHoursManagement = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">コスト差異</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">コスト差異</p>
                     <p className="text-2xl font-bold text-red-600">
                       {statistics.totalActualCost > 0 
                         ? `${((statistics.totalActualCost - statistics.totalPlannedCost) / statistics.totalPlannedCost * 100).toFixed(1)}%`
@@ -721,14 +723,14 @@ const WorkHoursManagement = () => {
 
         {/* Error Display */}
         {error && (
-          <div className="mx-6 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-6 mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center">
               <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700">{error}</span>
+              <span className="text-red-700 dark:text-red-400">{error}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto text-red-500 hover:text-red-700"
+                className="ml-auto text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 onClick={() => setError(null)}
               >
                 ×
@@ -754,32 +756,32 @@ const WorkHoursManagement = () => {
                 {/* Work Hours List */}
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold">工数管理一覧</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">工数管理一覧</h3>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {filteredWorkHours.map((wh) => (
-                        <div key={wh.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div key={wh.id} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                <h4 className="font-semibold text-gray-900">{wh.projectName}</h4>
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{wh.projectName}</h4>
                                 {getStatusBadge(wh.status)}
                               </div>
-                              <div className="text-sm text-gray-600 mb-2">
+                              <div className="text-sm text-gray-600 dark:text-slate-400 mb-2">
                                 <span className="font-medium">{wh.client}</span> • {wh.managementNumber}
                               </div>
                               <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
-                                  <span className="text-gray-500">計画:</span>
+                                  <span className="text-gray-500 dark:text-slate-400">計画:</span>
                                   <span className="ml-1 font-medium">{wh.plannedHours.total}h</span>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">実績:</span>
+                                  <span className="text-gray-500 dark:text-gray-400">実績:</span>
                                   <span className="ml-1 font-medium">{wh.actualHours.total}h</span>
                                 </div>
                                 <div className="flex items-center">
-                                  <span className="text-gray-500">効率:</span>
+                                  <span className="text-gray-500 dark:text-gray-400">効率:</span>
                                   <span className="ml-1 font-medium">
                                     {wh.actualHours.total > 0 
                                       ? `${((wh.actualHours.total / wh.plannedHours.total) * 100).toFixed(1)}%`
@@ -806,7 +808,7 @@ const WorkHoursManagement = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                                  className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                   onClick={() => router.push(`/orders?highlight=${wh.orderId}`)}
                                 >
                                   <Building2 className="w-3 h-3 mr-1" />
@@ -817,7 +819,7 @@ const WorkHoursManagement = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="border-green-300 text-green-600 hover:bg-green-50"
+                                  className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
                                   onClick={() => router.push(`/tasks?highlight=${wh.integrations.processId}`)}
                                 >
                                   <FileText className="w-3 h-3 mr-1" />
@@ -845,37 +847,37 @@ const WorkHoursManagement = () => {
                 {/* Status Distribution */}
                 <Card>
                   <CardHeader>
-                    <h3 className="text-lg font-semibold">ステータス分布</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ステータス分布</h3>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                          <span>計画中</span>
+                          <span className="text-gray-900 dark:text-white">計画中</span>
                         </div>
-                        <span className="font-semibold">{statistics.byStatus.planning}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.planning}</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <span>進行中</span>
+                          <span className="text-gray-900 dark:text-white">進行中</span>
                         </div>
-                        <span className="font-semibold">{statistics.byStatus.inProgress}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.inProgress}</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span>完了</span>
+                          <span className="text-gray-900 dark:text-white">完了</span>
                         </div>
-                        <span className="font-semibold">{statistics.byStatus.completed}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.completed}</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <span>遅延</span>
+                          <span className="text-gray-900 dark:text-white">遅延</span>
                         </div>
-                        <span className="font-semibold">{statistics.byStatus.delayed}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.delayed}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -886,33 +888,33 @@ const WorkHoursManagement = () => {
             <TabsContent value="details" className="mt-6">
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold">詳細工数一覧</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">詳細工数一覧</h3>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-3">プロジェクト</th>
-                          <th className="text-left p-3">クライアント</th>
-                          <th className="text-left p-3">段取り</th>
-                          <th className="text-left p-3">機械加工</th>
-                          <th className="text-left p-3">仕上げ</th>
-                          <th className="text-left p-3">合計</th>
-                          <th className="text-left p-3">ステータス</th>
-                          <th className="text-left p-3">アクション</th>
+                        <tr className="border-b border-gray-200 dark:border-slate-600">
+                          <th className="text-left p-3 text-gray-900 dark:text-white">プロジェクト</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-white">クライアント</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-white">段取り</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">機械加工</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">仕上げ</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">合計</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">ステータス</th>
+                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">アクション</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredWorkHours.map((wh) => (
-                          <tr key={wh.id} className="border-b hover:bg-gray-50">
+                          <tr key={wh.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
                             <td className="p-3">
                               <div>
-                                <div className="font-medium">{wh.projectName}</div>
-                                <div className="text-xs text-gray-500">{wh.managementNumber}</div>
+                                <div className="font-medium text-gray-900 dark:text-white">{wh.projectName}</div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400">{wh.managementNumber}</div>
                               </div>
                             </td>
-                            <td className="p-3">{wh.client}</td>
+                            <td className="p-3 text-gray-900 dark:text-white">{wh.client}</td>
                             <td className="p-3">
                               <div className="text-xs">
                                 <div>計: {wh.plannedHours.setup}h</div>
@@ -955,7 +957,7 @@ const WorkHoursManagement = () => {
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                                    className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
                                     onClick={() => router.push(`/orders?highlight=${wh.orderId}`)}
                                   >
                                     <Building2 className="w-3 h-3" />
@@ -965,7 +967,7 @@ const WorkHoursManagement = () => {
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    className="border-green-300 text-green-600 hover:bg-green-50"
+                                    className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
                                     onClick={() => router.push(`/tasks?highlight=${wh.integrations.processId}`)}
                                   >
                                     <FileText className="w-3 h-3" />
@@ -974,7 +976,7 @@ const WorkHoursManagement = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                  className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                                   onClick={() => handleDeleteWorkHours(wh.id)}
                                   disabled={wh.locked || isLoading}
                                 >
@@ -1013,29 +1015,29 @@ const WorkHoursManagement = () => {
             <TabsContent value="workers" className="mt-6">
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold">作業者管理</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">作業者管理</h3>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {workers.map((worker) => (
-                      <Card key={worker.id} className="border">
+                      <Card key={worker.id} className="border border-gray-200 dark:border-slate-600">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-blue-100 rounded-full">
-                              <User className="w-5 h-5 text-blue-600" />
+                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                              <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
-                              <h4 className="font-semibold">{worker.name}</h4>
-                              <p className="text-sm text-gray-600">{worker.department}</p>
+                              <h4 className="font-semibold text-gray-900 dark:text-white">{worker.name}</h4>
+                              <p className="text-sm text-gray-600 dark:text-slate-400">{worker.department}</p>
                             </div>
                           </div>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span>時間単価:</span>
-                              <span className="font-medium">¥{worker.hourlyRate.toLocaleString()}</span>
+                              <span className="text-gray-700 dark:text-slate-300">時間単価:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">¥{worker.hourlyRate.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span>スキル:</span>
+                              <span className="text-gray-700 dark:text-slate-300">スキル:</span>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {worker.skills.map((skill, index) => (
                                   <Badge key={index} variant="secondary" className="text-xs">
@@ -1056,35 +1058,35 @@ const WorkHoursManagement = () => {
             <TabsContent value="machines" className="mt-6">
               <Card>
                 <CardHeader>
-                  <h3 className="text-lg font-semibold">機械管理</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">機械管理</h3>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {machines.map((machine) => (
-                      <Card key={machine.id} className="border">
+                      <Card key={machine.id} className="border border-gray-200 dark:border-slate-600">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <div className={`p-2 rounded-full ${
-                              machine.status === 'available' ? 'bg-green-100' :
-                              machine.status === 'busy' ? 'bg-red-100' : 'bg-yellow-100'
+                              machine.status === 'available' ? 'bg-green-100 dark:bg-green-900/30' :
+                              machine.status === 'busy' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'
                             }`}>
                               <Wrench className={`w-5 h-5 ${
-                                machine.status === 'available' ? 'text-green-600' :
-                                machine.status === 'busy' ? 'text-red-600' : 'text-yellow-600'
+                                machine.status === 'available' ? 'text-green-600 dark:text-green-400' :
+                                machine.status === 'busy' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'
                               }`} />
                             </div>
                             <div>
-                              <h4 className="font-semibold">{machine.name}</h4>
-                              <p className="text-sm text-gray-600">{machine.type}</p>
+                              <h4 className="font-semibold text-gray-900 dark:text-white">{machine.name}</h4>
+                              <p className="text-sm text-gray-600 dark:text-slate-400">{machine.type}</p>
                             </div>
                           </div>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span>稼働単価:</span>
-                              <span className="font-medium">¥{machine.hourlyRate.toLocaleString()}/h</span>
+                              <span className="text-gray-700 dark:text-slate-300">稼働単価:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">¥{machine.hourlyRate.toLocaleString()}/h</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span>ステータス:</span>
+                              <span className="text-gray-700 dark:text-slate-300">ステータス:</span>
                               <Badge variant={
                                 machine.status === 'available' ? 'default' :
                                 machine.status === 'busy' ? 'destructive' : 'secondary'
@@ -1148,7 +1150,7 @@ const SyncManagementTab = ({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">同期済み件数</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">同期済み件数</p>
                 <p className="text-2xl font-bold text-blue-600">{syncStats.totalSynced}</p>
               </div>
               <Activity className="w-8 h-8 text-blue-500" />
@@ -1160,7 +1162,7 @@ const SyncManagementTab = ({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">最終同期</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">最終同期</p>
                 <p className="text-sm font-bold text-green-600">
                   {syncStats.lastSyncTime 
                     ? syncStats.lastSyncTime.toLocaleString('ja-JP')
@@ -1177,7 +1179,7 @@ const SyncManagementTab = ({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">保留中</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">保留中</p>
                 <p className="text-2xl font-bold text-purple-600">{syncStats.pendingReports}</p>
               </div>
               <Target className="w-8 h-8 text-purple-500" />
@@ -1189,7 +1191,7 @@ const SyncManagementTab = ({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">ステータス</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">ステータス</p>
                 <p className="text-sm font-bold text-blue-600">
                   {syncError ? 'エラー' : '正常'}
                 </p>
@@ -1204,7 +1206,7 @@ const SyncManagementTab = ({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">同期情報</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">同期情報</h3>
             <Button
               variant="outline"
               size="sm"
@@ -1216,26 +1218,26 @@ const SyncManagementTab = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">自動同期機能</h4>
-              <p className="text-sm text-blue-700">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">自動同期機能</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-200">
                 日報データが更新されると、自動的に工数実績が更新されます。
               </p>
             </div>
             
             {syncError && (
-              <div className="p-4 bg-red-50 rounded-lg">
-                <h4 className="font-medium text-red-900 mb-2">同期エラー</h4>
-                <p className="text-sm text-red-700">{syncError}</p>
+              <div className="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                <h4 className="font-medium text-red-900 dark:text-red-100 mb-2">同期エラー</h4>
+                <p className="text-sm text-red-700 dark:text-red-200">{syncError}</p>
               </div>
             )}
             
             <div className="space-y-2">
-              <h4 className="font-medium text-gray-700">同期対象プロセス</h4>
+              <h4 className="font-medium text-gray-700 dark:text-slate-300">同期対象プロセス</h4>
               <div className="grid grid-cols-1 gap-2">
                 {workHours.filter(wh => wh.integrations?.dailyReportIds && wh.integrations.dailyReportIds.length > 0).map(wh => (
-                  <div key={wh.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span className="text-sm">{wh.projectName}</span>
+                  <div key={wh.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700 rounded">
+                    <span className="text-sm text-gray-900 dark:text-white">{wh.projectName}</span>
                     <Badge variant="outline" className="text-xs">
                       日報 {wh.integrations.dailyReportIds.length}件
                     </Badge>
@@ -1255,11 +1257,11 @@ const SyncManagementTab = ({
 const WorkHoursManagementWithSuspense = () => {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="ml-16 h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">工数管理データを読み込み中...</p>
+            <p className="text-gray-600 dark:text-slate-400">工数管理データを読み込み中...</p>
           </div>
         </div>
       </div>

@@ -650,13 +650,13 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
   // processesが空の場合の処理
   if (!processes || processes.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 p-8">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-slate-600 p-8">
         <div className="text-center">
-          <Grid3X3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-xl text-gray-500 mb-2">
+          <Grid3X3 className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+          <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">
             表示する工程データがありません
           </p>
-          <p className="text-gray-400">
+          <p className="text-gray-400 dark:text-slate-500">
             工程が作成されると、ここにガントチャートが表示されます
           </p>
         </div>
@@ -706,25 +706,25 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               {/* ミニマップ */}
               {showMinimap && (
-                <div className="mx-6 mt-4 p-3 bg-white/60 backdrop-blur rounded-lg border border-gray-200/50">
+                <div className="mx-6 mt-4 p-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur rounded-lg border border-gray-200/50 dark:border-slate-600/50">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                    <span className="text-xs font-medium text-gray-600 dark:text-slate-300 flex items-center gap-1">
                       <MapIcon className="w-3 h-3" />
                       プロジェクト全体図
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 ml-2">
+                      <span className="text-xs text-gray-500 dark:text-slate-400 ml-2">
                         クリックで移動
                       </span>
                     </div>
                   </div>
                   <div
                     ref={minimapRef}
-                    className="relative h-20 bg-white/80 border border-gray-200/50 rounded-lg cursor-pointer overflow-hidden group"
+                    className="relative h-20 bg-white/80 dark:bg-slate-700/80 border border-gray-200/50 dark:border-slate-600/50 rounded-lg cursor-pointer overflow-hidden group"
                     onClick={handleMinimapClick}
                   >
                     {/* 月表示 */}
-                    <div className="absolute inset-x-0 top-0 h-4 bg-gray-50 border-b flex">
+                    <div className="absolute inset-x-0 top-0 h-4 bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 flex">
                       {(() => {
                         const months = [];
                         const current = new Date(projectDateRange.minDate);
@@ -754,7 +754,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                           months.push(
                             <div
                               key={`month-${current.getMonth()}-${current.getFullYear()}`}
-                              className="absolute text-xs text-gray-600 px-1"
+                              className="absolute text-xs text-gray-600 dark:text-slate-300 px-1"
                               style={{
                                 left: `${startPos}%`,
                                 width: `${endPos - startPos}%`,
@@ -849,17 +849,17 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               <div className="flex mt-4 overflow-hidden">
                 {/* リソースリスト */}
-                <div className="w-80 bg-white/60 backdrop-blur border-r border-gray-200/50 flex-shrink-0 rounded-l-lg">
-                  <div className="p-4 border-t border-b border-gray-200/50 bg-white/80">
+                <div className="w-80 bg-white/60 dark:bg-slate-800/60 backdrop-blur border-r border-gray-200/50 dark:border-slate-600/50 flex-shrink-0 rounded-l-lg">
+                  <div className="p-4 border-t border-b border-gray-200/50 dark:border-slate-600/50 bg-white/80 dark:bg-slate-700/80">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-800">
+                      <span className="font-semibold text-gray-800 dark:text-white">
                         {viewType === "machine"
                           ? "機械"
                           : viewType === "person"
                           ? "担当者"
                           : "案件"}
                       </span>
-                      <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      <span className="text-xs text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-600 px-2 py-1 rounded">
                         稼働率
                       </span>
                     </div>
@@ -883,9 +883,9 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                         return (
                           <div
                             key={`resource-${viewType}-${resourceName}`}
-                            className={`border-b border-gray-200 ${
+                            className={`border-b border-gray-200 dark:border-slate-600 ${
                               dropZone?.resourceName === resourceName
-                                ? "bg-green-50"
+                                ? "bg-green-50 dark:bg-green-900/20"
                                 : ""
                             }`}
                             onDragOver={(e) => {
@@ -896,7 +896,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                             }}
                           >
                             <div
-                              className="p-3 flex items-center justify-between bg-white hover:bg-gray-50 transition-colors"
+                              className="p-3 flex items-center justify-between bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                               style={{
                                 height: `${Math.max(
                                   100,
@@ -905,13 +905,13 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                               }}
                             >
                               <div className="flex-1">
-                                <div className="font-semibold text-base text-gray-900 mb-1">
+                                <div className="font-semibold text-base text-gray-900 dark:text-white mb-1">
                                   {resourceName}
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600 dark:text-slate-300">
                                   {resourceProcesses.length}件の工程
                                 </div>
-                                <div className="text-xs text-gray-500 mt-1">
+                                <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                                   総工数:{" "}
                                   {resourceProcesses.reduce(
                                     (sum, p) =>
@@ -947,7 +947,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                     }}
                   >
                     {/* 日付タイムライン（sticky固定） */}
-                    <div className="sticky top-0 z-20 border-t border-b border-gray-200/50 bg-white/90 backdrop-blur">
+                    <div className="sticky top-0 z-20 border-t border-b border-gray-200/50 dark:border-slate-600/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur">
                       <div
                         className="flex"
                         style={{ minWidth: `${dates.length * zoomLevel}px` }}
@@ -970,12 +970,12 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                           return (
                             <div
                               key={`date-${index}`}
-                              className={`flex-shrink-0 text-xs text-center border-r border-gray-200 flex flex-col justify-center items-center ${
+                              className={`flex-shrink-0 text-xs text-center border-r border-gray-200 dark:border-slate-600 flex flex-col justify-center items-center ${
                                 isToday
-                                  ? "bg-blue-100 font-bold text-blue-800 border-blue-300"
+                                  ? "bg-blue-100 dark:bg-blue-900/50 font-bold text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-600"
                                   : isWeekend
-                                  ? "bg-red-50 text-red-600"
-                                  : "bg-white hover:bg-gray-50"
+                                  ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                                  : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-900 dark:text-white"
                               }`}
                               style={{
                                 width: `${zoomLevel}px`,
@@ -990,7 +990,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                               {zoomLevel >= 40 && (
                                 <div
                                   className={`text-[10px] mt-0.5 ${
-                                    isWeekend ? "text-red-500" : "text-gray-500"
+                                    isWeekend ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-slate-400"
                                   }`}
                                 >
                                   {dayNames[date.getDay()]}
@@ -1027,10 +1027,10 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                               key={`grid-${index}`}
                               className={`flex-shrink-0 border-r ${
                                 isToday
-                                  ? "bg-blue-50 border-blue-200"
+                                  ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-600"
                                   : isWeekend
-                                  ? "bg-gray-50 border-gray-100"
-                                  : "border-gray-100"
+                                  ? "bg-gray-50 dark:bg-slate-700/30 border-gray-100 dark:border-slate-600"
+                                  : "border-gray-100 dark:border-slate-600"
                               }`}
                               style={{ width: `${zoomLevel}px` }}
                             />
@@ -1043,7 +1043,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                         ([resourceName, resourceProcesses]) => (
                           <div
                             key={`gantt-row-${viewType}-${resourceName}`}
-                            className="border-b border-gray-200"
+                            className="border-b border-gray-200 dark:border-slate-600"
                             role="row"
                           >
                             <div
@@ -1151,7 +1151,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               {/* 選択されたプロセスの詳細パネル */}
               {selectedProcess && (
-                <div className="border-t border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+                <div className="border-t border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 p-4">
                   {(() => {
                     const process = filteredProcesses.find(
                       (p) => p.id === selectedProcess
@@ -1170,10 +1170,10 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                               }}
                             />
                             <div>
-                              <div className="font-bold text-lg text-gray-900">
+                              <div className="font-bold text-lg text-gray-900 dark:text-white">
                                 {process.projectName}
                               </div>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-slate-300">
                                 {process.managementNumber} |{" "}
                                 {process.orderClient}
                               </div>
@@ -1184,7 +1184,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
                           <div className="flex items-center gap-4 text-sm">
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-600">進捗:</span>
+                              <span className="text-gray-600 dark:text-slate-300">進捗:</span>
                               <div className="flex items-center gap-2">
                                 <input
                                   type="range"
@@ -1198,31 +1198,31 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
                                   min="0"
                                   max="100"
                                   step="5"
-                                  className="w-20"
+                                  className="w-20 dark:bg-slate-600"
                                 />
-                                <span className="font-bold text-blue-600 min-w-[40px]">
+                                <span className="font-bold text-blue-600 dark:text-blue-400 min-w-[40px]">
                                   {process.progress}%
                                 </span>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-600">工数:</span>
-                              <span className="font-bold text-emerald-600">
+                              <span className="text-gray-600 dark:text-slate-300">工数:</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                 {calculateTotalHours(process.workDetails)}H
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-600">担当:</span>
-                              <span className="font-medium text-gray-800">
+                              <span className="text-gray-600 dark:text-slate-300">担当:</span>
+                              <span className="font-medium text-gray-800 dark:text-slate-200">
                                 {process.fieldPerson}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-600">期間:</span>
-                              <span className="font-medium text-gray-800">
+                              <span className="text-gray-600 dark:text-slate-300">期間:</span>
+                              <span className="font-medium text-gray-800 dark:text-slate-200">
                                 {new Date(
                                   process.processingPlanDate
                                 ).toLocaleDateString("ja-JP")}
@@ -1235,8 +1235,8 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
                             {process.assignedMachines.length > 0 && (
                               <div className="flex items-center gap-2">
-                                <span className="text-gray-600">機械:</span>
-                                <span className="font-medium text-gray-800">
+                                <span className="text-gray-600 dark:text-slate-300">機械:</span>
+                                <span className="font-medium text-gray-800 dark:text-slate-200">
                                   {process.assignedMachines.join(", ")}
                                 </span>
                               </div>

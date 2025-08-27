@@ -71,12 +71,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 ml-0 md:ml-16 flex transition-colors duration-300">
+    <div className="h-screen bg-gray-50 dark:bg-slate-900 ml-0 md:ml-16 flex transition-colors duration-300">
       {/* 左サイドバー */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 transition-colors duration-300">
+      <div className="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 p-4 transition-colors duration-300">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">システム設定</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">アプリケーションの設定を管理</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">システム設定</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">アプリケーションの設定を管理</p>
         </div>
         
         <nav className="space-y-2">
@@ -85,7 +85,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'general'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -99,7 +99,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'appearance'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -113,7 +113,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'notifications'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -127,7 +127,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'security'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -141,7 +141,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'system'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -155,7 +155,7 @@ export default function SettingsPage() {
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'advanced'
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -167,18 +167,18 @@ export default function SettingsPage() {
       </div>
 
       {/* 右メインコンテンツ */}
-      <div className="flex-1 p-6 overflow-auto bg-white dark:bg-gray-800 transition-colors duration-300">
+      <div className="flex-1 p-6 overflow-auto bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
         {/* 一般設定セクション */}
         {activeSection === 'general' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">一般設定</h2>
-              <p className="text-gray-600 dark:text-gray-400">基本的なアプリケーション設定</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">一般設定</h2>
+              <p className="text-gray-600 dark:text-slate-400">基本的なアプリケーション設定</p>
             </div>
             
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">言語</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">言語</Label>
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -193,7 +193,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">タイムゾーン</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">タイムゾーン</Label>
                 <Select value={localSettings.timezone} onValueChange={(value) => handleLocalSettingChange('timezone', value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -208,7 +208,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">日付形式</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">日付形式</Label>
                 <Select value={localSettings.dateFormat} onValueChange={(value) => handleLocalSettingChange('dateFormat', value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -223,7 +223,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">時刻形式</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">時刻形式</Label>
                 <Select value={localSettings.timeFormat} onValueChange={(value) => handleLocalSettingChange('timeFormat', value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -236,7 +236,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4">
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
                   <Save className="w-4 h-4 mr-2" />
                   変更を保存
                 </Button>
@@ -249,15 +249,15 @@ export default function SettingsPage() {
         {activeSection === 'appearance' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">表示設定</h2>
-              <p className="text-gray-600">アプリケーションの外観とテーマ設定</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">表示設定</h2>
+              <p className="text-gray-600 dark:text-slate-400">アプリケーションの外観とテーマ設定</p>
             </div>
             
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">ダークモード</Label>
-                  <p className="text-sm text-gray-500">暗いテーマを使用</p>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">ダークモード</Label>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">暗いテーマを使用</p>
                 </div>
                 <Switch 
                   checked={darkMode}
@@ -267,8 +267,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">コンパクトビュー</Label>
-                  <p className="text-sm text-gray-500">より狭い間隔で表示</p>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">コンパクトビュー</Label>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">より狭い間隔で表示</p>
                 </div>
                 <Switch 
                   checked={localSettings.compactView}
@@ -278,8 +278,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">アニメーション</Label>
-                  <p className="text-sm text-gray-500">画面遷移のアニメーション効果</p>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">アニメーション</Label>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">画面遷移のアニメーション効果</p>
                 </div>
                 <Switch 
                   checked={localSettings.animations}
@@ -288,7 +288,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4">
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
                   <Save className="w-4 h-4 mr-2" />
                   変更を保存
                 </Button>
@@ -301,15 +301,15 @@ export default function SettingsPage() {
         {activeSection === 'notifications' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">通知設定</h2>
-              <p className="text-gray-600">各種通知の設定を管理</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">通知設定</h2>
+              <p className="text-gray-600 dark:text-slate-400">各種通知の設定を管理</p>
             </div>
             
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">メール通知</Label>
-                  <p className="text-sm text-gray-500">重要な更新をメールで受信</p>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">メール通知</Label>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">重要な更新をメールで受信</p>
                 </div>
                 <Switch 
                   checked={localSettings.emailNotifications}
@@ -319,8 +319,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">ブラウザ通知</Label>
-                  <p className="text-sm text-gray-500">ブラウザプッシュ通知 {notificationPermission !== 'granted' && notificationPermission !== 'default' ? '(許可が必要)' : ''}</p>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">ブラウザ通知</Label>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">ブラウザプッシュ通知 {notificationPermission !== 'granted' && notificationPermission !== 'default' ? '(許可が必要)' : ''}</p>
                 </div>
                 <Switch 
                   checked={notificationsEnabled}
@@ -330,8 +330,8 @@ export default function SettingsPage() {
               </div>
 
               {notificationPermission === 'denied' && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-sm text-yellow-700">
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
                     ブラウザ通知が拒否されています。ブラウザの設定から通知を許可してください。
                   </p>
                 </div>
@@ -364,7 +364,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4">
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
                   <Save className="w-4 h-4 mr-2" />
                   変更を保存
                 </Button>
@@ -372,6 +372,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
 
         {/* セキュリティセクション */}
         {activeSection === 'security' && (
@@ -454,7 +455,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4">
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
                   <Save className="w-4 h-4 mr-2" />
                   変更を保存
                 </Button>
@@ -570,32 +571,32 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">システム情報</h3>
-                <div className="space-y-3 text-sm bg-gray-50 p-4 rounded-lg">
+                <div className="space-y-3 text-sm bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">バージョン:</span>
-                    <span className="font-medium">v1.0.0</span>
+                    <span className="text-gray-600 dark:text-slate-400">バージョン:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">v1.0.0</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">最終更新:</span>
-                    <span className="font-medium">2025-01-22</span>
+                    <span className="text-gray-600 dark:text-slate-400">最終更新:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">2025-01-22</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">データベース:</span>
-                    <span className="font-medium">Firebase</span>
+                    <span className="text-gray-600 dark:text-slate-400">データベース:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">Firebase</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">サーバー状態:</span>
-                    <span className="text-green-600 font-medium">正常</span>
+                    <span className="text-gray-600 dark:text-slate-400">サーバー状態:</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">正常</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">接続状態:</span>
-                    <span className="text-green-600 font-medium">接続済み</span>
+                    <span className="text-gray-600 dark:text-slate-400">接続状態:</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">接続済み</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">開発者オプション</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">開発者オプション</h3>
                 <div className="space-y-3">
                   <Button variant="outline" className="w-full">
                     <Monitor className="w-4 h-4 mr-2" />
@@ -613,13 +614,13 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-red-600">危険な操作</h3>
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">危険な操作</h3>
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full text-red-600 border-red-300 hover:bg-red-50">
+                  <Button variant="outline" className="w-full text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <Database className="w-4 h-4 mr-2" />
                     全データリセット
                   </Button>
-                  <Button variant="outline" className="w-full text-red-600 border-red-300 hover:bg-red-50">
+                  <Button variant="outline" className="w-full text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <Settings className="w-4 h-4 mr-2" />
                     設定を初期化
                   </Button>

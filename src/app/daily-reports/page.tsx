@@ -448,12 +448,12 @@ export default function DailyReportPage() {
   // ローディング状態の表示
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
               <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
-              <p className="text-lg text-gray-600">データを読み込んでいます...</p>
+              <p className="text-lg text-gray-600 dark:text-slate-400">データを読み込んでいます...</p>
             </div>
           </div>
         </div>
@@ -462,22 +462,22 @@ export default function DailyReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
       <div className="max-w-6xl mx-auto">
         {/* エラー表示 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
               <AlertTriangle className="w-5 h-5" />
               <span className="font-medium">エラー</span>
             </div>
-            <p className="text-red-600 mt-2">{error}</p>
+            <p className="text-red-600 dark:text-red-300 mt-2">{error}</p>
             <div className="flex gap-2 mt-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setError(null)}
-                className="border-red-300 text-red-600 hover:bg-red-50"
+                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
               >
                 閉じる
               </Button>
@@ -486,7 +486,7 @@ export default function DailyReportPage() {
                 size="sm"
                 onClick={loadInitialData}
                 disabled={isLoading}
-                className="border-red-300 text-red-600 hover:bg-red-50"
+                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
               >
                 <RefreshCw className="w-4 h-4 mr-1" />
                 再試行
@@ -498,9 +498,9 @@ export default function DailyReportPage() {
         {/* ヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">日報作成</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">日報作成</h1>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-slate-400">
                 {new Date(reportData.date || "").toLocaleDateString("ja-JP", {
                   year: "numeric",
                   month: "long",
@@ -508,12 +508,12 @@ export default function DailyReportPage() {
                 })}
               </p>
               {hasDraft && (
-                <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded border border-orange-200">
+                <span className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded border border-orange-200 dark:border-orange-800">
                   下書きあり
                 </span>
               )}
               {isSaving && (
-                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded border border-blue-200 flex items-center gap-1">
+                <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3 animate-spin" />
                   保存中...
                 </span>
@@ -522,7 +522,7 @@ export default function DailyReportPage() {
           </div>
           
           {reportData.totalWorkMinutes! > 0 && (
-            <div className="flex items-center gap-2 text-lg font-semibold text-blue-700 px-3 py-2 bg-blue-50 rounded border">
+            <div className="flex items-center gap-2 text-lg font-semibold text-blue-700 dark:text-blue-400 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
               <Clock className="w-5 h-5" />
               <span>合計: {totalHours}時間{totalMinutes}分</span>
             </div>
@@ -530,20 +530,20 @@ export default function DailyReportPage() {
         </div>
 
         {/* メイン日報 */}
-        <Card className="shadow border border-gray-200 bg-white">
+        <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
 
           <CardContent className="p-8 space-y-8">
             {/* 基本情報セクション */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-slate-600">
                 <User className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-800">基本情報</h2>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">基本情報</h2>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-500" />
+                  <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                    <Calendar className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                     日付
                   </Label>
                   <Input
@@ -551,12 +551,12 @@ export default function DailyReportPage() {
                     value={reportData.date}
                     onChange={(e) => handleBasicInfoChange("date", e.target.value)}
                     disabled={reportData.isSubmitted}
-                    className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white"
+                    className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-500" />
+                  <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                    <User className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                     作業者名
                   </Label>
                   <Input
@@ -564,15 +564,15 @@ export default function DailyReportPage() {
                     onChange={(e) => handleBasicInfoChange("workerName", e.target.value)}
                     placeholder="作業者名を入力"
                     disabled={reportData.isSubmitted}
-                    className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white"
+                    className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-pink-500" />
+                  <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                    <Heart className="w-4 h-4 text-pink-500 dark:text-pink-400" />
                     夢や希望
                   </Label>
                   <Textarea
@@ -580,13 +580,13 @@ export default function DailyReportPage() {
                     onChange={(e) => handleBasicInfoChange("dreams", e.target.value)}
                     placeholder="今日の夢や希望について記入してください..."
                     disabled={reportData.isSubmitted}
-                    className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                    className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Target className="w-4 h-4 text-green-500" />
+                  <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                    <Target className="w-4 h-4 text-green-500 dark:text-green-400" />
                     今日の目標
                   </Label>
                   <Textarea
@@ -594,7 +594,7 @@ export default function DailyReportPage() {
                     onChange={(e) => handleBasicInfoChange("todaysGoals", e.target.value)}
                     placeholder="今日の目標を記入してください..."
                     disabled={reportData.isSubmitted}
-                    className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                    className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -602,12 +602,12 @@ export default function DailyReportPage() {
 
             {/* 作業実績セクション */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-slate-600">
                 <Building2 className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-lg font-semibold text-gray-800">作業実績</h2>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">作業実績</h2>
               </div>
               
-              <div className="bg-gray-50/50 rounded-lg p-1">
+              <div className="bg-gray-50/50 dark:bg-slate-700/50 rounded-lg p-1">
                 <IntegratedWorkTimeTable
                   entries={reportData.workTimeEntries || []}
                   workContentTypes={workContentTypes}
@@ -620,16 +620,16 @@ export default function DailyReportPage() {
 
             {/* 振り返りセクション */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-slate-600">
                 <MessageSquare className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-800">今日の振り返り</h2>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">今日の振り返り</h2>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-500" />
+                    <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                      <TrendingUp className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                       今日の結果
                     </Label>
                     <Textarea
@@ -637,13 +637,13 @@ export default function DailyReportPage() {
                       onChange={(e) => handleReviewChange("todaysResults", e.target.value)}
                       placeholder="今日達成できたことを記入してください..."
                       disabled={reportData.isSubmitted}
-                      className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                      className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Star className="w-4 h-4 text-yellow-500" />
+                    <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                      <Star className="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
                       うまくいったこと・感謝
                     </Label>
                     <Textarea
@@ -651,15 +651,15 @@ export default function DailyReportPage() {
                       onChange={(e) => handleReviewChange("whatWentWell", e.target.value)}
                       placeholder="良かった点や感謝したいことを記入してください..."
                       disabled={reportData.isSubmitted}
-                      className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                      className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                    <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                      <AlertTriangle className="w-4 h-4 text-orange-500 dark:text-orange-400" />
                       うまくいかなかったこと・反省
                     </Label>
                     <Textarea
@@ -667,13 +667,13 @@ export default function DailyReportPage() {
                       onChange={(e) => handleReviewChange("whatDidntGoWell", e.target.value)}
                       placeholder="改善すべき点や反省点を記入してください..."
                       disabled={reportData.isSubmitted}
-                      className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                      className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-purple-500" />
+                    <Label className="text-sm font-medium flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                      <MessageSquare className="w-4 h-4 text-purple-500 dark:text-purple-400" />
                       社内への要望
                     </Label>
                     <Textarea
@@ -681,7 +681,7 @@ export default function DailyReportPage() {
                       onChange={(e) => handleReviewChange("requestsToManagement", e.target.value)}
                       placeholder="会社や管理者への要望があれば記入してください..."
                       disabled={reportData.isSubmitted}
-                      className="bg-gray-50 border-gray-200 focus:border-blue-400 focus:bg-white min-h-[100px] resize-none"
+                      className="bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-400 focus:bg-white dark:focus:bg-slate-600 min-h-[100px] resize-none text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -690,13 +690,13 @@ export default function DailyReportPage() {
           </CardContent>
 
           {/* フッター */}
-          <div className="border-t border-gray-200 p-6 bg-gray-50">
+          <div className="border-t border-gray-200 dark:border-slate-600 p-6 bg-gray-50 dark:bg-slate-700">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* 左側の情報 */}
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-slate-400">
                 {reportId && (
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />
                     Firebase連携済み (ID: {reportId.slice(-8)})
                   </span>
                 )}
@@ -707,7 +707,7 @@ export default function DailyReportPage() {
                     size="sm"
                     onClick={migrateFromLocalStorage}
                     disabled={isMigrating || isSaving}
-                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                    className="text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30"
                   >
                     {isMigrating ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                     データ移行
@@ -722,7 +722,7 @@ export default function DailyReportPage() {
                     variant="outline"
                     onClick={clearDraft}
                     disabled={isSaving}
-                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                    className="text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30"
                   >
                     下書きクリア
                   </Button>
@@ -731,7 +731,7 @@ export default function DailyReportPage() {
                   variant="outline"
                   onClick={() => handleSave(false)}
                   disabled={isSaving || isLoading}
-                  className="border-gray-300 hover:bg-gray-50"
+                  className="border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
                 >
                   {isSaving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                   下書き保存
@@ -749,22 +749,22 @@ export default function DailyReportPage() {
             
             {/* 提出状態表示 */}
             {reportData.isSubmitted && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center justify-center gap-2 text-green-700 font-medium">
+              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-400 font-medium">
                   <CheckCircle className="w-5 h-5" />
                   <span>この日報は提出済みです</span>
                   {reportData.submittedAt && (
-                    <span className="text-sm">
+                    <span className="text-sm text-green-600 dark:text-green-300">
                       ({new Date(reportData.submittedAt).toLocaleString("ja-JP")})
                     </span>
                   )}
                 </div>
                 {reportData.approved && (
-                  <div className="flex items-center justify-center gap-2 text-green-600 text-sm mt-2">
+                  <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-300 text-sm mt-2">
                     <CheckCircle className="w-4 h-4" />
                     <span>承認済み</span>
                     {reportData.approvedAt && (
-                      <span>({new Date(reportData.approvedAt).toLocaleString("ja-JP")})</span>
+                      <span className="text-green-600 dark:text-green-300">({new Date(reportData.approvedAt).toLocaleString("ja-JP")})</span>
                     )}
                   </div>
                 )}

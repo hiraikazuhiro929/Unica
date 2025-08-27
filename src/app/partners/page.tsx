@@ -590,25 +590,25 @@ const PartnersPage = () => {
   const getPriorityColor = (priority: Partner["priority"]) => {
     switch (priority) {
       case "vip":
-        return "border-purple-500 bg-purple-50";
+        return "border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/30";
       case "high":
-        return "border-red-500 bg-red-50";
+        return "border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30";
       case "normal":
-        return "border-blue-500 bg-blue-50";
+        return "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30";
       case "low":
-        return "border-gray-400 bg-gray-50";
+        return "border-gray-400 dark:border-slate-500 bg-gray-50 dark:bg-slate-700/30";
       default:
-        return "border-gray-300 bg-gray-50";
+        return "border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/30";
     }
   };
 
   // 優先度のバッジを取得
   const getPriorityBadge = (priority: Partner["priority"]) => {
     const configs = {
-      vip: { label: "VIP", className: "bg-purple-100 text-purple-800 border-purple-300" },
-      high: { label: "重要", className: "bg-red-100 text-red-800 border-red-300" },
-      normal: { label: "普通", className: "bg-blue-100 text-blue-800 border-blue-300" },
-      low: { label: "低", className: "bg-gray-100 text-gray-800 border-gray-300" },
+      vip: { label: "VIP", className: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700" },
+      high: { label: "重要", className: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700" },
+      normal: { label: "普通", className: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700" },
+      low: { label: "低", className: "bg-gray-100 dark:bg-slate-700/30 text-gray-800 dark:text-slate-300 border-gray-300 dark:border-slate-600" },
     };
     
     const config = configs[priority];
@@ -622,10 +622,10 @@ const PartnersPage = () => {
   // ステータスのバッジを取得
   const getStatusBadge = (status: Partner["status"]) => {
     const configs = {
-      active: { label: "アクティブ", className: "bg-green-100 text-green-800 border-green-300" },
-      inactive: { label: "非アクティブ", className: "bg-gray-100 text-gray-800 border-gray-300" },
-      potential: { label: "見込み", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-      suspended: { label: "停止中", className: "bg-red-100 text-red-800 border-red-300" },
+      active: { label: "アクティブ", className: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700" },
+      inactive: { label: "非アクティブ", className: "bg-gray-100 dark:bg-slate-700/30 text-gray-800 dark:text-slate-300 border-gray-300 dark:border-slate-600" },
+      potential: { label: "見込み", className: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700" },
+      suspended: { label: "停止中", className: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700" },
     };
     
     const config = configs[status];
@@ -639,9 +639,9 @@ const PartnersPage = () => {
   // タイプのバッジを取得
   const getTypeBadge = (type: PartnerType) => {
     const configs = {
-      customer: { label: "顧客", className: "bg-blue-100 text-blue-800 border-blue-300" },
-      supplier: { label: "仕入先", className: "bg-orange-100 text-orange-800 border-orange-300" },
-      both: { label: "顧客・仕入先", className: "bg-purple-100 text-purple-800 border-purple-300" },
+      customer: { label: "顧客", className: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700" },
+      supplier: { label: "仕入先", className: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-700" },
+      both: { label: "顧客・仕入先", className: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700" },
     };
     
     const config = configs[type];
@@ -688,36 +688,27 @@ const PartnersPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">顧客先管理</h1>
-                <p className="text-gray-600 mt-1">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">顧客先管理</h1>
+                <p className="text-gray-600 dark:text-slate-300 mt-1">
                   取引先の情報と取引履歴を管理
                 </p>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium px-6"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                取引先追加
-              </Button>
             </div>
           </div>
         </div>
 
         {/* 検索・フィルターツールバー */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-4 flex-1">
               <div className="relative flex-1 max-w-md">
@@ -770,23 +761,32 @@ const PartnersPage = () => {
               </Select>
             </div>
             
-            <div className="text-sm text-gray-600">
-              {filteredPartners.length} / {partners.length} 件表示
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium px-4"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                取引先追加
+              </Button>
+              <div className="text-sm text-gray-600 dark:text-slate-300">
+                {filteredPartners.length} / {partners.length} 件表示
+              </div>
             </div>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col">
           {/* メインテーブル */}
-          <div className="flex-1 overflow-auto bg-white">
+          <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
             {filteredPartners.length === 0 ? (
               <div className="flex items-center justify-center h-full p-12">
                 <div className="text-center">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-300 mb-2">
                     取引先が見つかりません
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 dark:text-slate-400">
                     検索条件を変更するか、新しい取引先を追加してください。
                   </p>
                 </div>
@@ -794,13 +794,13 @@ const PartnersPage = () => {
             ) : (
               <div className="w-full">
                 <table className="w-full table-auto border-collapse">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr className="border-b border-gray-200">
-                      <th className="w-8 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0 z-10">
+                    <tr className="border-b border-gray-200 dark:border-slate-600">
+                      <th className="w-8 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">
                         <Star className="w-4 h-4" />
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 min-w-[200px] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 min-w-[200px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("name")}
                       >
                         <div className="flex items-center space-x-1">
@@ -811,7 +811,7 @@ const PartnersPage = () => {
                         </div>
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("type")}
                       >
                         <div className="flex items-center space-x-1">
@@ -822,7 +822,7 @@ const PartnersPage = () => {
                         </div>
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("status")}
                       >
                         <div className="flex items-center space-x-1">
@@ -833,7 +833,7 @@ const PartnersPage = () => {
                         </div>
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("priority")}
                       >
                         <div className="flex items-center space-x-1">
@@ -843,11 +843,11 @@ const PartnersPage = () => {
                           )}
                         </div>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">業界</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">連絡先</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">住所</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">業界</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">連絡先</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">住所</th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("revenue")}
                       >
                         <div className="flex items-center justify-end space-x-1">
@@ -858,7 +858,7 @@ const PartnersPage = () => {
                         </div>
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("orders")}
                       >
                         <div className="flex items-center justify-end space-x-1">
@@ -869,7 +869,7 @@ const PartnersPage = () => {
                         </div>
                       </th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("lastContact")}
                       >
                         <div className="flex items-center space-x-1">
@@ -879,14 +879,14 @@ const PartnersPage = () => {
                           )}
                         </div>
                       </th>
-                      <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                      <th className="w-16 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-600">
                     {filteredPartners.map(partner => (
                       <tr 
                         key={partner.id}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        className="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors duration-150"
                         onClick={() => {
                           setSelectedPartner(partner);
                           setShowDetailDialog(true);
@@ -908,8 +908,8 @@ const PartnersPage = () => {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap font-medium">
                           <div>
-                            <div className="font-semibold text-gray-900">{partner.name}</div>
-                            <div className="text-sm text-gray-500">{partner.nameKana}</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{partner.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-slate-400">{partner.nameKana}</div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
@@ -922,38 +922,38 @@ const PartnersPage = () => {
                           {getPriorityBadge(partner.priority)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm">{partner.businessInfo.industry}</div>
+                          <div className="text-sm text-gray-900 dark:text-slate-200">{partner.businessInfo.industry}</div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="space-y-1 text-sm">
                             <div className="flex items-center space-x-1">
-                              <Phone className="w-3 h-3 text-gray-400" />
-                              <span>{partner.contactInfo.phone}</span>
+                              <Phone className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                              <span className="text-gray-900 dark:text-slate-200">{partner.contactInfo.phone}</span>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <Mail className="w-3 h-3 text-gray-400" />
-                              <span className="truncate max-w-[150px]">{partner.contactInfo.email}</span>
+                              <Mail className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                              <span className="truncate max-w-[150px] text-gray-900 dark:text-slate-200">{partner.contactInfo.email}</span>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="text-sm">
-                            <div>{partner.address.prefecture} {partner.address.city}</div>
-                            <div className="text-gray-500 truncate max-w-[120px]">{partner.address.address1}</div>
+                            <div className="text-gray-900 dark:text-slate-200">{partner.address.prefecture} {partner.address.city}</div>
+                            <div className="text-gray-500 dark:text-slate-400 truncate max-w-[120px]">{partner.address.address1}</div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-right">
-                          <div className="font-semibold text-blue-600">
+                          <div className="font-semibold text-blue-600 dark:text-blue-400">
                             {formatCurrency(partner.financialInfo.totalRevenue)}
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-right">
-                          <div className="font-semibold">
+                          <div className="font-semibold text-gray-900 dark:text-slate-200">
                             {partner.financialInfo.totalOrders}
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm">
+                          <div className="text-sm text-gray-900 dark:text-slate-200">
                             {partner.lastContactDate 
                               ? partner.lastContactDate.toLocaleDateString("ja-JP")
                               : "-"
@@ -1012,20 +1012,20 @@ const PartnersPage = () => {
 
         {/* 詳細ダイアログ */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-600">
             {selectedPartner && (
               <>
                 <DialogHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gray-100 rounded-lg">
-                        <Users className="w-6 h-6 text-gray-600" />
+                      <div className="p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
+                        <Users className="w-6 h-6 text-gray-600 dark:text-slate-300" />
                       </div>
                       <div>
-                        <DialogTitle className="text-xl">
+                        <DialogTitle className="text-xl dark:text-white">
                           {selectedPartner.name}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-slate-300">
                           {selectedPartner.businessInfo.industry} • {selectedPartner.businessInfo.representativeName}
                         </DialogDescription>
                       </div>
@@ -1051,24 +1051,24 @@ const PartnersPage = () => {
                     <div className="grid grid-cols-2 gap-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-sm">基本情報</CardTitle>
+                          <CardTitle className="text-sm dark:text-white">基本情報</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div>
-                            <label className="text-sm font-medium text-gray-700">会社名</label>
-                            <p className="text-sm text-gray-900">{selectedPartner.name}</p>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">会社名</label>
+                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.name}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-700">フリガナ</label>
-                            <p className="text-sm text-gray-900">{selectedPartner.nameKana}</p>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">フリガナ</label>
+                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.nameKana}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-700">業界</label>
-                            <p className="text-sm text-gray-900">{selectedPartner.businessInfo.industry}</p>
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">業界</label>
+                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.businessInfo.industry}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-700">従業員数</label>
-                            <p className="text-sm text-gray-900">
+                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">従業員数</label>
+                            <p className="text-sm text-gray-900 dark:text-white">
                               {selectedPartner.businessInfo.employeeCount ? 
                                 `${selectedPartner.businessInfo.employeeCount.toLocaleString()}名` : 
                                 "未設定"
@@ -1080,20 +1080,20 @@ const PartnersPage = () => {
 
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-sm">連絡先</CardTitle>
+                          <CardTitle className="text-sm dark:text-white">連絡先</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div className="flex items-center space-x-2">
-                            <Phone className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm">{selectedPartner.contactInfo.phone}</span>
+                            <Phone className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                            <span className="text-sm dark:text-slate-200">{selectedPartner.contactInfo.phone}</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Mail className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm">{selectedPartner.contactInfo.email}</span>
+                            <Mail className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                            <span className="text-sm dark:text-slate-200">{selectedPartner.contactInfo.email}</span>
                           </div>
                           {selectedPartner.contactInfo.website && (
                             <div className="flex items-center space-x-2">
-                              <Globe className="w-4 h-4 text-gray-500" />
+                              <Globe className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                               <a 
                                 href={selectedPartner.contactInfo.website}
                                 target="_blank"
@@ -1106,8 +1106,8 @@ const PartnersPage = () => {
                             </div>
                           )}
                           <div className="flex items-start space-x-2">
-                            <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
-                            <div className="text-sm">
+                            <MapPin className="w-4 h-4 text-gray-500 dark:text-slate-400 mt-0.5" />
+                            <div className="text-sm dark:text-slate-200">
                               <div>〒{selectedPartner.address.postalCode}</div>
                               <div>
                                 {selectedPartner.address.prefecture} {selectedPartner.address.city}
@@ -1125,7 +1125,7 @@ const PartnersPage = () => {
                     {selectedPartner.tags.length > 0 && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-sm">タグ</CardTitle>
+                          <CardTitle className="text-sm dark:text-white">タグ</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">
@@ -1142,7 +1142,7 @@ const PartnersPage = () => {
 
                   <TabsContent value="contacts" className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">担当者一覧</h3>
+                      <h3 className="text-lg font-semibold dark:text-white">担当者一覧</h3>
                       <Button size="sm">
                         <UserPlus className="w-4 h-4 mr-2" />
                         担当者追加
@@ -1155,28 +1155,28 @@ const PartnersPage = () => {
                             <div className="flex items-center justify-between">
                               <div>
                                 <div className="flex items-center space-x-2">
-                                  <h4 className="font-medium">{contact.name}</h4>
+                                  <h4 className="font-medium dark:text-white">{contact.name}</h4>
                                   {contact.isPrimary && (
                                     <Badge variant="secondary" className="text-xs">
                                       主担当
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-600">{contact.title}</p>
+                                <p className="text-sm text-gray-600 dark:text-slate-300">{contact.title}</p>
                                 {contact.department && (
-                                  <p className="text-sm text-gray-500">{contact.department}</p>
+                                  <p className="text-sm text-gray-500 dark:text-slate-400">{contact.department}</p>
                                 )}
                                 <div className="flex items-center space-x-4 mt-2 text-sm">
                                   {contact.phone && (
                                     <div className="flex items-center space-x-1">
-                                      <Phone className="w-3 h-3" />
-                                      <span>{contact.phone}</span>
+                                      <Phone className="w-3 h-3 text-gray-500 dark:text-slate-400" />
+                                      <span className="dark:text-slate-200">{contact.phone}</span>
                                     </div>
                                   )}
                                   {contact.email && (
                                     <div className="flex items-center space-x-1">
-                                      <Mail className="w-3 h-3" />
-                                      <span>{contact.email}</span>
+                                      <Mail className="w-3 h-3 text-gray-500 dark:text-slate-400" />
+                                      <span className="dark:text-slate-200">{contact.email}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1198,7 +1198,7 @@ const PartnersPage = () => {
 
                   <TabsContent value="orders" className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">取引履歴</h3>
+                      <h3 className="text-lg font-semibold dark:text-white">取引履歴</h3>
                       <Button size="sm">
                         <Plus className="w-4 h-4 mr-2" />
                         新規注文
@@ -1208,8 +1208,8 @@ const PartnersPage = () => {
                       {selectedPartner.orders.length === 0 ? (
                         <Card>
                           <CardContent className="p-8 text-center">
-                            <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                            <p className="text-gray-500">取引履歴がありません</p>
+                            <Package className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
+                            <p className="text-gray-500 dark:text-slate-400">取引履歴がありません</p>
                           </CardContent>
                         </Card>
                       ) : (
@@ -1218,13 +1218,13 @@ const PartnersPage = () => {
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <div>
-                                  <h4 className="font-medium">{order.orderNumber}</h4>
-                                  <p className="text-sm text-gray-600">
+                                  <h4 className="font-medium dark:text-white">{order.orderNumber}</h4>
+                                  <p className="text-sm text-gray-600 dark:text-slate-300">
                                     {order.orderDate.toLocaleDateString("ja-JP")}
                                   </p>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-semibold text-lg">
+                                  <div className="font-semibold text-lg dark:text-white">
                                     {formatCurrency(order.totalAmount)}
                                   </div>
                                   <Badge
@@ -1244,14 +1244,14 @@ const PartnersPage = () => {
                                   </Badge>
                                 </div>
                               </div>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-slate-300">
                                 <div className="mb-2">
                                   <span className="font-medium">製品: </span>
                                   {order.products.join(", ")}
                                 </div>
                                 {order.deliveryDate && (
                                   <div className="flex items-center space-x-1">
-                                    <Truck className="w-3 h-3" />
+                                    <Truck className="w-3 h-3 text-gray-500 dark:text-slate-400" />
                                     <span>納期: {order.deliveryDate.toLocaleDateString("ja-JP")}</span>
                                   </div>
                                 )}
@@ -1265,7 +1265,7 @@ const PartnersPage = () => {
 
                   <TabsContent value="notes" className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">メモ・連絡履歴</h3>
+                      <h3 className="text-lg font-semibold dark:text-white">メモ・連絡履歴</h3>
                       <Button size="sm">
                         <Plus className="w-4 h-4 mr-2" />
                         メモ追加
@@ -1275,8 +1275,8 @@ const PartnersPage = () => {
                       {selectedPartner.notes.length === 0 ? (
                         <Card>
                           <CardContent className="p-8 text-center">
-                            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                            <p className="text-gray-500">メモがありません</p>
+                            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
+                            <p className="text-gray-500 dark:text-slate-400">メモがありません</p>
                           </CardContent>
                         </Card>
                       ) : (
@@ -1290,13 +1290,13 @@ const PartnersPage = () => {
                                      note.category === "call" ? "電話" :
                                      note.category === "email" ? "メール" : "その他"}
                                   </Badge>
-                                  <span className="text-sm text-gray-600">{note.author}</span>
+                                  <span className="text-sm text-gray-600 dark:text-slate-300">{note.author}</span>
                                 </div>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 dark:text-slate-400">
                                   {note.createdAt.toLocaleDateString("ja-JP")}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-900 whitespace-pre-line">
+                              <p className="text-sm text-gray-900 dark:text-white whitespace-pre-line">
                                 {note.content}
                               </p>
                             </CardContent>
@@ -1310,31 +1310,31 @@ const PartnersPage = () => {
                     <div className="grid grid-cols-2 gap-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-sm">取引実績</CardTitle>
+                          <CardTitle className="text-sm dark:text-white">取引実績</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">総売上</span>
-                            <span className="font-semibold text-lg">
+                            <span className="text-sm text-gray-600 dark:text-slate-300">総売上</span>
+                            <span className="font-semibold text-lg dark:text-white">
                               {formatCurrency(selectedPartner.financialInfo.totalRevenue)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">総注文数</span>
-                            <span className="font-semibold">
+                            <span className="text-sm text-gray-600 dark:text-slate-300">総注文数</span>
+                            <span className="font-semibold dark:text-white">
                               {selectedPartner.financialInfo.totalOrders}件
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">平均注文額</span>
-                            <span className="font-semibold">
+                            <span className="text-sm text-gray-600 dark:text-slate-300">平均注文額</span>
+                            <span className="font-semibold dark:text-white">
                               {formatCurrency(selectedPartner.financialInfo.averageOrderValue)}
                             </span>
                           </div>
                           {selectedPartner.financialInfo.lastOrderDate && (
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-600">最終注文日</span>
-                              <span className="font-semibold">
+                              <span className="text-sm text-gray-600 dark:text-slate-300">最終注文日</span>
+                              <span className="font-semibold dark:text-white">
                                 {selectedPartner.financialInfo.lastOrderDate.toLocaleDateString("ja-JP")}
                               </span>
                             </div>
@@ -1344,19 +1344,19 @@ const PartnersPage = () => {
 
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-sm">支払い条件</CardTitle>
+                          <CardTitle className="text-sm dark:text-white">支払い条件</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div>
-                            <span className="text-sm text-gray-600">支払い条件</span>
-                            <p className="font-medium">
+                            <span className="text-sm text-gray-600 dark:text-slate-300">支払い条件</span>
+                            <p className="font-medium dark:text-white">
                               {selectedPartner.financialInfo.paymentTerms}
                             </p>
                           </div>
                           {selectedPartner.financialInfo.creditLimit && (
                             <div>
-                              <span className="text-sm text-gray-600">与信限度額</span>
-                              <p className="font-medium">
+                              <span className="text-sm text-gray-600 dark:text-slate-300">与信限度額</span>
+                              <p className="font-medium dark:text-white">
                                 {formatCurrency(selectedPartner.financialInfo.creditLimit)}
                               </p>
                             </div>

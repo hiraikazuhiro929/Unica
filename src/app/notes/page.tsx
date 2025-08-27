@@ -50,16 +50,16 @@ import { storage } from "@/lib/firebase/config";
 
 // Google Keep風カラーパレット
 const NOTE_COLORS = [
-  { name: "デフォルト", value: "bg-white", class: "bg-white border-gray-200" },
-  { name: "黄色", value: "bg-yellow-100", class: "bg-yellow-100 border-yellow-300" },
-  { name: "オレンジ", value: "bg-orange-100", class: "bg-orange-100 border-orange-300" },
-  { name: "赤", value: "bg-red-100", class: "bg-red-100 border-red-300" },
-  { name: "ピンク", value: "bg-pink-100", class: "bg-pink-100 border-pink-300" },
-  { name: "紫", value: "bg-purple-100", class: "bg-purple-100 border-purple-300" },
-  { name: "青", value: "bg-blue-100", class: "bg-blue-100 border-blue-300" },
-  { name: "青緑", value: "bg-teal-100", class: "bg-teal-100 border-teal-300" },
-  { name: "緑", value: "bg-green-100", class: "bg-green-100 border-green-300" },
-  { name: "グレー", value: "bg-gray-100", class: "bg-gray-100 border-gray-300" },
+  { name: "デフォルト", value: "bg-white", class: "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600" },
+  { name: "黄色", value: "bg-yellow-100", class: "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-800/50" },
+  { name: "オレンジ", value: "bg-orange-100", class: "bg-orange-100 dark:bg-orange-900/20 border-orange-300 dark:border-orange-800/50" },
+  { name: "赤", value: "bg-red-100", class: "bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-800/50" },
+  { name: "ピンク", value: "bg-pink-100", class: "bg-pink-100 dark:bg-pink-900/20 border-pink-300 dark:border-pink-800/50" },
+  { name: "紫", value: "bg-purple-100", class: "bg-purple-100 dark:bg-purple-900/20 border-purple-300 dark:border-purple-800/50" },
+  { name: "青", value: "bg-blue-100", class: "bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800/50" },
+  { name: "青緑", value: "bg-teal-100", class: "bg-teal-100 dark:bg-teal-900/20 border-teal-300 dark:border-teal-800/50" },
+  { name: "緑", value: "bg-green-100", class: "bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-800/50" },
+  { name: "グレー", value: "bg-gray-100", class: "bg-gray-100 dark:bg-slate-700 border-gray-300 dark:border-slate-600" },
 ];
 
 const CATEGORIES = [
@@ -96,7 +96,7 @@ const NotesPage = () => {
     title: "",
     content: "",
     category: "personal" as Note['category'],
-    color: "bg-white",  // デフォルトを白に変更
+    color: "bg-white",  // デフォルト色
     tags: [] as string[],
     imageUrls: [] as string[],
     isPinned: false,
@@ -328,7 +328,7 @@ const NotesPage = () => {
       title: "",
       content: "",
       category: "personal",
-      color: "bg-white",  // デフォルトを白に変更
+      color: "bg-white",  // デフォルト色
       tags: [],
       imageUrls: [],
       isPinned: false,
@@ -624,7 +624,7 @@ const NotesPage = () => {
   // カラークラスを取得
   const getColorClass = (color: string) => {
     const colorConfig = NOTE_COLORS.find(c => c.value === color);
-    return colorConfig?.class || "bg-white border-gray-200";
+    return colorConfig?.class || "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600";
   };
 
   // カテゴリーラベル取得
@@ -696,7 +696,7 @@ const NotesPage = () => {
                   autoSaveEditNote();
                 }}
                 placeholder="タイトル"
-                className={`${textSizes.title} font-medium border-none shadow-none focus:ring-0 p-0 bg-transparent placeholder-gray-400 w-full`}
+                className={`${textSizes.title} font-medium border-none shadow-none focus:ring-0 p-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 w-full`}
               />
               
               {/* コンテンツ編集またはチェックリスト */}
@@ -723,7 +723,7 @@ const NotesPage = () => {
                           setEditingNoteData(prev => prev ? ({ ...prev, checkItems: updatedItems }) : null);
                           autoSaveEditNote();
                         }}
-                        className={`flex-1 ${textSizes.content} border-none shadow-none focus:ring-0 p-0 bg-transparent placeholder-gray-400 ${item.checked ? 'line-through text-gray-500' : ''}`}
+                        className={`flex-1 ${textSizes.content} border-none shadow-none focus:ring-0 p-0 bg-transparent placeholder-gray-400 dark:placeholder-slate-500 ${item.checked ? 'line-through text-gray-500 dark:text-slate-400' : 'text-gray-900 dark:text-white'}`}
                       />
                       <Button
                         variant="ghost"
@@ -735,7 +735,7 @@ const NotesPage = () => {
                           }) : null);
                           autoSaveEditNote();
                         }}
-                        className="h-6 w-6 p-0 hover:bg-gray-200"
+                        className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400"
                       >
                         <X className="w-3 h-3" />
                       </Button>
@@ -751,7 +751,7 @@ const NotesPage = () => {
                         checkItems: [...prev.checkItems, { id: newId, text: '', checked: false }]
                       }) : null);
                     }}
-                    className="text-xs text-gray-500 hover:text-gray-700"
+                    className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
                   >
                     + アイテムを追加
                   </Button>
@@ -765,7 +765,7 @@ const NotesPage = () => {
                   }}
                   placeholder="メモを入力..."
                   rows={4}
-                  className={`min-h-20 resize-none border-none shadow-none focus:ring-0 p-0 bg-transparent placeholder-gray-400 ${textSizes.content} w-full break-words`}
+                  className={`min-h-20 resize-none border-none shadow-none focus:ring-0 p-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 ${textSizes.content} w-full break-words`}
                 />
               )}
 
@@ -775,7 +775,7 @@ const NotesPage = () => {
                   {noteData.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs rounded-full"
                     >
                       #{tag}
                       <X
@@ -823,7 +823,7 @@ const NotesPage = () => {
                     size="sm"
                     onClick={() => editFileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                    className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
                     title="画像を追加"
                   >
                     {isUploading ? (
@@ -855,7 +855,7 @@ const NotesPage = () => {
                             }}
                             className={`w-6 h-6 rounded-full cursor-pointer border-2 hover:scale-110 transition-transform ${
                               noteData.color === color.value ? 'ring-2 ring-blue-400' : ''
-                            } ${color.value === "bg-white" ? "bg-white border-gray-300" : color.value}`}
+                            } ${color.value === "bg-white" ? "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600" : color.value}`}
                             title={color.name}
                           />
                         ))}
@@ -869,7 +869,7 @@ const NotesPage = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 w-7 p-0 hover:bg-gray-200" 
+                        className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700" 
                         title="カテゴリー"
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
@@ -954,7 +954,7 @@ const NotesPage = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-7 w-7 p-0 hover:bg-gray-200 ${noteData.reminder ? 'text-orange-600' : ''}`}
+                        className={`h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${noteData.reminder ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-slate-300'}`}
                         title="リマインダー"
                       >
                         <Bell className={`w-3 h-3 ${noteData.reminder ? 'fill-current' : ''}`} />
@@ -968,7 +968,7 @@ const NotesPage = () => {
                       onInteractOutside={(e) => e.preventDefault()}
                     >
                       <div className="p-3 space-y-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                        <div className="text-sm font-medium">リマインダー設定</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">リマインダー設定</div>
                         <div className="space-y-2">
                           <Input
                             type="date"
@@ -1031,7 +1031,7 @@ const NotesPage = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-7 w-7 p-0 hover:bg-gray-200 ${noteData.labels.length > 0 ? 'text-green-600' : ''}`}
+                        className={`h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${noteData.labels.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-slate-300'}`}
                         title="ラベル"
                       >
                         <Tag className={`w-3 h-3 ${noteData.labels.length > 0 ? 'fill-current' : ''}`} />
@@ -1045,7 +1045,7 @@ const NotesPage = () => {
                       onInteractOutside={(e) => e.preventDefault()}
                     >
                       <div className="p-3 space-y-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                        <div className="text-sm font-medium">ラベル追加</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">ラベル追加</div>
                         <Input
                           placeholder="ラベル名を入力..."
                           onKeyPress={(e) => {
@@ -1152,7 +1152,7 @@ const NotesPage = () => {
                 </div>
               ) : (
                 note.content && (
-                  <p className={`text-gray-700 whitespace-pre-wrap line-clamp-6 mb-2 ${textSizes.content} break-words overflow-hidden`}>
+                  <p className={`text-gray-700 dark:text-slate-300 whitespace-pre-wrap line-clamp-6 mb-2 ${textSizes.content} break-words overflow-hidden`}>
                     {note.content}
                   </p>
                 )
@@ -1164,7 +1164,7 @@ const NotesPage = () => {
                   (() => {
                     const reminderDateTime = new Date(`${(note as any).reminder.date}T${(note as any).reminder.time}`);
                     const now = new Date();
-                    return reminderDateTime <= now ? 'text-red-600 font-medium animate-pulse' : 'text-orange-600';
+                    return reminderDateTime <= now ? 'text-red-600 dark:text-red-400 font-medium animate-pulse' : 'text-orange-600 dark:text-orange-400';
                   })()
                 }`}>
                   <Bell className="w-3 h-3" />
@@ -1188,14 +1188,14 @@ const NotesPage = () => {
                   {(note as any).labels.slice(0, 3).map((label: string, index: number) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+                      className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full"
                     >
                       <Tag className="w-3 h-3 mr-1" />
                       {label}
                     </span>
                   ))}
                   {(note as any).labels.length > 3 && (
-                    <span className="text-xs text-gray-500">+{(note as any).labels.length - 3}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">+{(note as any).labels.length - 3}</span>
                   )}
                 </div>
               )}
@@ -1235,7 +1235,7 @@ const NotesPage = () => {
                     </div>
                   ))}
                   {note.imageUrls.length > 2 && (
-                    <div className="text-xs text-gray-500 text-center py-1">
+                    <div className="text-xs text-gray-500 dark:text-slate-400 text-center py-1">
                       +{note.imageUrls.length - 2} 枚の画像
                     </div>
                   )}
@@ -1254,7 +1254,7 @@ const NotesPage = () => {
                     </span>
                   ))}
                   {note.tags.length > 3 && (
-                    <span className="text-xs text-gray-500">+{note.tags.length - 3}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">+{note.tags.length - 3}</span>
                   )}
                 </div>
               )}
@@ -1271,10 +1271,10 @@ const NotesPage = () => {
                       console.log('📌 ピン留めクリック:', note.title, 'current:', note.isPinned, 'new:', !note.isPinned);
                       updateExistingNote(note.id, { isPinned: !note.isPinned });
                     }}
-                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                    className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
                     title="ピン留め"
                   >
-                    <Pin className={`w-4 h-4 ${note.isPinned ? 'text-blue-600 fill-current' : 'text-gray-500'}`} />
+                    <Pin className={`w-4 h-4 ${note.isPinned ? 'text-blue-600 dark:text-blue-400 fill-current' : 'text-gray-500 dark:text-slate-400'}`} />
                   </Button>
 
                   {/* アーカイブ */}
@@ -1285,10 +1285,10 @@ const NotesPage = () => {
                       e.stopPropagation();
                       toggleArchive(note.id);
                     }}
-                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                    className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
                     title="アーカイブ"
                   >
-                    <Archive className="w-4 h-4 text-gray-500" />
+                    <Archive className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                   </Button>
                 </div>
                 
@@ -1299,7 +1299,7 @@ const NotesPage = () => {
                       variant="ghost"
                       size="sm"
                       onClick={(e) => e.stopPropagation()}
-                      className="h-7 w-7 p-0 hover:bg-gray-200"
+                      className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
                     >
                       <MoreVertical className="w-4 h-4 text-gray-500" />
                     </Button>
@@ -1326,19 +1326,19 @@ const NotesPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
+        <div className="bg-white dark:bg-slate-800/95 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 px-6 py-4 transition-colors">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <StickyNote className="w-8 h-8 text-yellow-600" />
+              <StickyNote className="w-8 h-8 text-yellow-600 dark:text-yellow-500" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">メモ</h1>
-                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                  <span>総メモ数: <span className="font-bold text-blue-600">{stats.total}</span></span>
-                  <span>アクティブ: <span className="font-bold text-green-600">{stats.total - stats.archived}</span></span>
-                  <span>アーカイブ: <span className="font-bold text-gray-600">{stats.archived}</span></span>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">メモ</h1>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-slate-400">
+                  <span>総メモ数: <span className="font-bold text-blue-600 dark:text-blue-400">{stats.total}</span></span>
+                  <span>アクティブ: <span className="font-bold text-green-600 dark:text-green-400">{stats.total - stats.archived}</span></span>
+                  <span>アーカイブ: <span className="font-bold text-gray-600 dark:text-slate-400">{stats.archived}</span></span>
                 </div>
               </div>
             </div>
@@ -1346,13 +1346,13 @@ const NotesPage = () => {
             <div className="flex items-center gap-4">
               {/* 検索バー */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
                 <Input
                   type="text"
                   placeholder="メモを検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
+                  className="pl-10 pr-4 py-2 w-80 bg-white dark:bg-slate-700 border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -1361,10 +1361,10 @@ const NotesPage = () => {
 
         <div className="flex-1 flex">
           {/* サイドバー */}
-          <div ref={sidebarRef} className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col relative z-10 pointer-events-auto">
+          <div ref={sidebarRef} className="w-64 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-slate-700 flex flex-col relative z-10 pointer-events-auto transition-colors">
           {/* サイドバーヘッダー */}
           <div className="p-4">
-            <h2 className="text-sm font-semibold text-gray-900">フィルター</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">フィルター</h2>
           </div>
 
           {/* フィルター */}
@@ -1380,7 +1380,7 @@ const NotesPage = () => {
               >
                 <StickyNote className="w-4 h-4" />
                 すべてのメモ
-                <span className="ml-auto text-xs text-gray-500">
+                <span className="ml-auto text-xs text-gray-500 dark:text-slate-400">
                   {notes.filter(note => !note.isArchived).length}
                 </span>
               </Button>
@@ -1397,7 +1397,7 @@ const NotesPage = () => {
                 >
                   <span>{category.icon}</span>
                   {category.label}
-                  <span className="ml-auto text-xs text-gray-500">
+                  <span className="ml-auto text-xs text-gray-500 dark:text-slate-400">
                     {notes.filter(note => note.category === category.value && !note.isArchived).length}
                   </span>
                 </Button>
@@ -1413,7 +1413,7 @@ const NotesPage = () => {
               >
                 <Archive className="w-4 h-4" />
                 アーカイブ
-                <span className="ml-auto text-xs text-gray-500">
+                <span className="ml-auto text-xs text-gray-500 dark:text-slate-400">
                   {notes.filter(note => note.isArchived).length}
                 </span>
               </Button>
@@ -1424,11 +1424,11 @@ const NotesPage = () => {
         {/* メインコンテンツ */}
         <div className="flex-1 flex flex-col">
           {/* 表示設定バー */}
-          <div className="bg-white px-6 py-2">
+          <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-2 transition-colors">
             <div className="flex items-center justify-end gap-4">
               {/* 表示形式 */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">表示:</span>
+                <span className="text-xs text-gray-500 dark:text-slate-400">表示:</span>
                 <div className="flex gap-1">
                   <Button
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
@@ -1453,7 +1453,7 @@ const NotesPage = () => {
 
               {/* サイズ */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">サイズ:</span>
+                <span className="text-xs text-gray-500 dark:text-slate-400">サイズ:</span>
                 <div className="flex gap-1">
                   <Button
                     variant={noteSize === 'small' ? 'secondary' : 'ghost'}
@@ -1487,12 +1487,12 @@ const NotesPage = () => {
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-900 p-6 transition-colors">
             <div className="w-full">
               {/* 期限切れリマインダー通知 */}
               {overdueReminders.length > 0 && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-medium mb-2">
                     <Bell className="w-5 h-5 animate-pulse" />
                     期限切れのリマインダー ({overdueReminders.length}件)
                   </div>
@@ -1500,10 +1500,10 @@ const NotesPage = () => {
                     {overdueReminders.slice(0, 3).map(note => {
                       const reminder = (note as any).reminder;
                       return (
-                        <div key={note.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                        <div key={note.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded border border-gray-200 dark:border-slate-600">
                           <div>
-                            <div className="font-medium text-sm">{note.title || '無題のメモ'}</div>
-                            <div className="text-xs text-gray-600">
+                            <div className="font-medium text-sm text-gray-900 dark:text-white">{note.title || '無題のメモ'}</div>
+                            <div className="text-xs text-gray-600 dark:text-slate-400">
                               期限: {new Date(reminder.date).toLocaleDateString('ja-JP')} {reminder.time}
                             </div>
                           </div>
@@ -1534,9 +1534,9 @@ const NotesPage = () => {
                 <div 
                   ref={newNoteContainerRef}
                   className={`mb-6 max-w-4xl mx-auto transition-all duration-200 ${
-                    isNewNoteExpanded ? `${getColorClass(newNoteData.color)} shadow-lg` : 'bg-white/80 hover:bg-white hover:shadow-md'
+                    isNewNoteExpanded ? `${getColorClass(newNoteData.color)} shadow-lg` : 'bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md dark:hover:shadow-slate-900/50'
                   } rounded-lg border ${
-                    isNewNoteExpanded ? 'border-gray-300' : 'border-gray-200 hover:border-gray-300'
+                    isNewNoteExpanded ? 'border-gray-300 dark:border-slate-600' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
                   }`}
                 >
                   {!isNewNoteExpanded ? (
@@ -1549,8 +1549,8 @@ const NotesPage = () => {
                       }}
                     >
                       <div className="flex items-center gap-3">
-                        <StickyNote className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-500 text-lg">メモを入力...</span>
+                        <StickyNote className="w-5 h-5 text-gray-400 dark:text-slate-500" />
+                        <span className="text-gray-500 dark:text-slate-400 text-lg">メモを入力...</span>
                       </div>
                     </div>
                   ) : (
@@ -1565,7 +1565,7 @@ const NotesPage = () => {
                           setNewNoteData(prev => ({ ...prev, title: e.target.value }));
                           autoSaveNewNote();
                         }}
-                        className="text-base font-medium border-none shadow-none focus:ring-0 p-0 placeholder-gray-400"
+                        className="text-base font-medium border-none shadow-none focus:ring-0 p-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                       />
 
                       {/* コンテンツ入力またはチェックリスト */}
@@ -1603,7 +1603,7 @@ const NotesPage = () => {
                                   }
                                 }}
                                 placeholder="チェックリストアイテム..."
-                                className={`flex-1 text-sm border-none shadow-none focus:ring-0 p-0 placeholder-gray-400 ${item.checked ? 'line-through text-gray-500' : ''}`}
+                                className={`flex-1 text-sm border-none shadow-none focus:ring-0 p-0 bg-transparent placeholder-gray-400 dark:placeholder-slate-500 ${item.checked ? 'line-through text-gray-500 dark:text-slate-400' : 'text-gray-900 dark:text-white'}`}
                               />
                               {newNoteData.checkItems.length > 1 && (
                                 <Button
@@ -1616,7 +1616,7 @@ const NotesPage = () => {
                                     }));
                                     autoSaveNewNote();
                                   }}
-                                  className="h-6 w-6 p-0 hover:bg-gray-200"
+                                  className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400"
                                 >
                                   <X className="w-3 h-3" />
                                 </Button>
@@ -1694,7 +1694,7 @@ const NotesPage = () => {
                           {newNoteData.tags.map((tag, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full"
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs rounded-full"
                             >
                               #{tag}
                               <X
@@ -1744,7 +1744,7 @@ const NotesPage = () => {
                                     }}
                                     className={`w-8 h-8 rounded-full cursor-pointer border-2 hover:scale-110 transition-transform ${
                                       newNoteData.color === color.value ? 'ring-2 ring-blue-400' : ''
-                                    } ${color.value === "bg-white" ? "bg-white border-gray-300" : color.value}`}
+                                    } ${color.value === "bg-white" ? "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600" : color.value}`}
                                     title={color.name}
                                   />
                                 ))}
@@ -1801,7 +1801,7 @@ const NotesPage = () => {
                                 content: !prev.isCheckList ? '' : prev.content // チェックリストに切り替え時はコンテンツをクリア
                               }));
                             }}
-                            className={`h-8 w-8 p-0 hover:bg-gray-200 ${newNoteData.isCheckList ? 'text-blue-600' : ''}`}
+                            className={`h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${newNoteData.isCheckList ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-slate-300'}`}
                             title="チェックリスト"
                           >
                             <CheckSquare className={`w-4 h-4 ${newNoteData.isCheckList ? 'fill-current' : ''}`} />
@@ -1813,7 +1813,7 @@ const NotesPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`h-8 w-8 p-0 hover:bg-gray-200 ${newNoteData.reminder ? 'text-orange-600' : ''}`}
+                                className={`h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${newNoteData.reminder ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-slate-300'}`}
                                 title="リマインダー"
                               >
                                 <Bell className={`w-4 h-4 ${newNoteData.reminder ? 'fill-current' : ''}`} />
@@ -1827,7 +1827,7 @@ const NotesPage = () => {
                               onInteractOutside={(e) => e.preventDefault()}
                             >
                               <div className="p-3 space-y-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                                <div className="text-sm font-medium">リマインダー設定</div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">リマインダー設定</div>
                                 <div className="space-y-2">
                                   <Input
                                     type="date"
@@ -1887,7 +1887,7 @@ const NotesPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`h-8 w-8 p-0 hover:bg-gray-200 ${newNoteData.labels.length > 0 ? 'text-green-600' : ''}`}
+                                className={`h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${newNoteData.labels.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-slate-300'}`}
                                 title="ラベル"
                               >
                                 <Tag className={`w-4 h-4 ${newNoteData.labels.length > 0 ? 'fill-current' : ''}`} />
@@ -1901,7 +1901,7 @@ const NotesPage = () => {
                               onInteractOutside={(e) => e.preventDefault()}
                             >
                               <div className="p-3 space-y-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                                <div className="text-sm font-medium">ラベル追加</div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">ラベル追加</div>
                                 <Input
                                   placeholder="ラベル名を入力..."
                                   onKeyPress={(e) => {
@@ -1924,9 +1924,9 @@ const NotesPage = () => {
                                 />
                                 {newNoteData.labels.length > 0 && (
                                   <div className="space-y-1">
-                                    <div className="text-xs text-gray-500">現在のラベル:</div>
+                                    <div className="text-xs text-gray-500 dark:text-slate-400">現在のラベル:</div>
                                     {newNoteData.labels.map((label, index) => (
-                                      <div key={index} className="flex items-center justify-between bg-gray-100 px-2 py-1 rounded text-xs">
+                                      <div key={index} className="flex items-center justify-between bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded text-xs text-gray-800 dark:text-slate-200">
                                         <span>{label}</span>
                                         <Button
                                           variant="ghost"
@@ -1938,7 +1938,7 @@ const NotesPage = () => {
                                               labels: prev.labels.filter(l => l !== label)
                                             }));
                                           }}
-                                          className="h-4 w-4 p-0 hover:bg-gray-200"
+                                          className="h-4 w-4 p-0 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-slate-400"
                                         >
                                           <X className="w-3 h-3" />
                                         </Button>
@@ -2028,7 +2028,7 @@ const NotesPage = () => {
             variant="ghost"
             size="sm"
             onClick={() => setSelectedImageUrl(null)}
-            className="absolute top-4 right-4 h-8 w-8 p-0 bg-white text-black hover:bg-gray-100 rounded-full"
+            className="absolute top-4 right-4 h-8 w-8 p-0 bg-white dark:bg-slate-700 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-slate-600 rounded-full"
           >
             <X className="w-4 h-4" />
           </Button>

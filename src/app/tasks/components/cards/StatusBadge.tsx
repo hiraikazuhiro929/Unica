@@ -7,12 +7,12 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const styles = {
-    planning: "bg-gray-100 text-gray-800 border-gray-300",
-    "data-work": "bg-purple-100 text-purple-800 border-purple-300",
-    processing: "bg-blue-100 text-blue-800 border-blue-300",
-    finishing: "bg-orange-100 text-orange-800 border-orange-300",
-    completed: "bg-green-100 text-green-800 border-green-300",
-    delayed: "bg-red-100 text-red-800 border-red-300",
+    planning: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600",
+    "data-work": "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-600",
+    processing: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-600",
+    finishing: "bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-600",
+    completed: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border-green-300 dark:border-green-600",
+    delayed: "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 border-red-300 dark:border-red-600",
   };
 
   const labels = {

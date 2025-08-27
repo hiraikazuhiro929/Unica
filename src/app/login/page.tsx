@@ -23,6 +23,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ログイン画面では強制的にライトモードを適用
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    
+    return () => {
+      // コンポーネントがアンマウントされる時にダークモード設定を復元
+      const savedDarkMode = localStorage.getItem('unica-dark-mode');
+      if (savedDarkMode && JSON.parse(savedDarkMode)) {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, []);
+
   // 既にログイン済みの場合はリダイレクト
   useEffect(() => {
     if (!authLoading && user) {

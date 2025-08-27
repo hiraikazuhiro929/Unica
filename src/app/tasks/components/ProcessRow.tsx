@@ -104,7 +104,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
   return (
     <>
       <div
-        className={`bg-white/40 backdrop-blur-sm rounded-md hover:bg-white/60 transition-all shadow-sm ${getBorderStyle(
+        className={`bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-md hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all shadow-sm ${getBorderStyle(
           process.priority
         )} relative overflow-hidden cursor-move ${
           isDragging ? "opacity-50" : ""
@@ -135,10 +135,10 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
             className="min-w-0 cursor-pointer"
             onClick={() => onProcessClick(process)}
           >
-            <div className="font-medium text-base text-gray-800 truncate">
+            <div className="font-medium text-base text-gray-800 dark:text-white truncate">
               {process.managementNumber}
             </div>
-            <div className="text-sm text-gray-600 truncate">
+            <div className="text-sm text-gray-600 dark:text-slate-400 truncate">
               └ {process.lineNumber}
             </div>
           </div>
@@ -148,11 +148,11 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
             className="min-w-0 cursor-pointer"
             onClick={() => onProcessClick(process)}
           >
-            <div className="font-medium text-base text-gray-900 truncate">
+            <div className="font-medium text-base text-gray-900 dark:text-white truncate">
               {process.projectName}
             </div>
             {process.remarks && (
-              <div className="flex items-center gap-1 mt-1 text-sm text-red-600 truncate">
+              <div className="flex items-center gap-1 mt-1 text-sm text-red-600 dark:text-red-400 truncate">
                 <AlertCircle className="w-4 h-4 text-red-500" />
                 {process.remarks}
               </div>
@@ -162,31 +162,31 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
           {/* 作業者・機械・数量 */}
           <div className="grid grid-cols-3 gap-2 text-base">
             <div className="flex items-center gap-1 truncate">
-              <Package className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium">{process.quantity}個</span>
+              <Package className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{process.quantity}個</span>
             </div>
             <div className="flex items-center gap-1 truncate">
-              <User className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium">{process.fieldPerson}</span>
+              <User className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{process.fieldPerson}</span>
             </div>
             <div className="space-y-1">
               <div>
                 <div className="flex gap-1">
                   <div className="flex flex-col justify-center pt-[2px]">
-                    <Settings className="w-4 h-4 text-gray-600" />
+                    <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" />
                   </div>
                   <div className="space-y-0.5">
                     {process.assignedMachines.length > 0 ? (
                       process.assignedMachines.map((machine, index) => (
                         <div
                           key={index}
-                          className="text-xs text-gray-700 truncate font-medium"
+                          className="text-xs text-gray-700 dark:text-slate-300 truncate font-medium"
                         >
                           {machine}
                         </div>
                       ))
                     ) : (
-                      <div className="text-xs text-gray-500">未割当</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">未割当</div>
                     )}
                   </div>
                 </div>
@@ -196,9 +196,9 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
 
           {/* 工数 */}
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-3 py-2">
-              <Clock className="w-4 h-4 text-gray-600" />
-              <span className="text-base font-bold text-gray-800">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2">
+              <Clock className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+              <span className="text-base font-bold text-gray-800 dark:text-white">
                 {calculateTotalHours(process.workDetails)}H
               </span>
             </div>
@@ -209,7 +209,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
             <StatusBadge status={process.status} />
             <div className="flex items-center gap-2 flex-1">
               <div className="flex-1 relative">
-                <div className="w-full h-3 bg-gray-200 rounded-full">
+                <div className="w-full h-3 bg-gray-200 dark:bg-slate-600 rounded-full">
                   <div
                     className={`h-3 rounded-full transition-all ${
                       process.progress >= 80
@@ -228,7 +228,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
                   }
                   max={100}
                   step={1}
-                  className="absolute inset-0 [&_[role=slider]]:h-5 [&_[role=slider]]:w-3 [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-gray-400 [&_[role=slider]]:shadow-md [&_[role=slider]]:rounded-sm"
+                  className="absolute inset-0 [&_[role=slider]]:h-5 [&_[role=slider]]:w-3 [&_[role=slider]]:bg-white dark:[&_[role=slider]]:bg-slate-700 [&_[role=slider]]:border-2 [&_[role=slider]]:border-gray-400 dark:[&_[role=slider]]:border-slate-500 [&_[role=slider]]:shadow-md [&_[role=slider]]:rounded-sm"
                   style={
                     {
                       "--slider-track": "transparent",
@@ -237,7 +237,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
                   }
                 />
               </div>
-              <span className="text-sm font-bold text-gray-700 w-12 text-right">
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-300 w-12 text-right">
                 {process.progress}%
               </span>
             </div>
@@ -289,11 +289,11 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
       {/* コンテキストメニュー */}
       {showContextMenu && (
         <div
-          className="fixed bg-white border shadow-lg rounded-md py-1 z-50"
+          className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 shadow-lg rounded-md py-1 z-50"
           style={{ left: contextMenuPosition.x, top: contextMenuPosition.y }}
         >
           <button
-            className="px-3 py-1 hover:bg-gray-100 w-full text-left text-sm"
+            className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-slate-700 w-full text-left text-sm text-gray-900 dark:text-white"
             onClick={() => {
               onProcessClick(process);
               setShowContextMenu(false);
@@ -302,7 +302,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
             詳細を開く
           </button>
           <button
-            className="px-3 py-1 hover:bg-blue-100 w-full text-left text-sm"
+            className="px-3 py-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 w-full text-left text-sm text-gray-900 dark:text-white"
             onClick={() => {
               onDuplicate(process);
               setShowContextMenu(false);
@@ -311,7 +311,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
             複製
           </button>
           <button
-            className="px-3 py-1 hover:bg-purple-100 w-full text-left text-sm flex items-center gap-2"
+            className="px-3 py-1 hover:bg-purple-100 dark:hover:bg-purple-900/30 w-full text-left text-sm flex items-center gap-2 text-gray-900 dark:text-white"
             onClick={() => {
               router.push(`/work-hours?fromProcess=${process.id}`);
               setShowContextMenu(false);
@@ -322,7 +322,7 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
           </button>
           <hr className="my-1" />
           <button
-            className="px-3 py-1 hover:bg-red-100 text-red-600 w-full text-left text-sm"
+            className="px-3 py-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 w-full text-left text-sm"
             onClick={async () => {
               if (confirm("この工程を削除しますか？")) {
                 await onDelete(process.id);

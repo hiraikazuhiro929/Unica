@@ -5,21 +5,36 @@ import {
   ChatUser,
   ChatAttachment,
   UnreadCount,
+  ChatNotification,
+  TypingStatus,
+  Thread,
   subscribeToChannels,
   subscribeToMessages,
   subscribeToUsers,
   subscribeToUnreadCounts,
+  subscribeToNotifications,
+  subscribeToTypingStatus,
+  subscribeToThreadMessages,
   sendMessage,
+  sendThreadMessage,
   updateMessage,
   deleteMessage,
   uploadChatFile,
   toggleReaction,
   upsertChatUser,
   updateUserStatus,
+  updateUserActivity,
   updateUnreadCount,
+  updateTypingStatus,
   createChannel,
+  updateChannel,
+  deleteChannel,
   searchMessages,
   searchChannelMessages,
+  searchMessagesByDate,
+  searchMessagesByUser,
+  markNotificationAsRead,
+  createThread,
 } from '@/lib/firebase/chat';
 
 interface UseChatOptions {
@@ -28,6 +43,7 @@ interface UseChatOptions {
   userRole: string;
   userDepartment: string;
   userEmail: string;
+  avatar?: string;
   enableRealtime?: boolean;
 }
 
@@ -37,27 +53,41 @@ interface UseChatReturn {
   messages: ChatMessage[];
   users: ChatUser[];
   unreadCounts: UnreadCount[];
+  notifications: ChatNotification[];
+  typingUsers: TypingStatus[];
+  threadMessages: ChatMessage[];
   currentChannel: ChatChannel | null;
+  currentThread: Thread | null;
   isLoading: boolean;
   error: string | null;
   
   // Actions
   selectChannel: (channelId: string) => void;
+  selectThread: (threadId: string) => void;
   sendNewMessage: (content: string, attachments?: ChatAttachment[]) => Promise<boolean>;
+  sendReply: (threadId: string, content: string, attachments?: ChatAttachment[]) => Promise<boolean>;
   editMessage: (messageId: string, content: string) => Promise<boolean>;
   removeMessage: (messageId: string) => Promise<boolean>;
   uploadFile: (file: File) => Promise<ChatAttachment | null>;
   addReaction: (messageId: string, emoji: string) => Promise<boolean>;
   updateStatus: (status: ChatUser['status'], statusMessage?: string) => Promise<boolean>;
+  setTyping: (isTyping: boolean) => void;
   markAsRead: (channelId: string, lastMessageId?: string) => Promise<boolean>;
+  markNotificationRead: (notificationId: string) => Promise<boolean>;
   createNewChannel: (channelData: Omit<ChatChannel, 'id' | 'createdAt' | 'updatedAt' | 'memberCount'>) => Promise<string | null>;
+  editChannel: (channelId: string, updateData: Partial<ChatChannel>) => Promise<boolean>;
+  removeChannel: (channelId: string) => Promise<boolean>;
+  createNewThread: (parentMessageId: string, channelId: string) => Promise<string | null>;
   searchAllMessages: (query: string) => Promise<ChatMessage[]>;
   searchCurrentChannel: (query: string) => Promise<ChatMessage[]>;
+  searchByDate: (startDate: Date, endDate: Date) => Promise<ChatMessage[]>;
+  searchByUser: (userId: string) => Promise<ChatMessage[]>;
   
   // Utilities
   getUnreadCount: (channelId: string) => number;
   getOnlineUsers: () => ChatUser[];
   getCurrentUser: () => ChatUser | null;
+  getUnreadNotificationCount: () => number;
 }
 
 export const useChat = (options: UseChatOptions): UseChatReturn => {
@@ -75,7 +105,11 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<UnreadCount[]>([]);
+  const [notifications, setNotifications] = useState<ChatNotification[]>([]);
+  const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
+  const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,11 +118,17 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   const unsubscribeMessages = useRef<(() => void) | null>(null);
   const unsubscribeUsers = useRef<(() => void) | null>(null);
   const unsubscribeUnreadCounts = useRef<(() => void) | null>(null);
+  const unsubscribeNotifications = useRef<(() => void) | null>(null);
+  const unsubscribeTypingStatus = useRef<(() => void) | null>(null);
+  const unsubscribeThreadMessages = useRef<(() => void) | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Computed values
   const currentChannel = channels.find(ch => ch.id === selectedChannelId) || null;
+  const currentThread = null; // スレッド機能は後で実装
   const currentUser = users.find(u => u.id === userId) || null;
   const onlineUsers = users.filter(u => u.isOnline);
+  const unreadNotificationCount = notifications.filter(n => !n.isRead).length;
 
   // Initialize user and subscriptions
   useEffect(() => {
@@ -122,6 +162,9 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
 
           // 未読数監視
           unsubscribeUnreadCounts.current = subscribeToUnreadCounts(userId, setUnreadCounts);
+          
+          // 通知監視
+          unsubscribeNotifications.current = subscribeToNotifications(userId, setNotifications);
         }
 
         setIsLoading(false);
@@ -140,6 +183,14 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       unsubscribeMessages.current?.();
       unsubscribeUsers.current?.();
       unsubscribeUnreadCounts.current?.();
+      unsubscribeNotifications.current?.();
+      unsubscribeTypingStatus.current?.();
+      unsubscribeThreadMessages.current?.();
+      
+      // タイピング状態をクリア
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
       
       // ユーザーをオフラインに
       updateUserStatus(userId, 'offline').catch(console.error);
@@ -152,6 +203,7 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
 
     // 既存の監視を停止
     unsubscribeMessages.current?.();
+    unsubscribeTypingStatus.current?.();
 
     // 新しいチャンネルのメッセージを監視
     unsubscribeMessages.current = subscribeToMessages(
@@ -159,28 +211,73 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       setMessages,
       100 // 最大100件
     );
+    
+    // タイピング状態を監視
+    unsubscribeTypingStatus.current = subscribeToTypingStatus(
+      selectedChannelId,
+      (typingList) => {
+        // 自分のタイピング状態を除外
+        const filteredTyping = typingList.filter(t => t.userId !== userId);
+        setTypingUsers(filteredTyping);
+      }
+    );
 
     // チャンネル変更時に未読をクリア
     updateUnreadCount(userId, selectedChannelId).catch(console.error);
 
     return () => {
       unsubscribeMessages.current?.();
+      unsubscribeTypingStatus.current?.();
     };
   }, [selectedChannelId, enableRealtime, userId]);
+  
+  // スレッドメッセージ監視（選択されたスレッドが変更された時）
+  useEffect(() => {
+    if (!selectedThreadId || !enableRealtime) return;
+
+    // 既存の監視を停止
+    unsubscribeThreadMessages.current?.();
+
+    // 新しいスレッドのメッセージを監視
+    unsubscribeThreadMessages.current = subscribeToThreadMessages(
+      selectedThreadId,
+      setThreadMessages,
+      50 // 最大50件
+    );
+
+    return () => {
+      unsubscribeThreadMessages.current?.();
+    };
+  }, [selectedThreadId, enableRealtime]);
+  
+  // ユーザーアクティビティ更新（1分ごと）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updateUserActivity(userId).catch(console.error);
+    }, 60000); // 1分ごと
+
+    return () => clearInterval(interval);
+  }, [userId]);
 
   // Actions
   const selectChannel = useCallback((channelId: string) => {
     setSelectedChannelId(channelId);
+    setSelectedThreadId(null); // チャンネル変更時はスレッドを閉じる
   }, []);
-
-  const sendNewMessage = useCallback(async (
+  
+  const selectThread = useCallback((threadId: string) => {
+    setSelectedThreadId(threadId);
+  }, []);
+  
+  const sendReply = useCallback(async (
+    threadId: string,
     content: string,
     attachments?: ChatAttachment[]
   ): Promise<boolean> => {
     if (!selectedChannelId) return false;
 
     try {
-      const result = await sendMessage({
+      const result = await sendThreadMessage(threadId, {
         channelId: selectedChannelId,
         content,
         authorId: userId,
@@ -203,6 +300,37 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       return false;
     }
   }, [selectedChannelId, userId, userName, userRole]);
+
+  const sendNewMessage = useCallback(async (
+    content: string,
+    attachments?: ChatAttachment[]
+  ): Promise<boolean> => {
+    if (!selectedChannelId) return false;
+
+    try {
+      const result = await sendMessage({
+        channelId: selectedChannelId,
+        content,
+        authorId: userId,
+        authorName: userName,
+        authorRole: userRole,
+        type: 'message',
+        priority: 'normal',
+        attachments: attachments || [],
+        reactions: [],
+      }); // メッセージ送信
+
+      if (result.error) {
+        setError(result.error);
+        return false;
+      }
+
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  }, [selectedChannelId, userId, userName, userRole, users]);
 
   const editMessage = useCallback(async (
     messageId: string,
@@ -301,12 +429,97 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       return false;
     }
   }, [userId]);
+  
+  const markNotificationRead = useCallback(async (
+    notificationId: string
+  ): Promise<boolean> => {
+    try {
+      const result = await markNotificationAsRead(notificationId);
+      if (result.error) {
+        setError(result.error);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  }, []);
+  
+  const setTyping = useCallback((isTyping: boolean) => {
+    if (!selectedChannelId) return;
+    
+    updateTypingStatus(userId, userName, selectedChannelId, isTyping)
+      .catch(console.error);
+    
+    // タイピング状態を3秒後に自動でクリア
+    if (isTyping) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        updateTypingStatus(userId, userName, selectedChannelId, false)
+          .catch(console.error);
+      }, 3000);
+    }
+  }, [selectedChannelId, userId, userName]);
 
   const createNewChannel = useCallback(async (
     channelData: Omit<ChatChannel, 'id' | 'createdAt' | 'updatedAt' | 'memberCount'>
   ): Promise<string | null> => {
     try {
       const result = await createChannel(channelData);
+      if (result.error) {
+        setError(result.error);
+        return null;
+      }
+      return result.id;
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    }
+  }, []);
+  
+  const editChannel = useCallback(async (
+    channelId: string,
+    updateData: Partial<ChatChannel>
+  ): Promise<boolean> => {
+    try {
+      const result = await updateChannel(channelId, updateData);
+      if (result.error) {
+        setError(result.error);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  }, []);
+  
+  const removeChannel = useCallback(async (
+    channelId: string
+  ): Promise<boolean> => {
+    try {
+      const result = await deleteChannel(channelId);
+      if (result.error) {
+        setError(result.error);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  }, []);
+  
+  const createNewThread = useCallback(async (
+    parentMessageId: string,
+    channelId: string
+  ): Promise<string | null> => {
+    try {
+      const result = await createThread(parentMessageId, channelId);
       if (result.error) {
         setError(result.error);
         return null;
@@ -331,6 +544,10 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   const getCurrentUser = useCallback((): ChatUser | null => {
     return currentUser;
   }, [currentUser]);
+  
+  const getUnreadNotificationCount = useCallback((): number => {
+    return unreadNotificationCount;
+  }, [unreadNotificationCount]);
 
   const searchAllMessages = useCallback(async (query: string): Promise<ChatMessage[]> => {
     if (!query.trim()) return [];
@@ -364,6 +581,39 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       return [];
     }
   }, [selectedChannelId]);
+  
+  const searchByDate = useCallback(async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<ChatMessage[]> => {
+    try {
+      const channelIds = channels.map(ch => ch.id);
+      const result = await searchMessagesByDate(channelIds, startDate, endDate, 100);
+      if (result.error) {
+        setError(result.error);
+        return [];
+      }
+      return result.data;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    }
+  }, [channels]);
+  
+  const searchByUser = useCallback(async (authorId: string): Promise<ChatMessage[]> => {
+    try {
+      const channelIds = channels.map(ch => ch.id);
+      const result = await searchMessagesByUser(channelIds, authorId, 100);
+      if (result.error) {
+        setError(result.error);
+        return [];
+      }
+      return result.data;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    }
+  }, [channels]);
 
   return {
     // State
@@ -371,26 +621,40 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     messages,
     users,
     unreadCounts,
+    notifications,
+    typingUsers,
+    threadMessages,
     currentChannel,
+    currentThread,
     isLoading,
     error,
     
     // Actions
     selectChannel,
+    selectThread,
     sendNewMessage,
+    sendReply,
     editMessage,
     removeMessage,
     uploadFile,
     addReaction,
     updateStatus,
+    setTyping,
     markAsRead,
+    markNotificationRead,
     createNewChannel,
+    editChannel,
+    removeChannel,
+    createNewThread,
     searchAllMessages,
     searchCurrentChannel,
+    searchByDate,
+    searchByUser,
     
     // Utilities
     getUnreadCount,
     getOnlineUsers,
     getCurrentUser,
+    getUnreadNotificationCount,
   };
 };

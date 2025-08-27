@@ -70,25 +70,25 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
     const diffHours = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60);
     
     if (diffHours < 0) {
-      return { type: 'overdue', label: '期限超過', color: 'bg-red-100 text-red-800 border-red-200' };
+      return { type: 'overdue', label: '期限超過', color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700' };
     } else if (diffHours <= 2) {
-      return { type: 'due-now', label: '期限迫る', color: 'bg-orange-100 text-orange-800 border-orange-200' };
+      return { type: 'due-now', label: '期限迫る', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700' };
     } else if (diffHours <= 24) {
-      return { type: 'due-today', label: '本日期限', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+      return { type: 'due-today', label: '本日期限', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700' };
     } else if (diffHours <= 72) {
-      return { type: 'due-soon', label: '期限近し', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+      return { type: 'due-soon', label: '期限近し', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-700' };
     }
     return null;
   };
 
   const getStatusInfo = (status: Process['status']) => {
     const statusMap = {
-      planning: { label: '計画中', color: 'bg-gray-100 text-gray-800', icon: Target, bgColor: 'bg-gray-50' },
-      'data-work': { label: 'データ作業', color: 'bg-blue-100 text-blue-800', icon: Settings, bgColor: 'bg-blue-50' },
-      processing: { label: '加工中', color: 'bg-green-100 text-green-800', icon: Play, bgColor: 'bg-green-50' },
-      finishing: { label: '仕上げ中', color: 'bg-yellow-100 text-yellow-800', icon: Wrench, bgColor: 'bg-yellow-50' },
-      completed: { label: '完了', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle, bgColor: 'bg-emerald-50' },
-      delayed: { label: '遅延', color: 'bg-red-100 text-red-800', icon: AlertTriangle, bgColor: 'bg-red-50' }
+      planning: { label: '計画中', color: 'bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200', icon: Target, bgColor: 'bg-gray-50 dark:bg-slate-700/50' },
+      'data-work': { label: 'データ作業', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300', icon: Settings, bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
+      processing: { label: '加工中', color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300', icon: Play, bgColor: 'bg-green-50 dark:bg-green-900/20' },
+      finishing: { label: '仕上げ中', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300', icon: Wrench, bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' },
+      completed: { label: '完了', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle, bgColor: 'bg-emerald-50 dark:bg-emerald-900/20' },
+      delayed: { label: '遅延', color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300', icon: AlertTriangle, bgColor: 'bg-red-50 dark:bg-red-900/20' }
     };
     return statusMap[status] || statusMap.planning;
   };
@@ -130,15 +130,15 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${statusInfo.bgColor} border-gray-200 hover:border-blue-300`}>
+    <div className={`bg-white dark:bg-slate-800 rounded-xl border-2 transition-all duration-200 hover:shadow-lg dark:hover:shadow-slate-900/50 ${statusInfo.bgColor} border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500`}>
       {/* Main Card Header */}
       <div className="p-4">
         {/* Top Row: Title, Status, and Priority */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
-              <StatusIcon className="w-4 h-4 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-900 truncate">
+              <StatusIcon className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                 {process.projectName}
               </h3>
               <Badge className={statusInfo.color + ' text-xs px-2 py-1'}>
@@ -152,7 +152,7 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
               )}
             </div>
             
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-slate-400">
               <span className="flex items-center">
                 <Package className="w-4 h-4 mr-1" />
                 {process.managementNumber}
@@ -183,10 +183,10 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
         </div>
 
         {/* Manufacturing Details Row */}
-        <div className="grid grid-cols-3 gap-4 mb-3 p-3 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 mb-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
           {/* Machines */}
           <div>
-            <div className="text-xs font-medium text-gray-500 mb-1">割当機械</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">割当機械</div>
             <div className="space-y-1">
               {process.assignedMachines.map((machine, index) => {
                 // Mock machine status data - in real implementation, this would come from API
@@ -209,18 +209,18 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
           {/* Work Details */}
           <div>
-            <div className="text-xs font-medium text-gray-500 mb-1">作業内訳</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">作業内訳</div>
             {process.workDetails && (
               <div className="space-y-1">
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs text-gray-700 dark:text-slate-300">
                   <span>段取り:</span>
                   <span>{formatTime(process.workDetails.setup)}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs text-gray-700 dark:text-slate-300">
                   <span>加工:</span>
                   <span>{formatTime(process.workDetails.machining)}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs text-gray-700 dark:text-slate-300">
                   <span>仕上げ:</span>
                   <span>{formatTime(process.workDetails.finishing)}</span>
                 </div>
@@ -230,7 +230,7 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
           {/* Quantity & Progress */}
           <div>
-            <div className="text-xs font-medium text-gray-500 mb-1">数量・進捗</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">数量・進捗</div>
             <div className="text-sm">
               <div className="flex justify-between mb-1">
                 <span>数量:</span>
@@ -253,8 +253,8 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
         {/* Progress Bar with Work Hours */}
         <div className="mb-3">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">全体進捗</span>
-            <div className="flex items-center space-x-4 text-xs text-gray-500">
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">全体進捗</span>
+            <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400">
               <span>実績: {formatTime(process.workDetails?.totalActualHours || 0)}</span>
               <span>予定: {formatTime(process.workDetails?.totalEstimatedHours || 0)}</span>
               <span className={`font-medium ${efficiency >= 100 ? 'text-green-600' : efficiency >= 80 ? 'text-blue-600' : 'text-red-600'}`}>
@@ -400,9 +400,9 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
                             ) : (
                               <div className="w-4 h-4 border-2 border-gray-300 rounded-full mr-2" />
                             )}
-                            <span className="font-medium">{step.nameJapanese}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{step.nameJapanese}</span>
                           </div>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-slate-400">
                             <span>{step.actualHours}h / {step.estimatedHours}h</span>
                             {step.machineRequired && (
                               <Badge variant="outline" className="text-xs">
@@ -418,8 +418,8 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
                 {/* Material & Specifications */}
                 <div>
-                  <div className="font-medium text-gray-700 mb-1">仕様・材料</div>
-                  <div className="text-gray-600">
+                  <div className="font-medium text-gray-700 dark:text-slate-300 mb-1">仕様・材料</div>
+                  <div className="text-gray-600 dark:text-slate-400">
                     数量: {process.quantity}個<br/>
                     {process.remarks && (
                       <>備考: {process.remarks}</>
@@ -431,7 +431,7 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
             {/* Right Column: Schedule & Status Information */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                 <Calendar className="w-4 h-4 mr-2" />
                 スケジュール・状況
               </h4>
@@ -439,8 +439,8 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
               <div className="space-y-3 text-sm">
                 {/* Schedule Timeline */}
                 <div>
-                  <div className="font-medium text-gray-700 mb-2">重要日程</div>
-                  <div className="space-y-1 text-gray-600">
+                  <div className="font-medium text-gray-700 dark:text-slate-300 mb-2">重要日程</div>
+                  <div className="space-y-1 text-gray-600 dark:text-slate-400">
                     <div className="flex justify-between">
                       <span>受注日:</span>
                       <span>{new Date(process.orderDate).toLocaleDateString('ja-JP')}</span>
@@ -464,10 +464,10 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
                 {/* Performance Metrics */}
                 <div>
-                  <div className="font-medium text-gray-700 mb-2">実績指標</div>
+                  <div className="font-medium text-gray-700 dark:text-slate-300 mb-2">実績指標</div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white p-2 rounded">
-                      <div className="text-xs text-gray-500">効率性</div>
+                    <div className="bg-white dark:bg-slate-600 p-2 rounded">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">効率性</div>
                       <div className={`font-bold ${
                         efficiency >= 100 ? 'text-green-600' : 
                         efficiency >= 80 ? 'text-blue-600' : 'text-red-600'
@@ -475,8 +475,8 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
                         {efficiency}%
                       </div>
                     </div>
-                    <div className="bg-white p-2 rounded">
-                      <div className="text-xs text-gray-500">進捗率</div>
+                    <div className="bg-white dark:bg-slate-600 p-2 rounded">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">進捗率</div>
                       <div className={`font-bold ${
                         progress >= 90 ? 'text-green-600' : 
                         progress >= 70 ? 'text-blue-600' : 'text-gray-600'
@@ -489,8 +489,8 @@ const EnhancedProcessCard: React.FC<EnhancedProcessCardProps> = ({
 
                 {/* Team Information */}
                 <div>
-                  <div className="font-medium text-gray-700 mb-2">担当者情報</div>
-                  <div className="space-y-1 text-gray-600">
+                  <div className="font-medium text-gray-700 dark:text-slate-300 mb-2">担当者情報</div>
+                  <div className="space-y-1 text-gray-600 dark:text-slate-400">
                     <div className="flex justify-between">
                       <span>営業:</span>
                       <span>{process.salesPerson}</span>

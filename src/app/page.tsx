@@ -658,9 +658,9 @@ const MainDashboard = () => {
       case "progress":
         return <PlayCircle className="w-4 h-4 text-blue-600" />;
       case "pending":
-        return <Square className="w-4 h-4 text-gray-400" />;
+        return <Square className="w-4 h-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />;
       default:
-        return <Square className="w-4 h-4 text-gray-400" />;
+        return <Square className="w-4 h-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />;
     }
   };
 
@@ -674,7 +674,7 @@ const MainDashboard = () => {
       case "system":
         return <Zap className="w-4 h-4 text-green-500" />;
       default:
-        return <Bell className="w-4 h-4 text-gray-500" />;
+        return <Bell className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
     }
   };
 
@@ -749,18 +749,18 @@ const MainDashboard = () => {
   const unreadCount = displayNotifications.filter((n) => n.unread).length;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* サイドバーの幅を考慮してメインコンテンツを配置 */}
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* 上部ヘッダー - 現代的なデザイン */}
-        <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm px-6 py-4">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             {/* 左側 - ブランドとナビゲーション */}
             <div className="flex items-center space-x-4">
               <Home className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Unica Dashboard</h1>
-                <p className="text-sm text-gray-600">製造管理システム</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Unica Dashboard</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-400">製造管理システム</p>
               </div>
             </div>
 
@@ -773,7 +773,7 @@ const MainDashboard = () => {
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="p-2"
                 >
-                  <Bell className="w-5 h-5 text-gray-600" />
+                  <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   {unreadCount > 0 && (
                     <Badge className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 p-0 flex items-center justify-center text-xs">
                       {unreadCount}
@@ -786,64 +786,64 @@ const MainDashboard = () => {
         </div>
 
         {/* メインコンテンツエリア */}
-        <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/40 custom-scrollbar">
+        <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/40 dark:from-slate-900 dark:via-slate-800/40 dark:to-slate-700/40 custom-scrollbar">
           {/* エレガントな統計バー */}
           <div className="px-6 pt-6 pb-4">
             <div className="grid grid-cols-4 gap-6">
               {/* 受注管理 */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-blue-200/30" 
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-blue-200/30 dark:border-blue-700/30" 
                    onClick={() => router.push('/orders')}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-blue-600 mb-2">受注</p>
-                    <p className="text-3xl font-bold text-gray-800">{displayProcesses.length}</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{displayProcesses.length}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <Target className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-500/20 dark:bg-blue-400/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </div>
 
               {/* 進行中タスク */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-green-200/30" 
+              <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/30 dark:to-green-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-green-200/30 dark:border-green-700/30" 
                    onClick={() => router.push('/work-hours')}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-green-600 mb-2">工数</p>
-                    <p className="text-3xl font-bold text-gray-800">
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                       {[...allTasks, ...displayPersonalTasks].filter(t => t.status === 'progress').length}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <PlayCircle className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-green-500/20 dark:bg-green-400/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <PlayCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </div>
 
               {/* 未読通知 */}
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-orange-200/30" 
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-orange-200/30 dark:border-orange-700/30" 
                    onClick={() => router.push('/notifications')}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-orange-600 mb-2">未読</p>
-                    <p className="text-3xl font-bold text-gray-800">{unreadCount}</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{unreadCount}</p>
                   </div>
-                  <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <Bell className="w-6 h-6 text-orange-600" />
+                  <div className="w-12 h-12 bg-orange-500/20 dark:bg-orange-400/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <Bell className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                   </div>
                 </div>
               </div>
 
               {/* 日報管理 */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-purple-200/30" 
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-purple-200/30 dark:border-purple-700/30" 
                    onClick={() => router.push('/daily-reports')}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-purple-600 mb-2">日報</p>
-                    <p className="text-3xl font-bold text-gray-800">{todaySchedule.length}</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{todaySchedule.length}</p>
                   </div>
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <FileText className="w-6 h-6 text-purple-600" />
+                  <div className="w-12 h-12 bg-purple-500/20 dark:bg-purple-400/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <FileText className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </div>
@@ -856,24 +856,24 @@ const MainDashboard = () => {
               {/* 左サイド - タスク管理 */}
               <div className="col-span-3 space-y-6">
                 {/* タスク管理セクション */}
-                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                <div className="bg-white/70 dark:bg-slate-800/90 rounded-lg p-5 backdrop-blur-sm shadow-sm dark:shadow-slate-900/50">
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
                       タスク管理
                     </h3>
                     <button 
                       onClick={() => router.push('/task')}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
-                      <Target className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                      <Target className="w-4 h-4 text-gray-500 dark:text-gray-400 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200" />
                     </button>
                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-gray-700">個人タスク</p>
-                      <p className="text-lg font-bold text-gray-800">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">個人タスク</p>
+                      <p className="text-lg font-bold text-gray-800 dark:text-gray-100">
                         {displayPersonalTasks.filter(t => t.status === 'completed').length}/{displayPersonalTasks.length}
                       </p>
                     </div>
@@ -881,24 +881,24 @@ const MainDashboard = () => {
                       displayPersonalTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
+                          className="flex items-center p-4 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 dark:border-slate-600 hover:border-white/50 dark:hover:border-slate-500 interactive-scale"
                           onClick={() => router.push('/task?tab=personal')}
                         >
                           <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}
                           </div>
-                          <span className="flex-1 text-sm font-medium text-gray-800">{task.title}</span>
+                          <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{task.title}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm bg-white/40 rounded-2xl border border-white/30">
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm bg-white/40 dark:bg-slate-700/40 rounded-2xl border border-white/30 dark:border-slate-600">
                         個人タスクなし ({personalTasks.length})
                       </div>
                     )}
                     
                     <div className="flex items-center justify-between mt-6">
-                      <p className="text-sm font-semibold text-gray-700">全体タスク</p>
-                      <p className="text-lg font-bold text-gray-800">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">全体タスク</p>
+                      <p className="text-lg font-bold text-gray-800 dark:text-white">
                         {allTasks.filter(t => t.status === 'completed').length}/{allTasks.length}
                       </p>
                     </div>
@@ -906,22 +906,22 @@ const MainDashboard = () => {
                       allTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
+                          className="flex items-center p-4 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 dark:border-slate-600 hover:border-white/50 dark:hover:border-slate-500 interactive-scale"
                           onClick={() => router.push('/task?tab=company')}
                         >
                           <div className="w-6 h-6 mr-4 flex-shrink-0">
                             {getStatusIcon(task.status)}
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-800">{task.title}</div>
+                            <div className="text-sm font-medium text-gray-800 dark:text-gray-100">{task.title}</div>
                             {task.person && (
-                              <div className="text-xs text-gray-600 mt-1">担当: {task.person}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">担当: {task.person}</div>
                             )}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm bg-white/40 rounded-2xl border border-white/30">
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm bg-white/40 dark:bg-slate-700/40 rounded-2xl border border-white/30 dark:border-slate-600">
                         全体タスクなし ({companyTasks.length})
                       </div>
                     )}
@@ -929,17 +929,17 @@ const MainDashboard = () => {
                 </div>
 
                 {/* 通知 */}
-                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                <div className="bg-white/70 dark:bg-slate-800/90 rounded-lg p-5 backdrop-blur-sm shadow-sm dark:shadow-slate-900/50">
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <Bell className="w-5 h-5 text-orange-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                      <Bell className="w-5 h-5 text-orange-600 dark:text-orange-400 mr-2" />
                       通知
                     </h3>
                     <button 
                       onClick={() => router.push('/notifications')}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
-                      <MessageCircle className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                      <MessageCircle className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
                   
@@ -947,15 +947,15 @@ const MainDashboard = () => {
                     {displayNotifications.slice(0, 3).map((notification) => (
                       <div
                         key={notification.id}
-                        className="flex items-start p-4 hover:bg-white/60 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 hover:border-white/50 interactive-scale"
+                        className="flex items-start p-4 hover:bg-white/60 dark:hover:bg-gray-800 rounded-2xl transition-all duration-300 cursor-pointer backdrop-blur-sm border border-white/30 dark:border-gray-700 hover:border-white/50 dark:border-gray-600 interactive-scale"
                         onClick={() => router.push('/notifications')}
                       >
                         <div className="w-6 h-6 mr-4 flex-shrink-0 mt-0.5">
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-800">{notification.message}</div>
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className="text-sm font-medium text-gray-800 dark:text-gray-100">{notification.message}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                             {notification.user} • {notification.time}
                           </div>
                         </div>
@@ -1008,10 +1008,10 @@ const MainDashboard = () => {
                 {/* 工程カードリスト */}
                 <div className="space-y-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">本日の工程</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">本日の工程</h2>
                     <button 
                       onClick={() => router.push('/tasks')}
-                      className="text-sm bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 hover:border-blue-300/50"
+                      className="text-sm bg-blue-500/20 dark:bg-blue-400/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 dark:hover:bg-blue-400/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50">
                     >
                       詳細管理
                     </button>
@@ -1040,21 +1040,21 @@ const MainDashboard = () => {
                       {processes.length > 3 && (
                         <button
                           onClick={() => router.push('/tasks')}
-                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-700 hover:from-blue-500/20 hover:to-purple-500/20 rounded-2xl border border-blue-200/50 hover:border-blue-300/50 transition-all duration-300 backdrop-blur-sm interactive-scale"
+                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 text-blue-700 dark:text-blue-300 hover:from-blue-500/20 hover:to-purple-500/20 dark:hover:from-blue-400/20 dark:hover:to-purple-400/20 rounded-2xl border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 backdrop-blur-sm interactive-scale">
                         >
                           他 {processes.length - 3} 件の工程を表示 →
                         </button>
                       )}
                     </>
                   ) : (
-                    <div className="bg-white rounded-3xl p-8 modern-shadow-lg border border-gray-200/50">
-                      <div className="text-center text-gray-500">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center floating-animation">
-                          <Clock className="w-8 h-8 text-blue-600" />
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 modern-shadow-lg border border-gray-200/50 dark:border-slate-600/50">
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center floating-animation">
+                          <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <p className="text-xl font-semibold mb-3 text-gray-700">工程データを読み込み中...</p>
+                        <p className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">工程データを読み込み中...</p>
                         <p className="text-sm mb-2">現在のデータ件数: {processes.length}</p>
-                        <p className="text-xs text-gray-400">Firebase接続状態を確認してください</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Firebase接続状態を確認してください</p>
                       </div>
                     </div>
                   )}
@@ -1064,23 +1064,23 @@ const MainDashboard = () => {
               {/* 右サイド - カレンダー・予定・全体連絡 */}
               <div className="col-span-3 space-y-6">
                 {/* カレンダー */}
-                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                <div className="bg-white/70 dark:bg-slate-800/90 rounded-lg p-5 backdrop-blur-sm shadow-sm dark:shadow-slate-900/50">
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <Calendar className="w-5 h-5 text-blue-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
                       {monthNames[today.getMonth()]} {today.getFullYear()}
                     </h3>
                     <button 
                       onClick={() => router.push('/calendar')}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
-                      <Clock className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                      <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
                   
                   <div className="grid grid-cols-7 gap-2 mb-4">
                     {dayNames.map((day) => (
-                      <div key={day} className="text-center text-xs font-semibold text-gray-600 py-3 bg-gray-50 rounded-lg">
+                      <div key={day} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 py-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
                         {day}
                       </div>
                     ))}
@@ -1102,7 +1102,7 @@ const MainDashboard = () => {
                               ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30"
                               : hasSchedule
                               ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 hover:from-blue-200 hover:to-blue-300 shadow-sm"
-                              : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600/50 hover:shadow-sm"
                           }`}
                         >
                           {day}
@@ -1114,17 +1114,17 @@ const MainDashboard = () => {
 
 
                 {/* 全体連絡 */}
-                <div className="bg-white/70 rounded-lg p-5 backdrop-blur-sm shadow-sm">
+                <div className="bg-white/70 dark:bg-slate-800/90 rounded-lg p-5 backdrop-blur-sm shadow-sm dark:shadow-slate-900/50">
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <MessageCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center">
+                      <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
                       全体連絡
                     </h3>
                     <button 
                       onClick={() => router.push('/announcements')}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
-                      <Bell className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                      <Bell className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
                   
@@ -1134,20 +1134,20 @@ const MainDashboard = () => {
                         const priorityGradient = announcement.priority === 'high' ? 'from-red-500 to-red-600' :
                                              announcement.priority === 'medium' ? 'from-orange-500 to-orange-600' :
                                              'from-blue-500 to-blue-600';
-                        const priorityBg = announcement.priority === 'high' ? 'bg-red-50' :
-                                             announcement.priority === 'medium' ? 'bg-orange-50' :
-                                             'bg-blue-50';
+                        const priorityBg = announcement.priority === 'high' ? 'bg-red-50 dark:bg-red-900/20' :
+                                             announcement.priority === 'medium' ? 'bg-orange-50 dark:bg-orange-900/20' :
+                                             'bg-blue-50 dark:bg-blue-900/20';
                         return (
                           <div
                             key={announcement.id}
-                            className={`relative ${priorityBg} hover:scale-[1.02] p-4 transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/50 modern-shadow overflow-hidden group`}
+                            className={`relative ${priorityBg} hover:scale-[1.02] p-4 transition-all duration-300 cursor-pointer rounded-2xl border border-gray-200/50 dark:border-slate-600/50 modern-shadow overflow-hidden group`}
                             onClick={() => {
                               router.push('/announcements');
                             }}
                           >
                             <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${priorityGradient} rounded-l-2xl`}></div>
                             <div className="flex items-start justify-between mb-3">
-                              <h4 className="text-sm font-semibold text-gray-900 flex-1 pr-2 group-hover:text-gray-800">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2 group-hover:text-gray-800 dark:group-hover:text-gray-200">
                                 {announcement.title}
                               </h4>
                               <span className={`px-3 py-1 text-xs font-semibold rounded-full border-2 ${
@@ -1159,18 +1159,18 @@ const MainDashboard = () => {
                                  announcement.priority === 'medium' ? '通常' : '参考'}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-700 line-clamp-2 mb-2 leading-relaxed">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2 leading-relaxed">
                               {announcement.content}
                             </p>
-                            <div className="text-xs text-gray-500 font-medium">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                               {formatRelativeTime((announcements.find(a => a.id === announcement.id) as Announcement)?.createdAt)}
                             </div>
                           </div>
                         );
                       })
                     ) : (
-                      <div className="p-6 text-center text-gray-500 text-sm bg-gray-50 rounded-2xl border border-gray-200/50">
-                        <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm bg-gray-50 dark:bg-slate-700/50 rounded-2xl border border-gray-200/50 dark:border-slate-600/50">
+                        <MessageCircle className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-gray-500" />
                         全体連絡なし ({announcements.length}件)
                       </div>
                     )}
@@ -1185,15 +1185,15 @@ const MainDashboard = () => {
         {/* クイックメモモーダル */}
         {showQuickNoteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 mx-4">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-96 mx-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">クイックメモ</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">クイックメモ</h3>
                 <button
                   onClick={() => {
                     setShowQuickNoteModal(false);
                     setQuickNoteContent('');
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1202,7 +1202,7 @@ const MainDashboard = () => {
                 value={quickNoteContent}
                 onChange={(e) => setQuickNoteContent(e.target.value)}
                 placeholder="メモを入力してください..."
-                className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <div className="flex items-center justify-end space-x-3 mt-4">
                 <button
@@ -1210,7 +1210,7 @@ const MainDashboard = () => {
                     setShowQuickNoteModal(false);
                     setQuickNoteContent('');
                   }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                  className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                 >
                   キャンセル
                 </button>

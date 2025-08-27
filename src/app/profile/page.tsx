@@ -195,22 +195,22 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="h-screen bg-white flex items-center justify-center ml-0 md:ml-16">
+      <div className="h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center ml-0 md:ml-16">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">ユーザー情報を読み込み中...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-600 dark:text-slate-400" />
+          <p className="text-gray-600 dark:text-slate-400">ユーザー情報を読み込み中...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gray-50 ml-0 md:ml-16 flex">
+    <div className="h-screen bg-gray-50 dark:bg-slate-900 ml-0 md:ml-16 flex">
       {/* 左サイドバー */}
-      <div className="w-64 bg-white border-r border-gray-200 p-4">
+      <div className="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 p-4">
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">プロフィール設定</h1>
-          <p className="text-sm text-gray-600 mt-1">アカウント情報を管理</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">プロフィール設定</h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">アカウント情報を管理</p>
         </div>
         
         <nav className="space-y-2">
@@ -218,8 +218,8 @@ export default function ProfilePage() {
             onClick={() => setActiveSection('profile')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'profile'
-                ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-700'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -232,8 +232,8 @@ export default function ProfilePage() {
             onClick={() => setActiveSection('password')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'password'
-                ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-700'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -246,8 +246,8 @@ export default function ProfilePage() {
             onClick={() => setActiveSection('danger')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeSection === 'danger'
-                ? 'bg-red-50 text-red-700 border-l-2 border-red-700'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-l-2 border-red-700 dark:border-red-400'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center">
@@ -259,7 +259,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 右メインコンテンツ */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-6 overflow-auto bg-gray-50 dark:bg-slate-900">
         {message && (
           <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="mb-6">
             {message.type === 'error' ? (
@@ -275,13 +275,13 @@ export default function ProfilePage() {
         {activeSection === 'profile' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">基本情報</h2>
-              <p className="text-gray-600">プロフィール情報を編集できます</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">基本情報</h2>
+              <p className="text-gray-600 dark:text-slate-400">プロフィール情報を編集できます</p>
             </div>
             
             <form onSubmit={handleProfileUpdate} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-gray-700">氏名</Label>
+                <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-slate-300">氏名</Label>
                 <Input
                   id="name"
                   name="name"
@@ -293,7 +293,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="employeeId" className="text-sm font-medium text-gray-700">社員番号</Label>
+                <Label htmlFor="employeeId" className="text-sm font-medium text-gray-700 dark:text-slate-300">社員番号</Label>
                 <Input
                   id="employeeId"
                   name="employeeId"
@@ -305,7 +305,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department" className="text-sm font-medium text-gray-700">部署</Label>
+                <Label htmlFor="department" className="text-sm font-medium text-gray-700 dark:text-slate-300">部署</Label>
                 <Select
                   value={profileData.department}
                   onValueChange={(value) => handleSelectChange("department", value)}
@@ -324,7 +324,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium text-gray-700">役職</Label>
+                <Label htmlFor="role" className="text-sm font-medium text-gray-700 dark:text-slate-300">役職</Label>
                 <Select
                   value={profileData.role}
                   onValueChange={(value) => handleSelectChange("role", value)}
@@ -346,7 +346,7 @@ export default function ProfilePage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   {loading ? (
                     <>
@@ -369,13 +369,13 @@ export default function ProfilePage() {
         {activeSection === 'password' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">パスワード変更</h2>
-              <p className="text-gray-600">セキュリティのため、現在のパスワードが必要です</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">パスワード変更</h2>
+              <p className="text-gray-600 dark:text-slate-400">セキュリティのため、現在のパスワードが必要です</p>
             </div>
             
             <form onSubmit={handlePasswordUpdate} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword" className="text-sm font-medium text-gray-700">現在のパスワード</Label>
+                <Label htmlFor="currentPassword" className="text-sm font-medium text-gray-700 dark:text-slate-300">現在のパスワード</Label>
                 <div className="relative">
                   <Input
                     id="currentPassword"
@@ -403,7 +403,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700">新しいパスワード</Label>
+                <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700 dark:text-slate-300">新しいパスワード</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -431,7 +431,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">パスワード（確認）</Label>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-slate-300">パスワード（確認）</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -462,7 +462,7 @@ export default function ProfilePage() {
                 <Button
                   type="submit"
                   disabled={passwordLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   {passwordLoading ? (
                     <>
@@ -485,14 +485,14 @@ export default function ProfilePage() {
         {activeSection === 'danger' && (
           <div className="max-w-lg">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-red-600 mb-2">危険な操作</h2>
-              <p className="text-gray-600">これらの操作は取り消すことができません</p>
+              <h2 className="text-2xl font-semibold text-red-600 dark:text-red-400 mb-2">危険な操作</h2>
+              <p className="text-gray-600 dark:text-slate-400">これらの操作は取り消すことができません</p>
             </div>
             
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">アカウント削除</h3>
-                <p className="text-gray-600 mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">アカウント削除</h3>
+                <p className="text-gray-600 dark:text-slate-400 mb-4">
                   アカウントを完全に削除します。この操作は取り消せません。
                   すべてのデータが失われます。
                 </p>

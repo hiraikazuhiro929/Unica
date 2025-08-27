@@ -69,7 +69,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   return (
     <CompanyWrapper>
       <Sidebar />
-      <main className="w-full min-h-screen">{children}</main>
+      <main className="w-full min-h-screen bg-white dark:bg-slate-900">{children}</main>
     </CompanyWrapper>
   );
 };

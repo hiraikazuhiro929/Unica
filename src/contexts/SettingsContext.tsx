@@ -41,7 +41,7 @@ interface SettingsProviderProps {
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
   
   // テーマ設定
-  const [darkMode, setDarkModeState] = useState(false);
+  const [darkMode, setDarkModeState] = useState(true);
   
   // 通知設定
   const [notificationsEnabled, setNotificationsEnabledState] = useState(false);

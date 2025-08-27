@@ -134,16 +134,16 @@ const HelpPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <HelpCircle className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">ヘルプセンター</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ヘルプセンター</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-300">
                   使い方ガイドとよくある質問
                 </p>
               </div>
@@ -151,13 +151,13 @@ const HelpPage = () => {
             
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="ヘルプを検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80"
+                  className="pl-10 pr-4 py-2 w-80 bg-white dark:bg-slate-800 text-gray-900 dark:text-white border-gray-200 dark:border-slate-600"
                 />
               </div>
             </div>
@@ -191,27 +191,27 @@ const HelpPage = () => {
               {filteredFAQs.length === 0 ? (
                 <div className="text-center py-16">
                   <HelpCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500 mb-2">該当するFAQが見つかりません</p>
-                  <p className="text-gray-400">検索条件を変更してください</p>
+                  <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当するFAQが見つかりません</p>
+                  <p className="text-gray-400 dark:text-slate-500">検索条件を変更してください</p>
                 </div>
               ) : (
                 filteredFAQs.map((faq) => (
-                  <Card key={faq.id} className="border border-gray-200 shadow-sm">
+                  <Card key={faq.id} className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg text-gray-900 mb-2">
+                          <CardTitle className="text-lg text-gray-900 dark:text-white mb-2">
                             {faq.question}
                           </CardTitle>
                           <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                             {faq.category}
                           </span>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-5 h-5 text-gray-400 dark:text-slate-500" />
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <p className="text-gray-700">{faq.answer}</p>
+                      <p className="text-gray-700 dark:text-slate-300">{faq.answer}</p>
                     </CardContent>
                   </Card>
                 ))
@@ -222,31 +222,31 @@ const HelpPage = () => {
             <TabsContent value="guides" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredGuides.map((guide) => (
-                  <Card key={guide.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                  <Card key={guide.id} className="border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-slate-800">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-2">
                           {getTypeIcon(guide.type)}
-                          <CardTitle className="text-lg text-gray-900">
+                          <CardTitle className="text-lg text-gray-900 dark:text-white">
                             {guide.title}
                           </CardTitle>
                         </div>
-                        <ExternalLink className="w-4 h-4 text-gray-400" />
+                        <ExternalLink className="w-4 h-4 text-gray-400 dark:text-slate-500" />
                       </div>
                       {guide.duration && (
-                        <div className="flex items-center space-x-1 text-sm text-gray-500">
+                        <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-slate-400">
                           <Clock className="w-3 h-3" />
                           <span>{guide.duration}</span>
                         </div>
                       )}
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <p className="text-gray-600 mb-3">{guide.description}</p>
+                      <p className="text-gray-600 dark:text-slate-300 mb-3">{guide.description}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
                           {guide.category}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-slate-400">
                           {guide.type === "video" ? "ビデオ" :
                            guide.type === "document" ? "ドキュメント" : "チュートリアル"}
                         </span>
@@ -260,18 +260,18 @@ const HelpPage = () => {
             {/* お問い合わせ */}
             <TabsContent value="contact" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
                       <MessageCircle className="w-5 h-5 text-blue-600" />
                       <span>チャットサポート</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 dark:text-slate-300 mb-4">
                       リアルタイムでサポートチームとチャットできます
                     </p>
-                    <div className="text-sm text-gray-500 mb-4">
+                    <div className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                       営業時間: 平日 9:00-18:00
                     </div>
                     <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md">
@@ -280,18 +280,18 @@ const HelpPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
                       <Mail className="w-5 h-5 text-green-600" />
                       <span>メールサポート</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 dark:text-slate-300 mb-4">
                       詳細な問い合わせはメールでお送りください
                     </p>
-                    <div className="text-sm text-gray-500 mb-4">
+                    <div className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                       返信時間: 24時間以内
                     </div>
                     <a 
@@ -303,38 +303,38 @@ const HelpPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
                       <Phone className="w-5 h-5 text-orange-600" />
                       <span>電話サポート</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 dark:text-slate-300 mb-4">
                       緊急時は電話でお問い合わせください
                     </p>
-                    <div className="text-sm text-gray-500 mb-2">
+                    <div className="text-sm text-gray-500 dark:text-slate-400 mb-2">
                       営業時間: 平日 9:00-18:00
                     </div>
-                    <div className="font-semibold text-lg text-gray-900 mb-4">
+                    <div className="font-semibold text-lg text-gray-900 dark:text-white mb-4">
                       03-1234-5678
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
+                    <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
                       <Download className="w-5 h-5 text-purple-600" />
                       <span>リモートサポート</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 dark:text-slate-300 mb-4">
                       画面共有でより詳細なサポートを受けられます
                     </p>
-                    <div className="text-sm text-gray-500 mb-4">
+                    <div className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                       事前予約制
                     </div>
                     <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md">
@@ -348,49 +348,49 @@ const HelpPage = () => {
             {/* システム情報 */}
             <TabsContent value="system" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle>システム情報</CardTitle>
+                    <CardTitle className="text-gray-900 dark:text-white">システム情報</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">バージョン:</span>
+                      <span className="text-gray-600 dark:text-slate-300">バージョン:</span>
                       <span className="font-medium">v1.0.0</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">最終更新:</span>
+                      <span className="text-gray-600 dark:text-slate-300">最終更新:</span>
                       <span className="font-medium">2025-01-05</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">サーバー状態:</span>
+                      <span className="text-gray-600 dark:text-slate-300">サーバー状態:</span>
                       <span className="font-medium text-green-600 flex items-center">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         正常
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">データベース:</span>
+                      <span className="text-gray-600 dark:text-slate-300">データベース:</span>
                       <span className="font-medium">Firebase</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 shadow-sm">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800">
                   <CardHeader>
-                    <CardTitle>更新履歴</CardTitle>
+                    <CardTitle className="text-gray-900 dark:text-white">更新履歴</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-sm">
-                      <div className="font-semibold text-gray-900">v1.0.0 (2025-01-05)</div>
-                      <ul className="text-gray-600 ml-4 list-disc">
+                      <div className="font-semibold text-gray-900 dark:text-white">v1.0.0 (2025-01-05)</div>
+                      <ul className="text-gray-600 dark:text-slate-300 ml-4 list-disc">
                         <li>通知管理システムの改善</li>
                         <li>ファイル管理機能の統合</li>
                         <li>パフォーマンス向上</li>
                       </ul>
                     </div>
                     <div className="text-sm">
-                      <div className="font-semibold text-gray-900">v0.9.5 (2024-12-20)</div>
-                      <ul className="text-gray-600 ml-4 list-disc">
+                      <div className="font-semibold text-gray-900 dark:text-white">v0.9.5 (2024-12-20)</div>
+                      <ul className="text-gray-600 dark:text-slate-300 ml-4 list-disc">
                         <li>工程管理機能の追加</li>
                         <li>カレンダー連携機能</li>
                       </ul>
@@ -398,27 +398,27 @@ const HelpPage = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border border-gray-200 shadow-sm md:col-span-2">
+                <Card className="border border-gray-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800 md:col-span-2">
                   <CardHeader>
-                    <CardTitle>ブラウザ要件</CardTitle>
+                    <CardTitle className="text-gray-900 dark:text-white">ブラウザ要件</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div className="text-center">
-                        <div className="font-semibold">Chrome</div>
-                        <div className="text-gray-600">90+</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">Chrome</div>
+                        <div className="text-gray-600 dark:text-slate-300">90+</div>
                       </div>
                       <div className="text-center">
-                        <div className="font-semibold">Firefox</div>
-                        <div className="text-gray-600">88+</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">Firefox</div>
+                        <div className="text-gray-600 dark:text-slate-300">88+</div>
                       </div>
                       <div className="text-center">
-                        <div className="font-semibold">Safari</div>
-                        <div className="text-gray-600">14+</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">Safari</div>
+                        <div className="text-gray-600 dark:text-slate-300">14+</div>
                       </div>
                       <div className="text-center">
-                        <div className="font-semibold">Edge</div>
-                        <div className="text-gray-600">90+</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">Edge</div>
+                        <div className="text-gray-600 dark:text-slate-300">90+</div>
                       </div>
                     </div>
                   </CardContent>

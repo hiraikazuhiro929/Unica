@@ -44,20 +44,20 @@ export default function NotificationPanel({ notifications, show, onClose, onNoti
   };
 
   return (
-    <div className="absolute top-20 right-6 w-80 max-h-96 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-white/30 overflow-hidden z-50">
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="font-medium text-gray-800">通知</h3>
+    <div className="absolute top-20 right-6 w-80 max-h-96 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-lg shadow-xl border border-white/30 dark:border-slate-700/50 overflow-hidden z-50">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-600 flex items-center justify-between">
+        <h3 className="font-medium text-gray-800 dark:text-white">通知</h3>
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-slate-400">
             {notifications.filter(n => n.unread).length}件未読
           </span>
           <Button 
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="h-6 w-6 p-0 hover:bg-gray-100"
+            className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-slate-700"
           >
-            <X className="w-4 h-4 text-gray-600" />
+            <X className="w-4 h-4 text-gray-600 dark:text-slate-400" />
           </Button>
         </div>
       </div>
@@ -67,17 +67,17 @@ export default function NotificationPanel({ notifications, show, onClose, onNoti
             key={notification.id} 
             className={`p-3 rounded-lg border transition-all cursor-pointer group ${
               notification.unread 
-                ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
-                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700'
             }`}
             onClick={() => handleNotificationClick(notification)}
           >
             <div className="flex items-start space-x-2">
               {getNotificationIcon(notification.type)}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">{notification.user}</p>
-                <p className="text-sm text-gray-600">{notification.message}</p>
-                <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-white">{notification.user}</p>
+                <p className="text-sm text-gray-600 dark:text-slate-300">{notification.message}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{notification.time}</p>
               </div>
               {notification.unread && (
                 <div className="flex items-center space-x-1">
@@ -85,13 +85,13 @@ export default function NotificationPanel({ notifications, show, onClose, onNoti
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 hover:bg-blue-200"
+                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 hover:bg-blue-200 dark:hover:bg-blue-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNotificationClick(notification);
                     }}
                   >
-                    <Check className="w-3 h-3 text-blue-600" />
+                    <Check className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                   </Button>
                 </div>
               )}

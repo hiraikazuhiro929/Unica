@@ -317,16 +317,16 @@ const ShortcutsPage = () => {
     .slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Zap className="w-8 h-8 text-yellow-500" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">クイックアクセス</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">クイックアクセス</h1>
+                <p className="text-sm text-gray-600 dark:text-slate-400">
                   よく使う機能への素早いアクセス
                 </p>
               </div>
@@ -335,13 +335,13 @@ const ShortcutsPage = () => {
             <div className="flex items-center space-x-3">
               {/* 検索バー */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="アクションを検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80"
+                  className="pl-10 pr-4 py-2 w-80 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -349,7 +349,7 @@ const ShortcutsPage = () => {
               <select 
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-md text-sm"
               >
                 <option value="all">全カテゴリ</option>
                 <option value="navigation">ナビゲーション</option>
@@ -371,13 +371,13 @@ const ShortcutsPage = () => {
         </div>
 
         {/* メインコンテンツ */}
-        <div className="flex-1 overflow-auto p-6 space-y-8">
+        <div className="flex-1 overflow-auto p-6 space-y-8 bg-gray-50 dark:bg-slate-900">
           {/* ピン留めアクション */}
           {pinnedActions.length > 0 && (
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Pin className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-semibold text-gray-900">ピン留め</h2>
+                <Pin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">ピン留め</h2>
                 <Badge variant="secondary" className="text-xs">
                   {pinnedActions.length}
                 </Badge>
@@ -388,7 +388,7 @@ const ShortcutsPage = () => {
                   return (
                     <Card
                       key={action.id}
-                      className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
+                      className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
                       onClick={() => executeAction(action)}
                     >
                       <CardContent className="p-4">
@@ -426,13 +426,13 @@ const ShortcutsPage = () => {
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
                             {action.title}
                           </h3>
-                          <p className="text-xs text-gray-600 line-clamp-2">
+                          <p className="text-xs text-gray-600 dark:text-slate-400 line-clamp-2">
                             {action.description}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mt-2">
                             <span>{action.useCount}回使用</span>
                             {action.shortcut && (
                               <Badge variant="outline" className="text-xs">
@@ -454,7 +454,7 @@ const ShortcutsPage = () => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <Star className="w-5 h-5 text-yellow-500" />
-                <h2 className="text-xl font-semibold text-gray-900">お気に入り</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">お気に入り</h2>
                 <Badge variant="secondary" className="text-xs">
                   {favoriteActions.length}
                 </Badge>
@@ -465,7 +465,7 @@ const ShortcutsPage = () => {
                   return (
                     <Card
                       key={action.id}
-                      className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
+                      className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
                       onClick={() => executeAction(action)}
                     >
                       <CardContent className="p-4">
@@ -499,13 +499,13 @@ const ShortcutsPage = () => {
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
                             {action.title}
                           </h3>
-                          <p className="text-xs text-gray-600 line-clamp-2">
+                          <p className="text-xs text-gray-600 dark:text-slate-400 line-clamp-2">
                             {action.description}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mt-2">
                             <span>{action.useCount}回使用</span>
                             {action.shortcut && (
                               <Badge variant="outline" className="text-xs">
@@ -526,8 +526,8 @@ const ShortcutsPage = () => {
           {recentActions.length > 0 && (
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Clock className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-semibold text-gray-900">最近使用</h2>
+                <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">最近使用</h2>
                 <Badge variant="secondary" className="text-xs">
                   {recentActions.length}
                 </Badge>
@@ -538,7 +538,7 @@ const ShortcutsPage = () => {
                   return (
                     <Card
                       key={action.id}
-                      className="border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
+                      className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
                       onClick={() => executeAction(action)}
                     >
                       <CardContent className="p-4">
@@ -576,13 +576,13 @@ const ShortcutsPage = () => {
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
                             {action.title}
                           </h3>
-                          <p className="text-xs text-gray-600 line-clamp-2">
+                          <p className="text-xs text-gray-600 dark:text-slate-400 line-clamp-2">
                             {action.description}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mt-2">
                             <span>{action.useCount}回使用</span>
                             {action.lastUsed && (
                               <span>
