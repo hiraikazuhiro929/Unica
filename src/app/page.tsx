@@ -1011,7 +1011,7 @@ const MainDashboard = () => {
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">本日の工程</h2>
                     <button 
                       onClick={() => router.push('/tasks')}
-                      className="text-sm bg-blue-500/20 dark:bg-blue-400/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 dark:hover:bg-blue-400/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50">
+                      className="text-sm bg-blue-500/20 dark:bg-blue-400/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 dark:hover:bg-blue-400/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50"
                     >
                       詳細管理
                     </button>
@@ -1040,7 +1040,7 @@ const MainDashboard = () => {
                       {processes.length > 3 && (
                         <button
                           onClick={() => router.push('/tasks')}
-                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 text-blue-700 dark:text-blue-300 hover:from-blue-500/20 hover:to-purple-500/20 dark:hover:from-blue-400/20 dark:hover:to-purple-400/20 rounded-2xl border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 backdrop-blur-sm interactive-scale">
+                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 text-blue-700 dark:text-blue-300 hover:from-blue-500/20 hover:to-purple-500/20 dark:hover:from-blue-400/20 dark:hover:to-purple-400/20 rounded-2xl border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 backdrop-blur-sm interactive-scale"
                         >
                           他 {processes.length - 3} 件の工程を表示 →
                         </button>

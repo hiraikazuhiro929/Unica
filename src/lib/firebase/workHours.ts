@@ -546,7 +546,7 @@ export const getWorkHoursHistory = async (
   limitCount?: number
 ): Promise<{ data: WorkHoursHistory[]; error: string | null }> => {
   try {
-    const constraints = [
+    const constraints: any[] = [
       where('workHoursId', '==', workHoursId),
       orderBy('timestamp', 'desc')
     ];

@@ -1128,8 +1128,9 @@ const DiscordLikeChat = () => {
             email: currentUser?.userEmail || '',
             role: currentUser?.userRole || '',
             department: currentUser?.userDepartment || '',
-            status: 'online',
+            status: 'online' as const,
             isOnline: true,
+            lastSeen: new Date(),
             lastActivity: new Date(),
             statusMessage: ''
           }}

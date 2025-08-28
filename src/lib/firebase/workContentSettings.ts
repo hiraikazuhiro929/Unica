@@ -18,7 +18,7 @@ const COLLECTION_NAME = 'work-content-types';
 /**
  * 作業内容タイプを取得
  */
-export const getWorkContentTypes = async () => {
+export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; error: string | null }> => {
   try {
     const q = query(
       collection(db, COLLECTION_NAME),
@@ -38,12 +38,12 @@ export const getWorkContentTypes = async () => {
       return getWorkContentTypes(); // 再帰的に呼び出し
     }
 
-    return workContentTypes;
+    return { data: workContentTypes, error: null };
   } catch (error: any) {
     console.error('Error getting work content types:', error);
     
     // エラー時はデフォルトデータを返す
-    return [
+    return { data: [
       {
         id: "1",
         name: "data",
@@ -80,7 +80,7 @@ export const getWorkContentTypes = async () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-    ];
+    ], error: error.message };
   }
 };
 

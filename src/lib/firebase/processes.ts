@@ -317,7 +317,7 @@ const updateCompanyProcessList = async (
     if (action === 'add' && !updatedProcessIds.includes(processId)) {
       updatedProcessIds.push(processId);
     } else if (action === 'remove') {
-      updatedProcessIds = updatedProcessIds.filter(id => id !== processId);
+      updatedProcessIds = updatedProcessIds.filter((id: string) => id !== processId);
     }
 
     const docRef = doc(db, COLLECTIONS.COMPANIES, company.id);

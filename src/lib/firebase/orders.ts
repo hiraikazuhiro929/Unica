@@ -15,6 +15,8 @@ import {
   writeBatch 
 } from 'firebase/firestore';
 import { db } from './config';
+import { safeFirebaseOperation, retryOperation } from '../utils/errorHandling';
+import { validateOrderData } from '../utils/validation';
 
 // 受注案件の型定義
 export interface OrderItem {
@@ -40,61 +42,72 @@ export interface OrderItem {
 const COLLECTION_NAME = 'orders';
 
 /**
- * 新しい受注案件を作成
+ * 新しい受注案件を作成（バリデーション・エラーハンドリング付き）
  */
 export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt'>) => {
-  try {
-    const now = new Date().toISOString();
-    const newOrder: Omit<OrderItem, 'id'> = {
-      ...orderData,
-      status: orderData.status || 'planning',
-      priority: orderData.priority || 'medium',
-      progress: orderData.progress || 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), newOrder);
-    
-    return {
-      success: true,
-      id: docRef.id,
-      data: { id: docRef.id, ...newOrder }
-    };
-  } catch (error: any) {
-    console.error('Error creating order:', error);
+  // バリデーション
+  const validation = validateOrderData(orderData);
+  if (!validation.isValid) {
     return {
       success: false,
-      error: error.message
+      error: validation.errors.join(', ')
     };
   }
+  
+  const now = new Date().toISOString();
+  const newOrder: Omit<OrderItem, 'id'> = {
+    ...orderData,
+    status: orderData.status || 'planning',
+    priority: orderData.priority || 'medium',
+    progress: orderData.progress || 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // リトライ機能付きで実行
+  return await safeFirebaseOperation(
+    async () => {
+      const docRef = await addDoc(collection(db, COLLECTION_NAME), newOrder);
+      return {
+        success: true,
+        id: docRef.id,
+        data: { id: docRef.id, ...newOrder }
+      };
+    },
+    `order_draft_${orderData.managementNumber}` // ローカルストレージキー
+  );
 };
 
 /**
- * 受注案件を更新
+ * 受注案件を更新（バリデーション・エラーハンドリング付き）
  */
 export const updateOrder = async (id: string, updateData: Partial<OrderItem>) => {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const updatedData = {
-      ...updateData,
-      updatedAt: new Date().toISOString()
-    };
-
-    await updateDoc(docRef, updatedData);
-    
-    return {
-      success: true,
-      id,
-      data: updatedData
-    };
-  } catch (error: any) {
-    console.error('Error updating order:', error);
+  // 部分的なバリデーション（更新時は全項目必須ではない）
+  if (updateData.quantity !== undefined && updateData.quantity <= 0) {
     return {
       success: false,
-      error: error.message
+      error: '数量は1以上の数値を入力してください'
     };
   }
+  
+  const docRef = doc(db, COLLECTION_NAME, id);
+  const updatedData = {
+    ...updateData,
+    updatedAt: new Date().toISOString()
+  };
+
+  // リトライ機能付きで実行
+  return await safeFirebaseOperation(
+    async () => {
+      await updateDoc(docRef, updatedData);
+      return {
+        success: true,
+        id,
+        data: updatedData
+      };
+    },
+    `order_update_${id}` // ローカルストレージキー
+  );
 };
 
 /**

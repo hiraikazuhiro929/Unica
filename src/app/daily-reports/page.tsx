@@ -21,6 +21,9 @@ import {
 } from "@/lib/firebase/dailyReports";
 import { syncWorkHoursFromDailyReport } from "@/lib/firebase/workHours";
 import { getWorkContentTypes, subscribeToWorkContentTypes } from "@/lib/firebase/workContentSettings";
+import { useAutoSave } from "@/lib/utils/autoSave";
+import { validateDailyReportData } from "@/lib/utils/validation";
+import { showError, showSuccess } from "@/lib/utils/errorHandling";
 
 // デフォルトの作業内容（Firebase接続失敗時のフォールバック）
 const defaultWorkContentTypes: WorkContentType[] = [
@@ -96,6 +99,21 @@ export default function DailyReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
   const [reportId, setReportId] = useState<string | null>(null);
+
+  // 自動保存機能
+  const { manualSave, getBackups, restoreBackup, clearAll } = useAutoSave(
+    `daily-report-${reportData.date}`,
+    reportData,
+    {
+      interval: 3000, // 3秒ごとに自動保存
+      maxBackups: 3,
+      onSave: () => console.log('日報を自動保存しました'),
+      onRestore: (data) => {
+        setReportData(data);
+        showSuccess('前回の内容を復元しました');
+      }
+    }
+  );
 
   // Firebase初期化とデータ読み込み
   useEffect(() => {
@@ -341,16 +359,18 @@ export default function DailyReportPage() {
     setIsSaving(true);
     setError(null);
     
+    // バリデーション
+    const validation = validateDailyReportData(reportData);
+    if (!validation.isValid) {
+      showError(null, validation.errors.join('\n'));
+      setIsSaving(false);
+      return;
+    }
+    
     try {
-      // 必須項目チェック
+      // 必須項目チェック（最低限）
       if (!reportData.workerName) {
-        alert("氏名を入力してください");
-        setIsSaving(false);
-        return;
-      }
-
-      if (!reportData.workerId || !reportData.date) {
-        alert("作業者IDまたは日付が不正です");
+        showError(null, "氏名を入力してください");
         setIsSaving(false);
         return;
       }
@@ -420,12 +440,14 @@ export default function DailyReportPage() {
       
       if (saveResult.error) {
         setError(saveResult.error);
-        alert(`保存に失敗しました: ${saveResult.error}`);
+        showError(saveResult.error, '保存に失敗しました');
       } else {
         // 成功メッセージ
-        alert(submit ? "日報を提出しました！" : "下書きを保存しました");
+        showSuccess(submit ? "日報を提出しました！" : "下書きを保存しました");
         
+        // 自動保存のローカルストレージをクリア
         if (submit) {
+          clearAll();
           setReportData(prev => ({
             ...prev,
             isSubmitted: true,
@@ -436,7 +458,11 @@ export default function DailyReportPage() {
     } catch (error: any) {
       console.error("Failed to save daily report:", error);
       setError(error.message);
-      alert(`保存に失敗しました: ${error.message}`);
+      showError(error, '保存に失敗しました');
+      
+      // ネットワークエラーの場合は手動保存を促す
+      manualSave();
+      showSuccess('ネットワークエラーのため、ローカルに保存しました');
     } finally {
       setIsSaving(false);
     }

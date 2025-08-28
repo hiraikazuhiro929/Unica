@@ -47,8 +47,10 @@ export interface AppUser {
   role: 'admin' | 'manager' | 'leader' | 'worker';
   department: string;
   employeeId: string;
+  companyId?: string;
   isActive: boolean;
   avatar?: string;
+  lastLogin?: any;
   createdAt: any;
   updatedAt: any;
 }

@@ -353,7 +353,7 @@ const NotificationManagement = () => {
                               {tab.subItems.map((subItem) => (
                                 <button
                                   key={subItem.id}
-                                  className="w-full flex items-center justify-between p-2 text-left hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition-colors">
+                                  className="w-full flex items-center justify-between p-2 text-left hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition-colors"
                                 >
                                   <span className="text-xs text-indigo-600/70 dark:text-indigo-400/70">
                                     {subItem.label}

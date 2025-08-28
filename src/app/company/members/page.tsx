@@ -96,7 +96,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 // 製造業向け役職設定（拡張版）
-const ROLE_STYLES = {
+const ROLE_STYLES: { [key: string]: { label: string; bg: string; text: string; icon: any; permissions: string[]; level: number } } = {
   admin: { 
     label: '管理者',
     bg: 'bg-red-50 border-red-200',
@@ -247,7 +247,7 @@ export default function CompanyMembersPage() {
   }, [members, searchQuery, filterRole, filterDepartment]);
 
   // Update member role with confirmation
-  const handleUpdateRole = async (member: AppUser, newRole: string) => {
+  const handleUpdateRole = async (member: AppUser, newRole: 'admin' | 'manager' | 'leader' | 'worker') => {
     console.log('🔧 handleUpdateRole called:', member.name, 'to', newRole);
     if (!canManage) return;
     
@@ -291,7 +291,7 @@ export default function CompanyMembersPage() {
     if (!roleChangeConfirm) return;
     
     try {
-      await updateAppUser(roleChangeConfirm.member.uid, { role: roleChangeConfirm.newRole });
+      await updateAppUser(roleChangeConfirm.member.uid, { role: roleChangeConfirm.newRole as 'admin' | 'manager' | 'leader' | 'worker' });
       
       // 操作ログを記録（理由付き）
       await addDoc(collection(db, 'activityLogs'), {

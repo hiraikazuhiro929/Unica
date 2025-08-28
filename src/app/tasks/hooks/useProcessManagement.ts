@@ -8,6 +8,9 @@ import {
   updateProcess as updateProcessInFirebase,
   deleteProcess as deleteProcessInFirebase
 } from "@/lib/firebase/processes";
+import { useAutoSave } from "@/lib/utils/autoSave";
+import { validateProcessData } from "@/lib/utils/validation";
+import { showError, showSuccess } from "@/lib/utils/errorHandling";
 
 export const useProcessManagement = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -225,17 +228,24 @@ export const useProcessManagement = () => {
     dueDate: "",
   });
 
-  // 工程更新（ローカル更新 + Firebase保存）
+  // 工程更新（バリデーション・エラーハンドリング付き）
   const updateProcess = async (updatedProcess: Process) => {
+    // バリデーション
+    const validation = validateProcessData(updatedProcess);
+    if (!validation.isValid) {
+      showError(null, validation.errors.join('\n'));
+      return;
+    }
+    
     try {
       // Firebaseに保存
       if (updatedProcess.id) {
         const { error } = await updateProcessInFirebase(updatedProcess.id, updatedProcess);
         if (error) {
-          console.error('工程の更新に失敗しました:', error);
-          alert('工程の更新に失敗しました: ' + error);
+          showError(error, '工程の更新に失敗しました');
           return;
         }
+        showSuccess('工程を更新しました');
       }
 
       // ローカル状態を更新（UIがすぐ反応）
