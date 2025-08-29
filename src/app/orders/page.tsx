@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +24,23 @@ import {
   FileText,
   BarChart3,
   CheckCircle2,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  Star,
+  ChevronRight,
+  ChevronDown,
+  Filter,
 } from "lucide-react";
-import { getClientColor } from "@/app/tasks/components/gantt/ganttUtils";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   createOrder, 
   updateOrder, 
@@ -39,7 +53,6 @@ import {
 } from "@/lib/firebase/orders";
 
 const OrderManagement = () => {
-  const router = useRouter();
   const { trackAction } = useActivityTracking();
   
   // State management
@@ -52,7 +65,8 @@ const OrderManagement = () => {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [relatedData, setRelatedData] = useState<{[key: string]: any}>({});
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterClient, setFilterClient] = useState<string>("all");
 
   // Initialize data
   useEffect(() => {
@@ -63,59 +77,11 @@ const OrderManagement = () => {
       { limit: 100, orderByField: 'createdAt', orderDirection: 'desc' },
       (updatedOrders) => {
         setOrders(updatedOrders);
-        // 受注データが更新されたら関連データも更新
-        loadRelatedData(updatedOrders);
       }
     );
 
     return () => unsubscribe();
   }, []);
-
-  // 関連工程・工数データの取得
-  const loadRelatedData = async (ordersList: OrderItem[]) => {
-    const relatedInfo: {[key: string]: any} = {};
-    
-    for (const order of ordersList) {
-      // 模擬的な関連データ取得
-      const mockRelatedData = {
-        processes: [
-          {
-            id: `proc-${order.id}-1`,
-            name: '段取り・データ作成',
-            status: 'completed',
-            progress: 100,
-            estimatedHours: 4,
-            actualHours: 5
-          },
-          {
-            id: `proc-${order.id}-2`,
-            name: '機械加工',
-            status: 'processing',
-            progress: 65,
-            estimatedHours: 12,
-            actualHours: 8
-          },
-          {
-            id: `proc-${order.id}-3`,
-            name: '仕上げ・検査',
-            status: 'planning',
-            progress: 0,
-            estimatedHours: 6,
-            actualHours: 0
-          }
-        ],
-        workHours: {
-          totalPlanned: 22,
-          totalActual: 13,
-          efficiency: 59.1
-        }
-      };
-      
-      relatedInfo[order.id || ''] = mockRelatedData;
-    }
-    
-    setRelatedData(relatedInfo);
-  };
 
   const loadInitialData = async () => {
     setIsLoading(true);
@@ -125,8 +91,6 @@ const OrderManagement = () => {
       const result = await getOrders({ limit: 100, orderByField: 'createdAt', orderDirection: 'desc' });
       if (result.success) {
         setOrders(result.data);
-        // 初期データ読み込み時も関連データを取得
-        loadRelatedData(result.data);
       } else {
         setError(result.error || 'データの読み込みに失敗しました');
       }
@@ -175,8 +139,8 @@ const OrderManagement = () => {
         const action = selectedOrder?.id ? 'order_updated' : 'order_created';
         trackAction(action, {
           orderId: selectedOrder?.id || result.data?.id,
-          customerName: orderData.customerName,
-          orderValue: orderData.expectedRevenue
+          client: orderData.client,
+          projectName: orderData.projectName
         });
         
         setShowNewOrderModal(false);
@@ -205,8 +169,8 @@ const OrderManagement = () => {
         // Track the deletion
         trackAction('order_deleted', {
           orderId: id,
-          customerName: orderToDelete?.customerName,
-          orderValue: orderToDelete?.expectedRevenue
+          client: orderToDelete?.client,
+          projectName: orderToDelete?.projectName
         });
       } else {
         alert(`削除に失敗しました: ${result.error}`);
@@ -219,19 +183,18 @@ const OrderManagement = () => {
     }
   };
 
+  // Create process and work hours
+  const handleCreateProcessAndWorkHours = async (order: OrderItem) => {
+    if (!order.id) {
+      alert('案件IDが見つかりません');
+      return;
+    }
 
-  // Process and work hours creation without navigation
-  const createProcessAndWorkHours = async (order: OrderItem) => {
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      
-      // Import required functions  
-      const { createProcess: createProcessInFirebase } = await import('@/lib/firebase/processes');
-      const { createWorkHours } = await import('@/lib/firebase/workHours');
-      
-      // Create process template from order data with better defaults
-      const processTemplate = {
-        orderId: order.id || '',
+      // 工程データの作成
+      const processData = {
+        orderId: order.id,
         orderClient: order.client,
         lineNumber: '001',
         projectName: order.projectName,
@@ -243,14 +206,14 @@ const OrderManagement = () => {
         fieldPerson: '未割当',
         assignedMachines: [],
         workDetails: {
-          setup: Math.max(2, Math.ceil(order.quantity * 0.5)), // 数量に応じた段取り時間
-          machining: Math.max(4, Math.ceil(order.quantity * 2)), // 数量に応じた加工時間
-          finishing: Math.max(2, Math.ceil(order.quantity * 0.8)), // 数量に応じた仕上げ時間
+          setup: 0,
+          machining: 0,
+          finishing: 0,
           additionalSetup: 0,
           additionalMachining: 0,
           additionalFinishing: 0,
           useDynamicSteps: false,
-          totalEstimatedHours: Math.max(2, Math.ceil(order.quantity * 0.5)) + Math.max(4, Math.ceil(order.quantity * 2)) + Math.max(2, Math.ceil(order.quantity * 0.8)),
+          totalEstimatedHours: 0,
           totalActualHours: 0
         },
         orderDate: order.orderDate,
@@ -264,23 +227,32 @@ const OrderManagement = () => {
         dueDate: order.deliveryDate
       };
 
-      // Create process in Firebase
-      const processResult = await createProcessInFirebase(processTemplate);
-      
-      if (!processResult.id) {
+      // 総工数を計算
+      processData.workDetails.totalEstimatedHours = 
+        processData.workDetails.setup + 
+        processData.workDetails.machining + 
+        processData.workDetails.finishing;
+
+      // Firebase functions をダイナミックインポート
+      const { createProcess } = await import('@/lib/firebase/processes');
+      const { createWorkHours } = await import('@/lib/firebase/workHours');
+
+      // 工程作成
+      const processResult = await createProcess(processData);
+      if (!processResult.id || processResult.error) {
         throw new Error(processResult.error || '工程の作成に失敗しました');
       }
 
-      // Create work hours template
+      // 工数データの作成
       const plannedHours = {
-        setup: processTemplate.workDetails.setup,
-        machining: processTemplate.workDetails.machining,
-        finishing: processTemplate.workDetails.finishing,
-        total: processTemplate.workDetails.setup + processTemplate.workDetails.machining + processTemplate.workDetails.finishing
+        setup: 0,
+        machining: 0,
+        finishing: 0,
+        total: 0
       };
 
-      const workHoursTemplate = {
-        orderId: order.id || '',
+      const workHoursData = {
+        orderId: order.id,
         processId: processResult.id,
         projectName: order.projectName,
         client: order.client,
@@ -297,52 +269,29 @@ const OrderManagement = () => {
           setupRate: 3000,
           machiningRate: 4000,
           finishingRate: 3500,
-          totalPlannedCost: (plannedHours.setup * 3000) + (plannedHours.machining * 4000) + (plannedHours.finishing * 3500),
+          totalPlannedCost: 0,
           totalActualCost: 0
         },
-        status: 'planning' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        status: 'planning' as const
       };
 
-      // Create work hours record
-      const workHoursResult = await createWorkHours(workHoursTemplate);
+      // 工数作成
+      const workHoursResult = await createWorkHours(workHoursData);
+      
+      // 受注案件のステータス更新
+      await updateOrder(order.id, {
+        status: 'data-work',
+        progress: 15
+      });
 
-      if (workHoursResult.error) {
-        console.warn('工数データの作成に失敗:', workHoursResult.error);
-      }
-
-      // Update order status to indicate process creation
-      if (order.id) {
-        await updateOrder(order.id, {
-          status: 'data-work',
-          progress: 15 // Initial progress after process creation
-        });
-      }
-
-      // Update the order in the local state to reflect changes
-      setOrders(prevOrders => 
-        prevOrders.map(o => 
-          o.id === order.id 
-            ? { ...o, status: 'data-work', progress: 15 }
-            : o
-        )
-      );
-
-      // Show success notification with links
-      const successMessage = `✅ 「${order.projectName}」の工程と工数管理データを作成しました！
+      // 成功メッセージ
+      alert(`✅ 「${order.projectName}」の工程・工数管理データを作成しました！
 
 📋 工程ID: ${processResult.id}
 ⏱️ 工数管理ID: ${workHoursResult.id || 'エラー'}
-📊 計画工数: ${plannedHours.total}時間
 
-各画面で詳細を編集できます。`;
+工程管理・工数管理画面で詳細な工数を入力してください。`);
 
-      alert(successMessage);
-      
-      // Refresh related data to show the newly created items
-      loadRelatedData([...orders]);
-      
     } catch (error: any) {
       console.error('Process and work hours creation error:', error);
       alert(`❌ エラーが発生しました: ${error.message}`);
@@ -351,58 +300,62 @@ const OrderManagement = () => {
     }
   };
 
+  // Filter orders
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.client.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    const matchesClient = filterClient === 'all' || order.client === filterClient;
+    
+    return matchesSearch && matchesStatus && matchesClient;
+  });
+
+  // Get unique clients for filter
+  const uniqueClients = [...new Set(orders.map(order => order.client))];
+
   // Calculate statistics
-  const getOrderStatistics = () => {
-    const totalOrders = orders.length;
-    const totalAmount = orders.reduce((sum, order) => sum + (order.estimatedAmount || 0), 0);
-    const urgentOrders = orders.filter(order => {
+  const statistics = {
+    totalOrders: filteredOrders.length,
+    totalAmount: filteredOrders.reduce((sum, order) => sum + (order.estimatedAmount || 0), 0),
+    urgentOrders: filteredOrders.filter(order => {
       const daysUntilDelivery = Math.ceil(
         (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
       );
       return daysUntilDelivery <= 7;
-    }).length;
-    const avgOrderValue = totalOrders > 0 ? totalAmount / totalOrders : 0;
-
-    return { totalOrders, totalAmount, urgentOrders, avgOrderValue };
+    }).length,
+    avgOrderValue: filteredOrders.length > 0 ? filteredOrders.reduce((sum, order) => sum + (order.estimatedAmount || 0), 0) / filteredOrders.length : 0,
   };
 
-  // Filter and group orders
-  const filteredAndGroupedOrders = () => {
-    const filtered = orders.filter((order) => {
-      const matchesSearch =
-        order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.client.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-
-    // Group by client
-    const grouped = filtered.reduce((acc, order) => {
-      const client = order.client;
-      if (!acc[client]) {
-        acc[client] = [];
-      }
-      acc[client].push(order);
-      return acc;
-    }, {} as Record<string, OrderItem[]>);
-
-    return Object.entries(grouped).map(([client, orders]) => ({
-      client,
-      orders,
-      isExpanded: true,
-    }));
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500';
+      case 'processing': return 'bg-blue-500';
+      case 'planning': return 'bg-yellow-500';
+      case 'data-work': return 'bg-purple-500';
+      default: return 'bg-gray-500';
+    }
   };
 
-  const statistics = getOrderStatistics();
-  const groupedOrders = filteredAndGroupedOrders();
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed': return '完了';
+      case 'processing': return '進行中';
+      case 'planning': return '計画中';
+      case 'data-work': return 'データ作業中';
+      default: return status;
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
         <div className="ml-16 h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">データを読み込み中...</p>
+            <p className="text-gray-600 dark:text-slate-400">データを読み込み中...</p>
           </div>
         </div>
       </div>
@@ -410,223 +363,213 @@ const OrderManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
-        {/* Header - 統一されたスタイル */}
+        {/* Header */}
         <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                <Building2 className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">受注案件管理</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  受注案件の一元管理と工程・工数管理への連携
-                </p>
-              </div>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="案件を検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 dark:border-slate-600 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-
-        </div>
-
-        {/* Main content - テーブル形式 */}
-        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
-          <div className="p-6">
-            {/* アクションバー */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">案件一覧</h2>
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-slate-400">
-                  <div className="flex items-center gap-1">
-                    <Package className="w-4 h-4" />
-                    <span>{statistics.totalOrders}件</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />
-                    <span>¥{(statistics.totalAmount / 1000000).toFixed(1)}M</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4 text-red-500" />
-                    <span className="text-red-600 dark:text-red-400">{statistics.urgentOrders}件緊急</span>
+              <div className="flex items-center gap-3">
+                <Package className="w-6 h-6 text-blue-600" />
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white">受注案件管理</h1>
+                  <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-4">
+                    <span>総案件数: {statistics.totalOrders}件</span>
+                    <span>稼働中: {orders.filter(o => o.status !== 'completed').length}件</span>
+                    <span>総額: ¥{Math.round(statistics.totalAmount/10000)}万円</span>
+                    {statistics.urgentOrders > 0 && (
+                      <span className="text-red-600">緊急: {statistics.urgentOrders}件</span>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+                <Input
+                  type="text"
+                  placeholder="案件名、管理番号、顧客名で検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+            
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="ステータスで絞り込み" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのステータス</SelectItem>
+                <SelectItem value="planning">計画中</SelectItem>
+                <SelectItem value="data-work">データ作業中</SelectItem>
+                <SelectItem value="processing">進行中</SelectItem>
+                <SelectItem value="completed">完了</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={filterClient} onValueChange={setFilterClient}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="顧客で絞り込み" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべての顧客</SelectItem>
+                {uniqueClients.map(client => (
+                  <SelectItem key={client} value={client}>
+                    {client}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex items-center gap-2">
               <Button
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-500 dark:to-purple-500 dark:hover:from-indigo-600 dark:hover:to-purple-600 text-white font-medium px-6 shadow-lg hover:shadow-xl transition-all"
                 onClick={async () => {
                   const newOrder = await createNewOrder();
                   setSelectedOrder(newOrder);
                   setShowNewOrderModal(true);
                 }}
                 disabled={isSaving}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                新規受注登録
+                <Plus className="w-4 h-4 mr-1" />
+                追加
               </Button>
             </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-6">
-                <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                  <span className="text-red-700 dark:text-red-300">{error}</span>
-                </div>
-              </div>
-            )}
-
-            {/* テーブル */}
-            {orders.length === 0 ? (
-              <div className="text-center py-16">
-                <Building2 className="w-16 h-16 text-gray-300 dark:text-slate-500 mx-auto mb-4" />
-                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">受注案件がありません</p>
-                <p className="text-gray-400 dark:text-slate-500">新しい案件を追加してください</p>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 border-b border-gray-200 dark:border-slate-600">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">管理番号</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">取引先</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">工事名</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">数量</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">見積金額</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">納期</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">ステータス</th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {orders.filter(order => {
-                      const matchesSearch = order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                           order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                           order.client.toLowerCase().includes(searchQuery.toLowerCase());
-                      return matchesSearch;
-                    }).map((order, index) => {
-                      const daysUntilDelivery = Math.ceil(
-                        (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                      );
-                      return (
-                        <tr key={order.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all ${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-gray-50/50 dark:bg-slate-700/50'}`}>
-                          <td className="px-6 py-4">
-                            <span className="font-mono text-sm font-medium text-gray-800 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
-                              {order.managementNumber}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: getClientColor(order.client) }}
-                              ></div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">{order.client}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">{order.projectName}</span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="text-sm text-gray-700 dark:text-slate-300">{order.quantity} {order.unit}</span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {order.estimatedAmount ? `¥${order.estimatedAmount.toLocaleString()}` : "-"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                daysUntilDelivery <= 3 ? 'bg-red-500' :
-                                daysUntilDelivery <= 7 ? 'bg-orange-500' : 'bg-green-500'
-                              }`}></div>
-                              <span className="text-sm text-gray-700 dark:text-slate-300">{order.deliveryDate}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            {order.status === 'data-work' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                                <CheckCircle2 className="w-3 h-3" />
-                                作成済み
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                                <Clock className="w-3 h-3" />
-                                計画中
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setShowNewOrderModal(true);
-                                }}
-                                disabled={isSaving}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              {order.status !== 'data-work' && (
-                                <Button
-                                  size="sm"
-                                  className="h-8 px-3 text-xs bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 dark:from-emerald-400 dark:to-blue-400 dark:hover:from-emerald-500 dark:hover:to-blue-500 text-white"
-                                  onClick={() => createProcessAndWorkHours(order)}
-                                  disabled={isSaving}
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  工程作成
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
-                                onClick={() => order.id && handleDeleteOrder(order.id)}
-                                disabled={isSaving}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Order form modal */}
-        {showNewOrderModal && selectedOrder && (
-          <OrderFormModal
-            order={selectedOrder}
-            isOpen={showNewOrderModal}
-            onClose={() => {
-              setShowNewOrderModal(false);
-              setSelectedOrder(null);
-            }}
-            onSave={handleSaveOrder}
-            isSaving={isSaving}
-          />
-        )}
+        {/* Orders Table */}
+        <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
+              <tr>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">顧客</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">案件名</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">管理番号</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">数量</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">金額</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">納期</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">ステータス</th>
+                <th className="text-left p-4 font-semibold text-gray-900 dark:text-white">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.map((order) => {
+                const daysUntilDelivery = Math.ceil(
+                  (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                );
+                
+                return (
+                  <tr key={order.id} className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                    <td className="p-4">
+                      <span className="text-gray-700 dark:text-slate-300">{order.client}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="font-medium text-gray-900 dark:text-white">{order.projectName}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="font-mono text-sm bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white px-2 py-1 rounded">
+                        {order.managementNumber}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-gray-700 dark:text-slate-300">{order.quantity} {order.unit}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-gray-900 dark:text-white">
+                        {order.estimatedAmount ? `¥${order.estimatedAmount.toLocaleString()}` : "-"}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          daysUntilDelivery <= 3 ? 'bg-red-500' :
+                          daysUntilDelivery <= 7 ? 'bg-orange-500' : 'bg-green-500'
+                        }`} />
+                        <span className="text-gray-700 dark:text-slate-300">{order.deliveryDate}</span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <Badge className={`${getStatusColor(order.status || 'planning')} text-white`}>
+                        {getStatusText(order.status || 'planning')}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowNewOrderModal(true);
+                          }}
+                          disabled={isSaving}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCreateProcessAndWorkHours(order)}
+                          disabled={isSaving || order.status === 'completed'}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (order.id && window.confirm('この案件を削除しますか？')) {
+                              handleDeleteOrder(order.id);
+                            }
+                          }}
+                          disabled={isSaving}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          
+          {filteredOrders.length === 0 && (
+            <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+              <Package className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+              <p>検索条件に合う案件が見つかりません</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Order form modal */}
+      {showNewOrderModal && selectedOrder && (
+        <OrderFormModal
+          order={selectedOrder}
+          isOpen={showNewOrderModal}
+          onClose={() => {
+            setShowNewOrderModal(false);
+            setSelectedOrder(null);
+          }}
+          onSave={handleSaveOrder}
+          isSaving={isSaving}
+        />
+      )}
     </div>
   );
 };
@@ -682,7 +625,7 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">工事名</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">案件名</label>
               <Input
                 value={formData.projectName}
                 onChange={(e) =>
@@ -696,7 +639,7 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">受注先</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">顧客名</label>
             <Input
               value={formData.client}
               onChange={(e) =>

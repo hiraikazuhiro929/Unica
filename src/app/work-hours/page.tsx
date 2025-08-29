@@ -1,11 +1,11 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -17,406 +17,253 @@ import {
 import {
   Clock,
   Search,
-  Filter,
   Plus,
-  Users,
-  Settings,
-  BarChart3,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  CheckCircle2,
   Calendar,
-  User,
-  Wrench,
   DollarSign,
-  Target,
-  Activity,
   Edit,
-  Eye,
-  ArrowRight,
   Trash2,
-  Building2,
+  BarChart3,
+  RefreshCw,
+  Activity,
+  Users,
+  Wrench,
+  AlertCircle,
+  CheckCircle2,
+  ArrowUp,
+  ArrowDown,
+  Zap,
+  Timer,
+  Database,
+  Link2,
   FileText,
 } from "lucide-react";
-
-// Import types from existing types file
 import type { 
   WorkHours, 
   EnhancedWorkHours,
-  Worker, 
-  Machine, 
-  WorkHoursStatistics,
-  SyncResult,
-  WorkHoursAdjustment,
-  WorkHoursApprovalWorkflow
 } from "@/app/tasks/types";
-import { getClientColor } from "@/app/tasks/constants";
+import type { Worker } from "@/lib/firebase/workers";
+import type { Machine } from "@/lib/firebase/machines";
+import { 
+  getWorkers, 
+  subscribeToWorkers, 
+  createWorker, 
+  updateWorker, 
+  deleteWorker 
+} from "@/lib/firebase/workers";
+import { 
+  getMachines, 
+  subscribeToMachines, 
+  createMachine, 
+  updateMachine, 
+  deleteMachine 
+} from "@/lib/firebase/machines";
 import {
   getWorkHoursList,
   subscribeToWorkHoursList,
-  updateWorkHours,
   createWorkHours,
+  updateWorkHours,
   deleteWorkHours
 } from "@/lib/firebase/workHours";
+import { WorkHoursDetailModal } from '@/app/work-hours/components/WorkHoursDetailModal';
+import { WorkerModal } from '@/app/work-hours/components/WorkerModal';
+import { MachineModal } from '@/app/work-hours/components/MachineModal';
 import { useDailyReportSync } from '@/app/work-hours/hooks/useDailyReportSync';
-import { WorkHoursEditModal } from '@/app/work-hours/components/WorkHoursEditModal';
-import { AnalyticsCharts } from '@/app/work-hours/components/AnalyticsCharts';
 
 const WorkHoursManagement = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromProcessId = searchParams?.get('fromProcess') || null;
-  const fromOrderId = searchParams?.get('orderId') || null;
-  const { trackAction } = useActivityTracking();
   
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<WorkHours["status"] | "all">("all");
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedWorkHours, setSelectedWorkHours] = useState<EnhancedWorkHours | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [processInfo, setProcessInfo] = useState<any>(null);
-  
-  // Firebase integration
   const [workHoursData, setWorkHoursData] = useState<EnhancedWorkHours[]>([]);
-  const { syncStats, isSyncing, syncError, triggerManualSync, resetSyncStats } = useDailyReportSync();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedWorkHours, setSelectedWorkHours] = useState<EnhancedWorkHours | null>(null);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showWorkerModal, setShowWorkerModal] = useState(false);
+  const [showMachineModal, setShowMachineModal] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // 日報同期フック
+  const { syncStats, isSyncing, syncError, triggerManualSync } = useDailyReportSync();
 
-  // Sample data - in real implementation, this would come from Firebase
-  const sampleWorkHoursData: EnhancedWorkHours[] = [
-    {
-      id: "wh-001",
-      orderId: "1",
-      processId: "proc-001",
-      projectName: "A社製品カバー加工",
-      client: "A株式会社",
-      managementNumber: "ORD-2025-001",
-      plannedHours: {
-        setup: 4,
-        machining: 12,
-        finishing: 6,
-        total: 22,
-      },
-      actualHours: {
-        setup: 5.5,
-        machining: 14,
-        finishing: 6.5,
-        total: 26,
-      },
-      budget: {
-        estimatedAmount: 500000,
-        setupRate: 3000,
-        machiningRate: 4000,
-        finishingRate: 3500,
-        totalPlannedCost: 83000,
-        totalActualCost: 93500,
-      },
-      status: "completed",
-      createdAt: "2025-01-15T09:00:00Z",
-      updatedAt: "2025-01-30T16:30:00Z",
-      version: 2,
-      locked: false,
-      priority: "high",
-      tags: ["urgent", "automotive"],
-      integrations: {
-        processId: "proc-001",
-        dailyReportIds: ["dr-001", "dr-002"],
-        adjustmentIds: []
-      },
-      lastSyncedAt: "2025-01-30T16:30:00Z",
-      syncSource: "daily-report"
-    },
-    {
-      id: "wh-002",
-      orderId: "2",
-      processId: "proc-002",
-      projectName: "B社部品製作",
-      client: "B工業株式会社",
-      managementNumber: "ORD-2025-002",
-      plannedHours: {
-        setup: 3,
-        machining: 16,
-        finishing: 8,
-        total: 27,
-      },
-      actualHours: {
-        setup: 3,
-        machining: 12,
-        finishing: 6,
-        total: 21,
-      },
-      budget: {
-        estimatedAmount: 750000,
-        setupRate: 3000,
-        machiningRate: 4000,
-        finishingRate: 3500,
-        totalPlannedCost: 101000,
-        totalActualCost: 85000,
-      },
-      status: "in-progress",
-      createdAt: "2025-01-20T08:30:00Z",
-      updatedAt: "2025-01-31T14:15:00Z",
-      version: 1,
-      locked: false,
-      priority: "medium",
-      tags: ["industrial"],
-      integrations: {
-        processId: "proc-002",
-        dailyReportIds: ["dr-003"],
-        adjustmentIds: []
-      },
-      lastSyncedAt: "2025-01-31T14:15:00Z",
-      syncSource: "manual"
-    },
-    {
-      id: "wh-003",
-      orderId: "3",
-      processId: "proc-003",
-      projectName: "C社機械部品",
-      client: "C製作所",
-      managementNumber: "ORD-2025-003",
-      plannedHours: {
-        setup: 6,
-        machining: 24,
-        finishing: 10,
-        total: 40,
-      },
-      actualHours: {
-        setup: 0,
-        machining: 0,
-        finishing: 0,
-        total: 0,
-      },
-      budget: {
-        estimatedAmount: 1200000,
-        setupRate: 3000,
-        machiningRate: 4000,
-        finishingRate: 3500,
-        totalPlannedCost: 149000,
-        totalActualCost: 0,
-      },
-      status: "planning",
-      createdAt: "2025-01-25T10:00:00Z",
-      updatedAt: "2025-01-25T10:00:00Z",
-      version: 1,
-      locked: false,
-      priority: "low",
-      tags: ["precision"],
-      integrations: {
-        processId: "proc-003",
-        dailyReportIds: [],
-        adjustmentIds: []
-      },
-      lastSyncedAt: "2025-01-25T10:00:00Z",
-      syncSource: "manual"
-    },
-  ];
+  // マスタデータ - 作業者・機械
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [isWorkerLoading, setIsWorkerLoading] = useState(true);
+  const [isMachineLoading, setIsMachineLoading] = useState(true);
 
-  // Load work hours data from Firebase
+  // Load all data
   useEffect(() => {
     loadWorkHoursData();
+    loadWorkersData();
+    loadMachinesData();
+    
+    // Subscribe to real-time updates
+    const unsubscribeWorkHours = subscribeToWorkHoursList({
+      limit: 100,
+      orderByField: 'updatedAt',
+      orderDirection: 'desc'
+    }, (data) => {
+      setWorkHoursData(data);
+    });
+
+    const unsubscribeWorkers = subscribeToWorkers((data) => {
+      setWorkers(data);
+      setIsWorkerLoading(false);
+    });
+
+    const unsubscribeMachines = subscribeToMachines((data) => {
+      setMachines(data);
+      setIsMachineLoading(false);
+    });
+
+    return () => {
+      unsubscribeWorkHours();
+      unsubscribeWorkers();
+      unsubscribeMachines();
+    };
   }, []);
-
-  // 工程情報からの工数作成処理
-  useEffect(() => {
-    if (fromProcessId && !processInfo) {
-      fetchProcessInfo(fromProcessId);
-    }
-  }, [fromProcessId, processInfo]);
-
-  // 受注IDがある場合の関連データ取得
-  useEffect(() => {
-    if (fromOrderId) {
-      loadOrderRelatedData(fromOrderId);
-    }
-  }, [fromOrderId]);
-
-  const fetchProcessInfo = async (processId: string) => {
-    try {
-      // Firebase から工程情報を取得
-      const { getProcess } = await import('@/lib/firebase/processes');
-      const processResult = await getProcess(processId);
-      
-      let processInfoToUse: any;
-      
-      if (processResult.data) {
-        const processData = processResult.data;
-        setProcessInfo(processData);
-        processInfoToUse = processData;
-        
-        // 工程情報に基づく工数データが既に存在するかチェック
-        const existingWorkHours = workHoursData.find(wh => wh.processId === processId);
-        if (existingWorkHours) {
-          setSelectedWorkHours(existingWorkHours);
-          console.log(`工程「${processData.projectName}」の工数データが見つかりました`);
-          return;
-        }
-      } else {
-        console.warn('工程情報の取得に失敗しました:', processResult.error);
-        // フォールバック：模擬データ
-        const mockProcessInfo = {
-          id: processId,
-          projectName: "工程からの工数作成",
-          client: "クライアント名",
-          managementNumber: `PROC-2025-${processId.slice(-3)}`,
-          orderId: fromOrderId,
-          workDetails: {
-            setup: 4,
-            machining: 12,
-            finishing: 6,
-          },
-          deliveryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        };
-        setProcessInfo(mockProcessInfo);
-        processInfoToUse = mockProcessInfo;
-      }
-      
-      // 工程情報に基づく新規工数を自動作成
-      const newWorkHours = {
-        orderId: processInfoToUse.orderId || '',
-        processId: processInfoToUse.id,
-        projectName: processInfoToUse.projectName,
-        client: processInfoToUse.client,
-        managementNumber: processInfoToUse.managementNumber,
-        plannedHours: {
-          setup: processInfoToUse.workDetails?.setup || 4,
-          machining: processInfoToUse.workDetails?.machining || 12,
-          finishing: processInfoToUse.workDetails?.finishing || 6,
-          total: (processInfoToUse.workDetails?.setup || 4) + (processInfoToUse.workDetails?.machining || 12) + (processInfoToUse.workDetails?.finishing || 6),
-        },
-        actualHours: {
-          setup: 0,
-          machining: 0,
-          finishing: 0,
-          total: 0,
-        },
-        budget: {
-          estimatedAmount: 0,
-          setupRate: 3000,
-          machiningRate: 4000,
-          finishingRate: 3500,
-          totalPlannedCost: ((processInfoToUse.workDetails?.setup || 4) * 3000) + ((processInfoToUse.workDetails?.machining || 12) * 4000) + ((processInfoToUse.workDetails?.finishing || 6) * 3500),
-          totalActualCost: 0,
-        },
-        status: "planning" as const,
-        priority: "medium" as const,
-        tags: [],
-        integrations: {
-          processId: processInfoToUse.id,
-          dailyReportIds: [],
-          adjustmentIds: []
-        }
-      };
-      
-      setSelectedWorkHours(newWorkHours as EnhancedWorkHours);
-      setShowEditModal(true);
-    } catch (error) {
-      console.error('工程情報の取得に失敗しました:', error);
-    }
-  };
-
-  const loadOrderRelatedData = async (orderId: string) => {
-    try {
-      // Firebase から受注情報を取得
-      const { getOrder } = await import('@/lib/firebase/orders');
-      const orderResult = await getOrder(orderId);
-      
-      if (orderResult.success && orderResult.data) {
-        const orderData = orderResult.data;
-        
-        // 受注データに基づく工数情報がある場合の処理
-        const relatedWorkHours = workHoursData.filter(wh => wh.orderId === orderId);
-        
-        if (relatedWorkHours.length > 0) {
-          console.log(`受注案件「${orderData.projectName}」に関連する工数データが ${relatedWorkHours.length} 件見つかりました`);
-          
-          // 統計情報の表示用に受注情報を設定
-          setProcessInfo({
-            ...orderData,
-            relatedWorkHours: relatedWorkHours,
-            isOrderContext: true
-          });
-        }
-      }
-    } catch (error) {
-      console.error('受注関連データの取得に失敗しました:', error);
-    }
-  };
 
   const loadWorkHoursData = async () => {
     setIsLoading(true);
-    setError(null);
     try {
-      const { data, error } = await getWorkHoursList({ limit: 100 });
-      if (error) {
-        setError(error);
-      } else {
+      const { data, error } = await getWorkHoursList({
+        limit: 100,
+        orderByField: 'updatedAt',
+        orderDirection: 'desc'
+      });
+      
+      if (data) {
         setWorkHoursData(data);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load work hours data');
+    } catch (error) {
+      console.error('Error loading work hours:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Use Firebase data if available, otherwise use sample data
-  const displayWorkHours = workHoursData.length > 0 ? workHoursData : sampleWorkHoursData;
-
-  const [workers] = useState<Worker[]>([
-    { id: "w1", name: "田中太郎", department: "加工部", hourlyRate: 3500, skills: ["旋盤", "フライス"] },
-    { id: "w2", name: "佐藤花子", department: "仕上部", hourlyRate: 3200, skills: ["仕上げ", "検査"] },
-    { id: "w3", name: "鈴木一郎", department: "加工部", hourlyRate: 4000, skills: ["NC加工", "設計"] },
-  ]);
-
-  const [machines] = useState<Machine[]>([
-    { id: "m1", name: "NC旋盤-001", type: "NC旋盤", hourlyRate: 2000, status: "available" },
-    { id: "m2", name: "マシニングセンタ-001", type: "マシニングセンタ", hourlyRate: 3000, status: "busy" },
-    { id: "m3", name: "フライス盤-001", type: "フライス盤", hourlyRate: 1500, status: "available" },
-  ]);
-
-  // Real-time subscription to work hours changes
-  useEffect(() => {
-    const unsubscribe = subscribeToWorkHoursList(
-      { limit: 100 },
-      (data) => {
-        setWorkHoursData(data);
+  const loadWorkersData = async () => {
+    try {
+      const { data, success } = await getWorkers();
+      if (success && data) {
+        setWorkers(data);
       }
-    );
-    
-    return unsubscribe;
-  }, []);
+    } catch (error) {
+      console.error('Error loading workers:', error);
+    } finally {
+      setIsWorkerLoading(false);
+    }
+  };
 
-  // Filter and search logic
-  const filteredWorkHours = displayWorkHours.filter((wh) => {
+  const loadMachinesData = async () => {
+    try {
+      const { data, success } = await getMachines();
+      if (success && data) {
+        setMachines(data);
+      }
+    } catch (error) {
+      console.error('Error loading machines:', error);
+    } finally {
+      setIsMachineLoading(false);
+    }
+  };
+
+  // Filter data
+  const filteredData = workHoursData.filter((wh) => {
     const matchesSearch = 
-      wh.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      wh.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      wh.managementNumber.toLowerCase().includes(searchQuery.toLowerCase());
+      wh.projectName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wh.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wh.managementNumber?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = filterStatus === "all" || wh.status === filterStatus;
     
     return matchesSearch && matchesStatus;
   });
 
-  // Calculate statistics
-  const calculateStatistics = (): WorkHoursStatistics => {
-    const totalProjects = displayWorkHours.length;
-    const totalPlannedHours = displayWorkHours.reduce((sum, wh) => sum + wh.plannedHours.total, 0);
-    const totalActualHours = displayWorkHours.reduce((sum, wh) => sum + wh.actualHours.total, 0);
-    const totalPlannedCost = displayWorkHours.reduce((sum, wh) => sum + wh.budget.totalPlannedCost, 0);
-    const totalActualCost = displayWorkHours.reduce((sum, wh) => sum + wh.budget.totalActualCost, 0);
+  // リアルタイム稼働状況
+  const getCurrentStatus = () => {
+    const now = new Date().getHours();
+    const activeProjects = filteredData.filter(wh => wh.status === "in-progress");
+    const todayUpdated = filteredData.filter(wh => {
+      if (!wh.updatedAt) return false;
+      const updateDate = new Date(wh.updatedAt);
+      const today = new Date();
+      return updateDate.toDateString() === today.toDateString();
+    });
+
+    return {
+      isWorkingHours: now >= 8 && now <= 18,
+      activeCount: activeProjects.length,
+      todayUpdatedCount: todayUpdated.length,
+      lastSyncTime: syncStats?.lastSyncTime || null,
+    };
+  };
+
+  const currentStatus = getCurrentStatus();
+
+  // Calculate detailed statistics
+  const calculateStatistics = () => {
+    const totalProjects = filteredData.length;
+    const totalPlannedHours = filteredData.reduce((sum, wh) => sum + (wh.plannedHours?.total || 0), 0);
+    const totalActualHours = filteredData.reduce((sum, wh) => sum + (wh.actualHours?.total || 0), 0);
+    const totalPlannedCost = filteredData.reduce((sum, wh) => sum + (wh.budget?.totalPlannedCost || 0), 0);
+    const totalActualCost = filteredData.reduce((sum, wh) => sum + (wh.budget?.totalActualCost || 0), 0);
     const averageEfficiency = totalPlannedHours > 0 ? (totalActualHours / totalPlannedHours) * 100 : 0;
 
     const byStatus = {
-      planning: displayWorkHours.filter(wh => wh.status === "planning").length,
-      inProgress: displayWorkHours.filter(wh => wh.status === "in-progress").length,
-      completed: displayWorkHours.filter(wh => wh.status === "completed").length,
-      delayed: displayWorkHours.filter(wh => wh.status === "delayed").length,
+      planning: filteredData.filter(wh => wh.status === "planning").length,
+      inProgress: filteredData.filter(wh => wh.status === "in-progress").length,
+      completed: filteredData.filter(wh => wh.status === "completed").length,
+      delayed: filteredData.filter(wh => wh.status === "delayed").length,
     };
+
+    const overBudget = filteredData.filter(wh => (wh.actualHours?.total || 0) > (wh.plannedHours?.total || 0)).length;
+
+    // 作業者別統計（実際のデータから計算）
+    const byWorker = workers.map(worker => {
+      const workerData = filteredData.filter(wh => 
+        wh.assignedWorkers?.some(aw => aw.workerId === worker.id)
+      );
+      const totalHours = workerData.reduce((sum, wh) => 
+        sum + (wh.actualHours?.workerHours?.find(wh => wh.workerId === worker.id)?.hours || 0), 0
+      );
+      const plannedHours = workerData.reduce((sum, wh) => 
+        sum + (wh.plannedHours?.workerHours?.find(wh => wh.workerId === worker.id)?.hours || 0), 0
+      );
+      const efficiency = plannedHours > 0 ? (totalHours / plannedHours) * 100 : 0;
+      
+      return {
+        workerId: worker.id || '',
+        workerName: worker.name,
+        totalHours,
+        efficiency: Math.min(efficiency, 200) // Cap at 200% for display
+      };
+    });
+
+    // 機械別統計（実際のデータから計算）
+    const byMachine = machines.map(machine => {
+      const machineData = filteredData.filter(wh => 
+        wh.usedMachines?.some(um => um.machineId === machine.id)
+      );
+      const totalHours = machineData.reduce((sum, wh) => 
+        sum + (wh.actualHours?.machineHours?.find(mh => mh.machineId === machine.id)?.hours || 0), 0
+      );
+      
+      return {
+        machineId: machine.id || '',
+        machineName: machine.name,
+        utilizationRate: 0, // 稼働率は別途リアルタイム管理
+        totalHours
+      };
+    });
 
     return {
       totalProjects,
@@ -426,49 +273,43 @@ const WorkHoursManagement = () => {
       totalActualCost,
       averageEfficiency,
       byStatus,
-      // Worker and machine utilization would be calculated from daily reports
-      byWorker: workers.map(worker => ({
-        workerId: worker.id,
-        workerName: worker.name,
-        totalHours: Math.random() * 40, // Mock data
-        efficiency: 85 + Math.random() * 20
-      })),
-      byMachine: machines.map(machine => ({
-        machineId: machine.id,
-        machineName: machine.name,
-        utilizationRate: 60 + Math.random() * 35,
-        totalHours: Math.random() * 30
-      }))
+      overBudget,
+      byWorker,
+      byMachine,
+      efficiency: averageEfficiency
     };
   };
 
   const statistics = calculateStatistics();
 
-  const getStatusBadge = (status: WorkHours["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "planning":
-        return <Badge variant="secondary">計画中</Badge>;
-      case "in-progress":
-        return <Badge variant="outline" className="border-blue-500 text-blue-600">進行中</Badge>;
-      case "completed":
-        return <Badge variant="default" className="bg-green-500">完了</Badge>;
-      case "delayed":
-        return <Badge variant="destructive">遅延</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
+      case '完了': case 'completed': return 'bg-green-500';
+      case '進行中': case 'in-progress': return 'bg-blue-500';
+      case '計画中': case 'planning': return 'bg-yellow-500';
+      case '遅延': case 'delayed': return 'bg-red-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  const getEfficiencyIndicator = (planned: number, actual: number) => {
+  const getEfficiencyIcon = (planned: number, actual: number) => {
     if (actual === 0) return null;
     const efficiency = (actual / planned) * 100;
     if (efficiency <= 100) {
-      return <TrendingUp className="w-4 h-4 text-green-500" />;
+      return <TrendingDown className="w-4 h-4 text-green-500" />;
     } else if (efficiency <= 120) {
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
     } else {
-      return <TrendingDown className="w-4 h-4 text-red-500" />;
+      return <TrendingUp className="w-4 h-4 text-red-500" />;
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `¥${amount.toLocaleString()}`;
+  };
+
+  const formatHours = (hours: number) => {
+    return `${hours.toFixed(1)}h`;
   };
 
   // Enhanced action handlers
@@ -490,7 +331,7 @@ const WorkHoursManagement = () => {
         if (error) {
           setError(error);
         } else {
-          setShowEditModal(false);
+          setShowDetailModal(false);
           setSelectedWorkHours(null);
         }
       } else {
@@ -499,776 +340,963 @@ const WorkHoursManagement = () => {
         if (error) {
           setError(error);
         } else {
-          setShowEditModal(false);
+          setShowDetailModal(false);
           setSelectedWorkHours(null);
         }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save work hours');
+      // Reload data to reflect changes
+      loadWorkHoursData();
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Delete work hours
   const handleDeleteWorkHours = async (id: string) => {
-    if (!confirm('この工数レコードを削除しますか？この操作は取り消せません。')) {
-      return;
+    if (!confirm("この工数データを削除しますか？")) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await deleteWorkHours(id);
+      if (error) {
+        alert(`削除に失敗しました: ${error}`);
+      }
+    } catch (error: any) {
+      alert(`エラーが発生しました: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  // Worker/Machine CRUD handlers
+  const handleAddWorker = () => {
+    setSelectedWorker(null);
+    setShowWorkerModal(true);
+  };
+  
+  const handleSaveWorker = async (workerData: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const result = selectedWorker 
+      ? await updateWorker(selectedWorker.id!, workerData)
+      : await createWorker(workerData);
+    
+    if (result.success) {
+      setShowWorkerModal(false);
+      setSelectedWorker(null);
+    } else {
+      alert(`作業者の保存に失敗しました: ${result.error}`);
+    }
+  };
+  
+  const handleEditWorker = (worker: Worker) => {
+    setSelectedWorker(worker);
+    setShowWorkerModal(true);
+  };
+  
+  const handleDeleteWorker = async (workerId: string) => {
+    if (!confirm('この作業者を削除しますか？')) return;
+    
+    const { success, error } = await deleteWorker(workerId);
+    if (!success) {
+      alert(`作業者の削除に失敗しました: ${error}`);
+    }
+  };
+  
+  const handleAddMachine = () => {
+    setSelectedMachine(null);
+    setShowMachineModal(true);
+  };
+  
+  const handleSaveMachine = async (machineData: Omit<Machine, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const result = selectedMachine 
+      ? await updateMachine(selectedMachine.id!, machineData)
+      : await createMachine(machineData);
+    
+    if (result.success) {
+      setShowMachineModal(false);
+      setSelectedMachine(null);
+    } else {
+      alert(`機械の保存に失敗しました: ${result.error}`);
+    }
+  };
+  
+  const handleEditMachine = (machine: Machine) => {
+    setSelectedMachine(machine);
+    setShowMachineModal(true);
+  };
+  
+  const handleDeleteMachine = async (machineId: string) => {
+    if (!confirm('この機械を削除しますか？')) return;
+    
+    const { success, error } = await deleteMachine(machineId);
+    if (!success) {
+      alert(`機械の削除に失敗しました: ${error}`);
+    }
+  };
+  
+  // サンプルデータ作成
+  const createSampleData = async () => {
+    if (!confirm('サンプルデータを作成しますか？')) return;
     
     setIsLoading(true);
     try {
-      const { error } = await deleteWorkHours(id, 'user');
-      if (error) {
-        setError(error);
+      // サンプル工数データ
+      const sampleWorkHours = [
+        {
+          projectName: "精密部品A製造",
+          client: "ABC製作所",
+          managementNumber: "WH-2024-001",
+          plannedHours: { setup: 2, machining: 8, finishing: 3, total: 13 },
+          actualHours: { setup: 2.5, machining: 9, finishing: 2.8, total: 14.3 },
+          budget: {
+            estimatedAmount: 150000,
+            setupRate: 3000,
+            machiningRate: 4000,
+            finishingRate: 3500,
+            totalPlannedCost: 45500,
+            totalActualCost: 49300,
+          },
+          status: "completed" as const,
+          priority: "high" as const,
+          tags: ["精密", "量産"],
+          integrations: {
+            dailyReportIds: ["dr001", "dr002"],
+            lastSyncTime: new Date().toISOString(),
+            syncedReportCount: 2,
+          }
+        },
+        {
+          projectName: "試作品B開発",
+          client: "XYZ工業",
+          managementNumber: "WH-2024-002",
+          plannedHours: { setup: 4, machining: 12, finishing: 6, total: 22 },
+          actualHours: { setup: 3.8, machining: 11.5, finishing: 5.2, total: 20.5 },
+          budget: {
+            estimatedAmount: 200000,
+            setupRate: 3000,
+            machiningRate: 4000,
+            finishingRate: 3500,
+            totalPlannedCost: 69000,
+            totalActualCost: 62900,
+          },
+          status: "in-progress" as const,
+          priority: "medium" as const,
+          tags: ["試作", "開発"],
+          integrations: {
+            dailyReportIds: ["dr003"],
+            lastSyncTime: new Date().toISOString(),
+            syncedReportCount: 1,
+          }
+        },
+        {
+          projectName: "メンテナンス部品C",
+          client: "DEF機械",
+          managementNumber: "WH-2024-003",
+          plannedHours: { setup: 1, machining: 4, finishing: 2, total: 7 },
+          actualHours: { setup: 0, machining: 0, finishing: 0, total: 0 },
+          budget: {
+            estimatedAmount: 80000,
+            setupRate: 3000,
+            machiningRate: 4000,
+            finishingRate: 3500,
+            totalPlannedCost: 26000,
+            totalActualCost: 0,
+          },
+          status: "planning" as const,
+          priority: "low" as const,
+          tags: ["メンテナンス"],
+        }
+      ];
+      
+      // サンプルデータを作成
+      for (const sample of sampleWorkHours) {
+        await createWorkHours(sample);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete work hours');
+      
+      // データをリロード
+      await loadWorkHoursData();
+      
+      alert('サンプルデータを作成しました！');
+    } catch (error: any) {
+      alert(`サンプルデータ作成に失敗しました: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSyncWithDailyReports = async () => {
-    setShowSyncModal(true);
-  };
+  if (isLoading || isWorkerLoading || isMachineLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="ml-16 h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-slate-400">工数データを読み込み中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-lg">
-                <Clock className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  工数管理
-                  {fromProcessId && (
-                    <span className="ml-3 text-sm font-normal text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
-                      工程から作成中
-                    </span>
+        {/* ヘッダー - リアルタイムステータス付き */}
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Clock className="w-8 h-8 text-blue-600" />
+                  {currentStatus.isWorkingHours && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
                   )}
-                  {fromOrderId && (
-                    <span className="ml-3 text-sm font-normal text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
-                      受注案件から参照中
-                    </span>
-                  )}
-                </h1>
-                <p className="text-gray-600 dark:text-slate-400 mt-1">
-                  計画と実績の工数を管理し、プロジェクトの効率性を追跡します
-                </p>
-                {processInfo && !processInfo.isOrderContext && (
-                  <p className="text-blue-700 font-medium text-sm mt-1">
-                    関連工程: {processInfo.managementNumber} - {processInfo.projectName}
-                  </p>
-                )}
-                {processInfo && processInfo.isOrderContext && (
-                  <div className="mt-2">
-                    <p className="text-blue-700 font-medium text-sm">
-                      受注案件: {processInfo.managementNumber} - {processInfo.projectName}
-                    </p>
-                    {processInfo.relatedWorkHours && processInfo.relatedWorkHours.length > 0 && (
-                      <p className="text-green-600 font-medium text-sm">
-                        関連工数データ: {processInfo.relatedWorkHours.length} 件
-                      </p>
-                    )}
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">工数管理センター</h1>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">
+                    リアルタイム稼働監視システム
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="工数データを検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 dark:focus:border-purple-400 dark:bg-slate-700 dark:text-white"
-                />
-              </div>
-              {/* Filter */}
-              <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as WorkHours["status"] | "all")}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="ステータス" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">すべて</SelectItem>
-                  <SelectItem value="planning">計画中</SelectItem>
-                  <SelectItem value="in-progress">進行中</SelectItem>
-                  <SelectItem value="completed">完了</SelectItem>
-                  <SelectItem value="delayed">遅延</SelectItem>
-                </SelectContent>
-              </Select>
-              {/* Sync Status */}
-              <div className="flex items-center gap-2">
-                {syncStats.lastSyncTime && (
-                  <span className="text-sm text-gray-600 dark:text-slate-400">
-                    最終同期: {syncStats.lastSyncTime.toLocaleTimeString('ja-JP')}
+
+              {/* リアルタイムインジケーター */}
+              <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Activity className={`w-4 h-4 ${currentStatus.isWorkingHours ? 'text-green-500 animate-pulse' : 'text-gray-400'}`} />
+                  <span className="text-sm">
+                    {currentStatus.isWorkingHours ? '稼働中' : '時間外'}
                   </span>
-                )}
-                <Button
-                  variant="outline"
-                  className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 font-medium px-4"
-                  onClick={triggerManualSync}
-                  disabled={isSyncing || isLoading}
-                >
-                  <Activity className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? '同期中...' : '日報同期'}
-                </Button>
+                </div>
+                <div className="w-px h-4 bg-gray-300 dark:bg-slate-600" />
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-500" />
+                  <span className="text-sm font-medium">{currentStatus.activeCount}件進行中</span>
+                </div>
+                <div className="w-px h-4 bg-gray-300 dark:bg-slate-600" />
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm">本日{currentStatus.todayUpdatedCount}件更新</span>
+                </div>
               </div>
-              {/* Analytics Button */}
+            </div>
+
+            {/* 日報同期ステータス */}
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-xs text-gray-500 dark:text-slate-400">日報同期</div>
+                <div className="flex items-center gap-2">
+                  {isSyncing ? (
+                    <Badge className="bg-blue-500 text-white animate-pulse">
+                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                      同期中...
+                    </Badge>
+                  ) : syncError ? (
+                    <Badge variant="destructive">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      エラー
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-500 text-white">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      同期済み
+                    </Badge>
+                  )}
+                  {syncStats?.lastSyncTime && (
+                    <span className="text-xs text-gray-500">
+                      {new Date(syncStats.lastSyncTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              </div>
               <Button
+                onClick={triggerManualSync}
+                disabled={isSyncing}
+                size="sm"
                 variant="outline"
-                className="border-orange-300 dark:border-orange-600 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 font-medium px-4"
-                onClick={() => setShowAnalyticsModal(true)}
+                className="border-blue-500 text-blue-600 hover:bg-blue-50"
               >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                分析
-              </Button>
-              {/* Add New Button */}
-              <Button
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium px-6"
-                onClick={() => {
-                  setSelectedWorkHours(null);
-                  setShowEditModal(true);
-                }}
-                disabled={isLoading}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                新規作成
+                <Link2 className="w-4 h-4 mr-1" />
+                手動同期
               </Button>
             </div>
-          </div>
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card className="border-l-4 border-l-purple-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">総プロジェクト</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {statistics.totalProjects}
-                    </p>
-                  </div>
-                  <Target className="w-8 h-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-blue-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">計画工数</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {statistics.totalPlannedHours}h
-                    </p>
-                  </div>
-                  <Clock className="w-8 h-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-green-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">実績工数</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {statistics.totalActualHours}h
-                    </p>
-                  </div>
-                  <Activity className="w-8 h-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-yellow-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">効率性</p>
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {statistics.averageEfficiency.toFixed(1)}%
-                    </p>
-                  </div>
-                  <BarChart3 className="w-8 h-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-red-500 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-slate-400">コスト差異</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {statistics.totalActualCost > 0 
-                        ? `${((statistics.totalActualCost - statistics.totalPlannedCost) / statistics.totalPlannedCost * 100).toFixed(1)}%`
-                        : "0%"
-                      }
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-red-500" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mx-6 mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
-            <div className="flex items-center">
-              <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 dark:text-red-400">{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                onClick={() => setError(null)}
-              >
-                ×
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="overview">概要</TabsTrigger>
-              <TabsTrigger value="details">詳細一覧</TabsTrigger>
-              <TabsTrigger value="sync">同期管理</TabsTrigger>
-              <TabsTrigger value="analytics">分析</TabsTrigger>
-              <TabsTrigger value="workers">作業者</TabsTrigger>
-              <TabsTrigger value="machines">機械</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Work Hours List */}
-                <Card>
-                  <CardHeader>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">工数管理一覧</h3>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {filteredWorkHours.map((wh) => (
-                        <div key={wh.id} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h4 className="font-semibold text-gray-900 dark:text-white">{wh.projectName}</h4>
-                                {getStatusBadge(wh.status)}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-slate-400 mb-2">
-                                <span className="font-medium">{wh.client}</span> • {wh.managementNumber}
-                              </div>
-                              <div className="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <span className="text-gray-500 dark:text-slate-400">計画:</span>
-                                  <span className="ml-1 font-medium">{wh.plannedHours.total}h</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500 dark:text-gray-400">実績:</span>
-                                  <span className="ml-1 font-medium">{wh.actualHours.total}h</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <span className="text-gray-500 dark:text-gray-400">効率:</span>
-                                  <span className="ml-1 font-medium">
-                                    {wh.actualHours.total > 0 
-                                      ? `${((wh.actualHours.total / wh.plannedHours.total) * 100).toFixed(1)}%`
-                                      : "N/A"
-                                    }
-                                  </span>
-                                  {getEfficiencyIndicator(wh.plannedHours.total, wh.actualHours.total)}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2 ml-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedWorkHours(wh);
-                                  setShowEditModal(true);
-                                }}
-                              >
-                                <Edit className="w-3 h-3 mr-1" />
-                                編集
-                              </Button>
-                              {wh.orderId && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                                  onClick={() => router.push(`/orders?highlight=${wh.orderId}`)}
-                                >
-                                  <Building2 className="w-3 h-3 mr-1" />
-                                  受注
-                                </Button>
-                              )}
-                              {wh.integrations?.processId && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
-                                  onClick={() => router.push(`/tasks?highlight=${wh.integrations.processId}`)}
-                                >
-                                  <FileText className="w-3 h-3 mr-1" />
-                                  工程詳細
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-red-300 text-red-600 hover:bg-red-50"
-                                onClick={() => handleDeleteWorkHours(wh.id)}
-                                disabled={wh.locked || isLoading}
-                              >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                削除
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Status Distribution */}
-                <Card>
-                  <CardHeader>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">ステータス分布</h3>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                          <span className="text-gray-900 dark:text-white">計画中</span>
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.planning}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <span className="text-gray-900 dark:text-white">進行中</span>
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.inProgress}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span className="text-gray-900 dark:text-white">完了</span>
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.completed}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <span className="text-gray-900 dark:text-white">遅延</span>
-                        </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">{statistics.byStatus.delayed}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="details" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">詳細工数一覧</h3>
+        {/* メインコンテンツ - 3列レイアウト */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* 左側：統計・ダッシュボード */}
+          <div className="w-80 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 p-4 overflow-y-auto">
+            <div className="space-y-4">
+              {/* 全体効率メーター */}
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">全体効率</h3>
+                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 dark:border-slate-600">
-                          <th className="text-left p-3 text-gray-900 dark:text-white">プロジェクト</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-white">クライアント</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-white">段取り</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">機械加工</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">仕上げ</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">合計</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">ステータス</th>
-                          <th className="text-left p-3 text-gray-900 dark:text-gray-100">アクション</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredWorkHours.map((wh) => (
-                          <tr key={wh.id} className="border-b border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
-                            <td className="p-3">
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-white">{wh.projectName}</div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400">{wh.managementNumber}</div>
+                  <div className="flex items-center justify-center">
+                    <div className="relative w-32 h-32">
+                      <svg className="w-32 h-32 transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          className="text-gray-200 dark:text-slate-600"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 56}`}
+                          strokeDashoffset={`${2 * Math.PI * 56 * (1 - statistics.efficiency / 100)}`}
+                          className={statistics.efficiency <= 100 ? "text-green-500" : statistics.efficiency <= 120 ? "text-yellow-500" : "text-red-500"}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center flex-col">
+                        <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {statistics.efficiency.toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400">効率</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-4">
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">計画</div>
+                      <div className="text-sm font-semibold">{formatHours(statistics.totalPlannedHours)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">実績</div>
+                      <div className="text-sm font-semibold">{formatHours(statistics.totalActualHours)}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* アラート */}
+              {statistics.overBudget > 0 && (
+                <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                      <div>
+                        <div className="text-sm font-semibold text-red-700 dark:text-red-400">
+                          {statistics.overBudget}件の案件が工数超過
+                        </div>
+                        <div className="text-xs text-red-600 dark:text-red-500">
+                          早急な対応が必要です
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ステータス別内訳 */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <h3 className="text-sm font-semibold">ステータス別内訳</h3>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-slate-300">進行中</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={(statistics.byStatus.inProgress / statistics.totalProjects) * 100} className="w-20 h-2" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{statistics.byStatus.inProgress}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-slate-300">完了</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={(statistics.byStatus.completed / statistics.totalProjects) * 100} className="w-20 h-2" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{statistics.byStatus.completed}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* コスト状況 */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">コスト状況</h3>
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-slate-300">予算</span>
+                        <span className="font-medium">{formatCurrency(statistics.totalPlannedCost)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-700 dark:text-slate-300">実績</span>
+                        <span className={`font-medium ${statistics.totalActualCost > statistics.totalPlannedCost ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(statistics.totalActualCost)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-slate-300">差異</span>
+                        <span className={`font-bold ${statistics.totalActualCost > statistics.totalPlannedCost ? 'text-red-600' : 'text-green-600'}`}>
+                          {statistics.totalActualCost > statistics.totalPlannedCost ? '+' : ''}
+                          {formatCurrency(statistics.totalActualCost - statistics.totalPlannedCost)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* 中央：工数テーブル */}
+          <div className="flex-1 flex flex-col bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700">
+            {/* フィルター */}
+            <div className="border-b border-gray-200 dark:border-slate-700 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="工数データを検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべて</SelectItem>
+                    <SelectItem value="planning">計画中</SelectItem>
+                    <SelectItem value="in-progress">進行中</SelectItem>
+                    <SelectItem value="completed">完了</SelectItem>
+                    <SelectItem value="delayed">遅延</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  onClick={() => setShowAnalyticsModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                >
+                  <BarChart3 className="w-4 h-4 mr-1" />
+                  分析
+                </Button>
+                
+                <Button
+                  onClick={createSampleData}
+                  variant="outline"
+                  size="sm"
+                  className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                >
+                  <Database className="w-4 h-4 mr-1" />
+                  サンプル作成
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setSelectedWorkHours(null);
+                    setShowDetailModal(true);
+                  }}
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  新規作成
+                </Button>
+              </div>
+            </div>
+
+            {/* 工数テーブル */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
+                  <tr>
+                    <th className="text-left p-3 font-semibold text-gray-900 dark:text-white text-sm">案件</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">計画工数</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">実工数</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">効率</th>
+                    <th className="text-right p-3 font-semibold text-gray-900 dark:text-white text-sm">予算差異</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">ステータス</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">同期</th>
+                    <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.map((wh) => {
+                    const efficiency = wh.plannedHours?.total ? 
+                      ((wh.actualHours?.total || 0) / wh.plannedHours.total) * 100 : 0;
+                    const isOverBudget = (wh.actualHours?.total || 0) > (wh.plannedHours?.total || 0);
+                    const costDiff = (wh.budget?.totalActualCost || 0) - (wh.budget?.totalPlannedCost || 0);
+                    const dailyReportCount = wh.integrations?.dailyReportIds?.length || 0;
+                    
+                    return (
+                      <tr 
+                        key={wh.id} 
+                        className={`border-b border-gray-200 dark:border-slate-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
+                          isOverBudget ? 'bg-red-50/50 dark:bg-red-900/10' : ''
+                        }`}
+                      >
+                        <td 
+                          className="p-3 cursor-pointer"
+                          onClick={() => {
+                            setSelectedWorkHours(wh);
+                            setShowDetailModal(true);
+                          }}
+                        >
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                              {wh.projectName}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400">
+                              {wh.client} • {wh.managementNumber}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="text-sm text-gray-700 dark:text-slate-300">
+                            {formatHours(wh.plannedHours?.total || 0)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ¥{((wh.budget?.totalPlannedCost || 0) / 1000).toFixed(0)}K
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className={`text-sm font-medium ${isOverBudget ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                            {formatHours(wh.actualHours?.total || 0)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ¥{((wh.budget?.totalActualCost || 0) / 1000).toFixed(0)}K
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex flex-col items-center">
+                            <span className={`text-sm font-bold ${
+                              efficiency <= 100 ? 'text-green-600' : 
+                              efficiency <= 120 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {efficiency.toFixed(0)}%
+                            </span>
+                            {getEfficiencyIcon(wh.plannedHours?.total || 0, wh.actualHours?.total || 0)}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={`text-sm font-medium ${costDiff > 0 ? 'text-red-600' : costDiff < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                            {costDiff > 0 ? '+' : ''}{formatCurrency(costDiff)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge className={`${getStatusColor(wh.status || 'planning')} text-white text-xs`}>
+                            {wh.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-center">
+                          {dailyReportCount > 0 ? (
+                            <Badge variant="outline" className="text-xs border-blue-500 text-blue-600">
+                              <Database className="w-3 h-3 mr-1" />
+                              {dailyReportCount}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-gray-400">未同期</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedWorkHours(wh);
+                                setShowDetailModal(true);
+                              }}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (wh.id) handleDeleteWorkHours(wh.id);
+                              }}
+                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              
+              {filteredData.length === 0 && (
+                <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+                  <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+                  <p>検索条件に合う工数データが見つかりません</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 右側：マスタ管理・詳細情報 */}
+          <div className="w-80 bg-white dark:bg-slate-800 flex flex-col">
+            <div className="border-b border-gray-200 dark:border-slate-700 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">マスタ管理</h3>
+            </div>
+            
+            <Tabs defaultValue="workers" className="flex-1">
+              <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
+                <TabsTrigger value="workers" className="text-xs">作業者</TabsTrigger>
+                <TabsTrigger value="machines" className="text-xs">機械</TabsTrigger>
+                <TabsTrigger value="sync" className="text-xs">同期</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="workers" className="flex-1 p-4 overflow-auto">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">作業者一覧</h4>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-7 text-xs"
+                      onClick={handleAddWorker}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      追加
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {workers.map((worker) => {
+                      const workerStats = statistics.byWorker.find(w => w.workerId === worker.id);
+
+                      return (
+                        <div key={worker.id} className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">{worker.name}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {worker.employeeId && `ID: ${worker.employeeId} • `}¥{worker.hourlyRate.toLocaleString()}/h
                               </div>
-                            </td>
-                            <td className="p-3 text-gray-900 dark:text-white">{wh.client}</td>
-                            <td className="p-3">
-                              <div className="text-xs">
-                                <div>計: {wh.plannedHours.setup}h</div>
-                                <div>実: {wh.actualHours.setup}h</div>
+                              {worker.department && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  部署: {worker.department}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-500 mt-1">
+                                スキル: {worker.skills.join(', ')}
                               </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="text-xs">
-                                <div>計: {wh.plannedHours.machining}h</div>
-                                <div>実: {wh.actualHours.machining}h</div>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="text-xs">
-                                <div>計: {wh.plannedHours.finishing}h</div>
-                                <div>実: {wh.actualHours.finishing}h</div>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="text-xs">
-                                <div>計: {wh.plannedHours.total}h</div>
-                                <div>実: {wh.actualHours.total}h</div>
-                              </div>
-                            </td>
-                            <td className="p-3">{getStatusBadge(wh.status)}</td>
-                            <td className="p-3">
-                              <div className="flex items-center space-x-2">
+                              {workerStats && (
+                                <div className="flex items-center justify-between mt-2 text-xs">
+                                  <span className="text-gray-500">今週: {workerStats.totalHours.toFixed(1)}h</span>
+                                  <span className="text-gray-500">効率: {workerStats.efficiency.toFixed(0)}%</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
                                 <Button 
-                                  variant="outline" 
                                   size="sm" 
-                                  onClick={() => {
-                                    setSelectedWorkHours(wh);
-                                    setShowEditModal(true);
-                                  }}
-                                  disabled={wh.locked || isLoading}
+                                  variant="ghost" 
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleEditWorker(worker)}
                                 >
                                   <Edit className="w-3 h-3" />
                                 </Button>
-                                {wh.orderId && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                                    onClick={() => router.push(`/orders?highlight=${wh.orderId}`)}
-                                  >
-                                    <Building2 className="w-3 h-3" />
-                                  </Button>
-                                )}
-                                {wh.integrations?.processId && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="border-green-300 dark:border-green-600 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
-                                    onClick={() => router.push(`/tasks?highlight=${wh.integrations.processId}`)}
-                                  >
-                                    <FileText className="w-3 h-3" />
-                                  </Button>
-                                )}
                                 <Button 
-                                  variant="outline" 
                                   size="sm" 
-                                  className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-                                  onClick={() => handleDeleteWorkHours(wh.id)}
-                                  disabled={wh.locked || isLoading}
+                                  variant="ghost" 
+                                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                  onClick={() => worker.id && handleDeleteWorker(worker.id)}
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="sync" className="mt-6">
-              <SyncManagementTab 
-                syncStats={syncStats}
-                syncError={syncError}
-                workHours={displayWorkHours}
-                onRefresh={loadWorkHoursData}
-                onResetStats={resetSyncStats}
-              />
-            </TabsContent>
-
-            <TabsContent value="analytics" className="mt-6">
-              <AnalyticsCharts 
-                workHours={displayWorkHours}
-                statistics={statistics}
-                workers={workers}
-                machines={machines}
-              />
-            </TabsContent>
-
-            <TabsContent value="workers" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">作業者管理</h3>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {workers.map((worker) => (
-                      <Card key={worker.id} className="border border-gray-200 dark:border-slate-600">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                              <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white">{worker.name}</h4>
-                              <p className="text-sm text-gray-600 dark:text-slate-400">{worker.department}</p>
                             </div>
                           </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-700 dark:text-slate-300">時間単価:</span>
-                              <span className="font-medium text-gray-900 dark:text-white">¥{worker.hourlyRate.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-700 dark:text-slate-300">スキル:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {worker.skills.map((skill, index) => (
-                                  <Badge key={index} variant="secondary" className="text-xs">
-                                    {skill}
-                                  </Badge>
-                                ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="machines" className="flex-1 p-4 overflow-auto">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">機械一覧</h4>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-7 text-xs"
+                      onClick={handleAddMachine}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      追加
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {machines.map((machine) => {
+                      const machineStats = statistics.byMachine.find(m => m.machineId === machine.id);
+                      
+
+                      return (
+                        <div key={machine.id} className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">{machine.name}</div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {machine.machineId && `${machine.machineId} • `}{machine.type} • ¥{machine.hourlyRate.toLocaleString()}/h
+                              </div>
+                              {machine.manufacturer && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {machine.manufacturer}{machine.model && ` ${machine.model}`}
+                                </div>
+                              )}
+                              {machine.location && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  設置場所: {machine.location}
+                                </div>
+                              )}
+                              {machineStats && (
+                                <div className="text-xs text-gray-500 mt-2">
+                                  今週: {machineStats.totalHours.toFixed(1)}h
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleEditMachine(machine)}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                  onClick={() => machine.id && handleDeleteMachine(machine.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
                               </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="machines" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">機械管理</h3>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {machines.map((machine) => (
-                      <Card key={machine.id} className="border border-gray-200 dark:border-slate-600">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`p-2 rounded-full ${
-                              machine.status === 'available' ? 'bg-green-100 dark:bg-green-900/30' :
-                              machine.status === 'busy' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'
-                            }`}>
-                              <Wrench className={`w-5 h-5 ${
-                                machine.status === 'available' ? 'text-green-600 dark:text-green-400' :
-                                machine.status === 'busy' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'
-                              }`} />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white">{machine.name}</h4>
-                              <p className="text-sm text-gray-600 dark:text-slate-400">{machine.type}</p>
-                            </div>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-700 dark:text-slate-300">稼働単価:</span>
-                              <span className="font-medium text-gray-900 dark:text-white">¥{machine.hourlyRate.toLocaleString()}/h</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-700 dark:text-slate-300">ステータス:</span>
-                              <Badge variant={
-                                machine.status === 'available' ? 'default' :
-                                machine.status === 'busy' ? 'destructive' : 'secondary'
-                              }>
-                                {machine.status === 'available' ? '稼働可能' :
-                                 machine.status === 'busy' ? '使用中' : 'メンテナンス'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="sync" className="flex-1 p-4 overflow-auto">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">日報同期状況</h4>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-7 text-xs"
+                      onClick={triggerManualSync}
+                      disabled={isSyncing}
+                    >
+                      <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                      同期
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  <div className="space-y-2">
+                    <div className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg">
+                      <div className="text-xs text-gray-500 mb-1">最終同期</div>
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {syncStats?.lastSyncTime ? 
+                          new Date(syncStats.lastSyncTime).toLocaleString('ja-JP') : 
+                          '未同期'
+                        }
+                      </div>
+                    </div>
+                    <div className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg">
+                      <div className="text-xs text-gray-500 mb-1">同期件数</div>
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {syncStats?.syncedCount || 0}件
+                      </div>
+                    </div>
+                    {syncError && (
+                      <div className="p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+                        <div className="text-xs text-red-600 mb-1">エラー</div>
+                        <div className="text-sm text-red-700 dark:text-red-400">
+                          {syncError}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
-        {/* Enhanced Edit Modal */}
-        {showEditModal && (
-          <WorkHoursEditModal
-            workHours={selectedWorkHours}
-            isOpen={showEditModal}
-            onClose={() => {
-              setShowEditModal(false);
-              setSelectedWorkHours(null);
-            }}
-            onSave={handleSaveWorkHours}
-            isLoading={isLoading}
-          />
-        )}
       </div>
+
+      {/* Detail Modal */}
+      {showDetailModal && (
+        <WorkHoursDetailModal
+          workHours={selectedWorkHours}
+          isOpen={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedWorkHours(null);
+          }}
+          onSave={handleSaveWorkHours}
+          workers={workers}
+          machines={machines}
+        />
+      )}
+
+      {/* Worker Modal */}
+      {showWorkerModal && (
+        <WorkerModal
+          worker={selectedWorker}
+          isOpen={showWorkerModal}
+          onClose={() => {
+            setShowWorkerModal(false);
+            setSelectedWorker(null);
+          }}
+          onSave={handleSaveWorker}
+          isLoading={isSaving}
+        />
+      )}
+
+      {/* Machine Modal */}
+      {showMachineModal && (
+        <MachineModal
+          machine={selectedMachine}
+          isOpen={showMachineModal}
+          onClose={() => {
+            setShowMachineModal(false);
+            setSelectedMachine(null);
+          }}
+          onSave={handleSaveMachine}
+          isLoading={isSaving}
+        />
+      )}
+
+      {/* Analytics Modal */}
+      {showAnalyticsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-600">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">工数分析</h2>
+              <Button
+                variant="ghost"
+                onClick={() => setShowAnalyticsModal(false)}
+              >
+                ×
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 作業者別効率 */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">作業者別効率</h3>
+                <div className="space-y-3">
+                  {statistics.byWorker.map((worker) => (
+                    <div key={worker.workerId} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">{worker.workerName}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-gray-200 dark:bg-slate-600 rounded-full">
+                          <div 
+                            className={`h-full rounded-full ${
+                              worker.efficiency >= 100 ? 'bg-green-500' : 
+                              worker.efficiency >= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${Math.min(worker.efficiency, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {worker.efficiency.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 機械稼働率 */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">機械稼働率</h3>
+                <div className="space-y-3">
+                  {statistics.byMachine.map((machine) => (
+                    <div key={machine.machineId} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 dark:text-slate-300">{machine.machineName}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-gray-200 dark:bg-slate-600 rounded-full">
+                          <div 
+                            className={`h-full rounded-full ${
+                              machine.utilizationRate >= 80 ? 'bg-green-500' : 
+                              machine.utilizationRate >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${machine.utilizationRate}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {machine.utilizationRate}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">全体サマリー</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">{statistics.totalProjects}</div>
+                    <div className="text-sm text-gray-600 dark:text-slate-400">総プロジェクト</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">{statistics.totalPlannedHours}h</div>
+                    <div className="text-sm text-gray-600 dark:text-slate-400">計画工数</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-orange-600">{statistics.totalActualHours}h</div>
+                    <div className="text-sm text-gray-600 dark:text-slate-400">実績工数</div>
+                  </div>
+                  <div>
+                    <div className={`text-2xl font-bold ${
+                      statistics.efficiency <= 100 ? 'text-green-600' : 
+                      statistics.efficiency <= 120 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {statistics.efficiency.toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-slate-400">全体効率</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// =============================================================================
-// ENHANCED COMPONENTS
-// =============================================================================
-
-// Sync Management Tab Component
-const SyncManagementTab = ({ 
-  syncStats, 
-  syncError,
-  workHours, 
-  onRefresh,
-  onResetStats 
-}: { 
-  syncStats: any;
-  syncError: string | null;
-  workHours: EnhancedWorkHours[]; 
-  onRefresh: () => void;
-  onResetStats: () => void;
-}) => {
-  
-  return (
-    <div className="space-y-6">
-      {/* Sync Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">同期済み件数</p>
-                <p className="text-2xl font-bold text-blue-600">{syncStats.totalSynced}</p>
-              </div>
-              <Activity className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">最終同期</p>
-                <p className="text-sm font-bold text-green-600">
-                  {syncStats.lastSyncTime 
-                    ? syncStats.lastSyncTime.toLocaleString('ja-JP')
-                    : '未同期'
-                  }
-                </p>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">保留中</p>
-                <p className="text-2xl font-bold text-purple-600">{syncStats.pendingReports}</p>
-              </div>
-              <Target className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-slate-400">ステータス</p>
-                <p className="text-sm font-bold text-blue-600">
-                  {syncError ? 'エラー' : '正常'}
-                </p>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sync Info */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">同期情報</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onResetStats}
-            >
-              ステータスリセット
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">自動同期機能</h4>
-              <p className="text-sm text-blue-700 dark:text-blue-200">
-                日報データが更新されると、自動的に工数実績が更新されます。
-              </p>
-            </div>
-            
-            {syncError && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg">
-                <h4 className="font-medium text-red-900 dark:text-red-100 mb-2">同期エラー</h4>
-                <p className="text-sm text-red-700 dark:text-red-200">{syncError}</p>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 dark:text-slate-300">同期対象プロセス</h4>
-              <div className="grid grid-cols-1 gap-2">
-                {workHours.filter(wh => wh.integrations?.dailyReportIds && wh.integrations.dailyReportIds.length > 0).map(wh => (
-                  <div key={wh.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700 rounded">
-                    <span className="text-sm text-gray-900 dark:text-white">{wh.projectName}</span>
-                    <Badge variant="outline" className="text-xs">
-                      日報 {wh.integrations.dailyReportIds.length}件
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-
-
-const WorkHoursManagementWithSuspense = () => {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="ml-16 h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-slate-400">工数管理データを読み込み中...</p>
-          </div>
-        </div>
-      </div>
-    }>
-      <WorkHoursManagement />
-    </Suspense>
-  );
-};
-
-export default WorkHoursManagementWithSuspense;
+export default WorkHoursManagement;
