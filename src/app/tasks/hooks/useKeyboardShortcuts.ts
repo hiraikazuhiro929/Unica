@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 interface KeyboardShortcutsProps {
   onNewProcess?: () => void;
@@ -19,8 +20,15 @@ export const useKeyboardShortcuts = ({
   onToggleView,
   isModalOpen = false,
 }: KeyboardShortcutsProps) => {
+  const pathname = usePathname();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // tasksページ以外では動作させない
+      if (!pathname.startsWith('/tasks')) {
+        return;
+      }
+
       // モーダルが開いている時とそうでない時で挙動を分ける
       if (isModalOpen) {
         // モーダル内のショートカット
@@ -87,6 +95,7 @@ export const useKeyboardShortcuts = ({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [
+    pathname,
     onNewProcess,
     onSearch,
     onSave,

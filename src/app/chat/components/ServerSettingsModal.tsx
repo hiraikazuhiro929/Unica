@@ -36,8 +36,14 @@ import {
   Globe,
   Lock,
   FileText,
+  Hash,
+  ChevronUp,
+  ChevronDown,
+  Folder,
+  List,
 } from "lucide-react";
-import type { ChatUser, ServerInfo } from "@/lib/firebase/chat";
+import type { ChatUser, ServerInfo, ChatChannel, ChannelCategory } from "@/lib/firebase/chat";
+import { updateCategoriesOrder, updateChannelsOrder } from "@/lib/firebase/chat";
 
 interface ServerSettingsModalProps {
   server: ServerInfo | null;
@@ -47,6 +53,8 @@ interface ServerSettingsModalProps {
   onDelete: (serverId: string) => Promise<void>;
   users: ChatUser[];
   currentUserId: string;
+  channels?: ChatChannel[];
+  categories?: ChannelCategory[];
 }
 
 export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
@@ -57,6 +65,8 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
   onDelete,
   users,
   currentUserId,
+  channels = [],
+  categories = [],
 }) => {
   const [activeTab, setActiveTab] = useState("general");
   const [serverName, setServerName] = useState(server?.name || "");
@@ -73,6 +83,11 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [inviteCode] = useState("unica-" + Math.random().toString(36).substring(2, 8));
   
+  // チャンネル並び替え用
+  const [localCategories, setLocalCategories] = useState<ChannelCategory[]>([]);
+  const [localChannels, setLocalChannels] = useState<ChatChannel[]>([]);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -86,7 +101,10 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
       setExplicitContentFilter(server.settings.explicitContentFilter);
       setVerificationLevel(server.settings.verificationLevel);
     }
-  }, [server]);
+    // カテゴリーとチャンネルの初期化
+    setLocalCategories([...categories].sort((a, b) => a.order - b.order));
+    setLocalChannels([...channels].sort((a, b) => a.order - b.order));
+  }, [server, categories, channels]);
 
   const handleUpdateGeneral = async () => {
     if (!server) return;
@@ -148,6 +166,83 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
     console.log("招待コードをコピーしました");
   };
 
+  // チャンネル並び替え関数
+  const moveCategoryUp = (index: number) => {
+    if (index === 0) return;
+    const newCategories = [...localCategories];
+    [newCategories[index - 1], newCategories[index]] = [newCategories[index], newCategories[index - 1]];
+    setLocalCategories(newCategories);
+  };
+
+  const moveCategoryDown = (index: number) => {
+    if (index === localCategories.length - 1) return;
+    const newCategories = [...localCategories];
+    [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+    setLocalCategories(newCategories);
+  };
+
+  const moveChannelUp = (categoryId: string | undefined, channelIndex: number) => {
+    const categoryChannels = localChannels.filter(ch => 
+      categoryId ? ch.categoryId === categoryId : !ch.categoryId
+    );
+    if (channelIndex === 0) return;
+    
+    const channel = categoryChannels[channelIndex];
+    const prevChannel = categoryChannels[channelIndex - 1];
+    
+    const newChannels = localChannels.map(ch => {
+      if (ch.id === channel.id) return { ...ch, order: prevChannel.order };
+      if (ch.id === prevChannel.id) return { ...ch, order: channel.order };
+      return ch;
+    });
+    
+    setLocalChannels(newChannels.sort((a, b) => a.order - b.order));
+  };
+
+  const moveChannelDown = (categoryId: string | undefined, channelIndex: number) => {
+    const categoryChannels = localChannels.filter(ch => 
+      categoryId ? ch.categoryId === categoryId : !ch.categoryId
+    );
+    if (channelIndex === categoryChannels.length - 1) return;
+    
+    const channel = categoryChannels[channelIndex];
+    const nextChannel = categoryChannels[channelIndex + 1];
+    
+    const newChannels = localChannels.map(ch => {
+      if (ch.id === channel.id) return { ...ch, order: nextChannel.order };
+      if (ch.id === nextChannel.id) return { ...ch, order: channel.order };
+      return ch;
+    });
+    
+    setLocalChannels(newChannels.sort((a, b) => a.order - b.order));
+  };
+
+  const saveChannelOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      // カテゴリーの順序を保存
+      const categoryUpdates = localCategories.map((cat, index) => ({
+        id: cat.id,
+        position: index
+      }));
+      await updateCategoriesOrder(categoryUpdates);
+
+      // チャンネルの順序を保存
+      const channelUpdates = localChannels.map((ch, index) => ({
+        id: ch.id,
+        position: index
+      }));
+      await updateChannelsOrder(channelUpdates);
+
+      alert('チャンネルの順序を更新しました');
+    } catch (error) {
+      console.error('順序更新エラー:', error);
+      alert('順序の更新に失敗しました');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   if (!server) return null;
 
   const isOwner = server.ownerId === currentUserId;
@@ -167,10 +262,14 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="general">
               <Settings className="w-4 h-4 mr-2" />
               一般
+            </TabsTrigger>
+            <TabsTrigger value="channels">
+              <List className="w-4 h-4 mr-2" />
+              チャンネル
             </TabsTrigger>
             <TabsTrigger value="moderation">
               <Shield className="w-4 h-4 mr-2" />
@@ -275,6 +374,128 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                 </Button>
               </div>
             )}
+          </TabsContent>
+
+          {/* チャンネル管理 */}
+          <TabsContent value="channels" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">チャンネルの並び替え</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  上下ボタンでカテゴリーやチャンネルの順序を変更できます
+                </p>
+              </div>
+
+              {/* 未分類チャンネル */}
+              {localChannels.filter(ch => !ch.categoryId).length > 0 && (
+                <div className="border rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">チャンネル（未分類）</h4>
+                  <div className="space-y-2">
+                    {localChannels
+                      .filter(ch => !ch.categoryId)
+                      .map((channel, index) => (
+                        <div key={channel.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <Hash className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm">{channel.name}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveChannelUp(undefined, index)}
+                              disabled={index === 0}
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveChannelDown(undefined, index)}
+                              disabled={index === localChannels.filter(ch => !ch.categoryId).length - 1}
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* カテゴリーごとのチャンネル */}
+              {localCategories.map((category, catIndex) => (
+                <div key={category.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Folder className="w-4 h-4 text-gray-500" />
+                      <h4 className="font-medium text-sm text-gray-700">{category.name}</h4>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => moveCategoryUp(catIndex)}
+                        disabled={catIndex === 0}
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => moveCategoryDown(catIndex)}
+                        disabled={catIndex === localCategories.length - 1}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 ml-4">
+                    {localChannels
+                      .filter(ch => ch.categoryId === category.id)
+                      .map((channel, index) => (
+                        <div key={channel.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <Hash className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm">{channel.name}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveChannelUp(category.id, index)}
+                              disabled={index === 0}
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => moveChannelDown(category.id, index)}
+                              disabled={index === localChannels.filter(ch => ch.categoryId === category.id).length - 1}
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* 保存ボタン */}
+              {isOwner && (
+                <div className="flex justify-end pt-4 border-t">
+                  <Button 
+                    onClick={saveChannelOrder} 
+                    disabled={isSavingOrder}
+                  >
+                    {isSavingOrder ? "保存中..." : "順序を保存"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* 安全性設定 */}

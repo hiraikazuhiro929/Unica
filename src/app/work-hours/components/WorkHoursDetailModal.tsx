@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Activity } from "lucide-react";
 import { 
   X, 
   Clock, 
@@ -20,7 +22,12 @@ import {
   AlertTriangle,
   Save,
   Plus,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  XCircle,
+  MinusCircle
 } from "lucide-react";
 import type { EnhancedWorkHours } from '@/app/tasks/types';
 import type { Worker } from '@/lib/firebase/workers';
@@ -83,7 +90,103 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
     totalRate: number;
   }>>([]);
 
+  const [customActualSteps, setCustomActualSteps] = useState<Array<{
+    id: string;
+    name: string;
+    hours: number;
+    workerCharge: number;
+    machineId: string;
+    machineCharge: number;
+    totalRate: number;
+  }>>([]);
+
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
   const baseWorkerCharge = 1500; // 基本作業者チャージ
+
+  // 工程マスタ（よく使われる工程名）
+  const processTemplates = [
+    '検査',
+    '梱包',
+    '組立',
+    '溶接',
+    '塗装',
+    '乾燥',
+    '調整',
+    '品質チェック',
+    '清掃',
+    '運搬',
+    'その他'
+  ];
+
+  // 時間入力をパースする関数
+  const parseTimeInput = (input: string): number => {
+    if (!input.trim()) return 0;
+    
+    // 数値のみの場合（2.5など）
+    const numericValue = parseFloat(input);
+    if (!isNaN(numericValue)) return numericValue;
+    
+    // 時間分形式のパース（2時間30分、2:30、2h30m など）
+    const patterns = [
+      /(\d+)時間(\d+)分/,  // 2時間30分
+      /(\d+)時間/,         // 2時間
+      /(\d+):(\d+)/,       // 2:30
+      /(\d+)h(\d+)m/,      // 2h30m
+      /(\d+)h/,            // 2h
+      /(\d+)分/            // 30分
+    ];
+    
+    for (const pattern of patterns) {
+      const match = input.match(pattern);
+      if (match) {
+        if (pattern === /(\d+)時間(\d+)分/ || pattern === /(\d+):(\d+)/ || pattern === /(\d+)h(\d+)m/) {
+          const hours = parseInt(match[1]) || 0;
+          const minutes = parseInt(match[2]) || 0;
+          return hours + minutes / 60;
+        } else if (pattern === /(\d+)時間/ || pattern === /(\d+)h/) {
+          return parseInt(match[1]) || 0;
+        } else if (pattern === /(\d+)分/) {
+          return (parseInt(match[1]) || 0) / 60;
+        }
+      }
+    }
+    
+    return 0;
+  };
+
+  const toggleStepExpansion = (stepName: string) => {
+    const newExpanded = new Set(expandedSteps);
+    if (newExpanded.has(stepName)) {
+      newExpanded.delete(stepName);
+    } else {
+      newExpanded.add(stepName);
+    }
+    setExpandedSteps(newExpanded);
+  };
+
+  const getStepDifference = (planned: number, actual: number) => {
+    const diff = actual - planned;
+    const percentage = planned > 0 ? ((actual / planned) * 100).toFixed(1) : '0';
+    return { diff, percentage };
+  };
+
+  const getDifferenceIcon = (diff: number) => {
+    if (diff > 0) return <TrendingUp className="w-4 h-4 text-red-500" />;
+    if (diff < 0) return <TrendingDown className="w-4 h-4 text-green-500" />;
+    return <MinusCircle className="w-4 h-4 text-gray-400" />;
+  };
+
+  const efficiency = formData.plannedHours?.total && formData.actualHours?.total 
+    ? (formData.plannedHours.total / formData.actualHours.total) * 100 
+    : 0;
+
+  const costDiff = (formData.budget?.totalActualCost || 0) - (formData.budget?.totalPlannedCost || 0);
+
+  const getEfficiencyIcon = (efficiency: number) => {
+    if (efficiency >= 100) return <TrendingUp className="w-4 h-4 text-green-600" />;
+    return <TrendingDown className="w-4 h-4 text-red-600" />;
+  };
 
   useEffect(() => {
     if (workHours) {
@@ -202,34 +305,20 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
     onSave(updatedFormData);
   };
 
-  const efficiency = formData.plannedHours?.total && formData.actualHours?.total
-    ? (formData.actualHours.total / formData.plannedHours.total) * 100
-    : 0;
-
-  const costDiff = (formData.budget?.totalActualCost || 0) - (formData.budget?.totalPlannedCost || 0);
-
-  const getEfficiencyIcon = (eff: number) => {
-    if (eff <= 100) return <TrendingDown className="w-4 h-4 text-green-500" />;
-    if (eff <= 120) return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-    return <TrendingUp className="w-4 h-4 text-red-500" />;
-  };
-
   const formatCurrency = (amount: number) => `¥${amount.toLocaleString()}`;
   const formatHours = (hours: number) => `${hours.toFixed(1)}h`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-200 dark:border-slate-600 shadow-xl">
-        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-5xl h-[90vh] flex flex-col border border-gray-200 dark:border-slate-600 shadow-xl">
+        {/* ヘッダー - 固定 */}
+        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
                 {workHours ? '工数編集' : '工数新規作成'}
               </h2>
-              <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                工数データの管理・編集
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -244,7 +333,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -252,19 +341,23 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* コンテンツ - スクロール可能 */}
+        <div className="flex-1 overflow-y-auto p-4">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">基本情報</TabsTrigger>
-              <TabsTrigger value="breakdown">工数・コスト</TabsTrigger>
-              <TabsTrigger value="daily-reports">日報連携</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-white dark:bg-slate-800 z-10">
+              <TabsTrigger value="overview" className="text-sm">基本情報</TabsTrigger>
+              <TabsTrigger value="breakdown" className="text-sm">工数・コスト</TabsTrigger>
+              <TabsTrigger value="daily-reports" className="text-sm">日報連携</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-6 space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+            <TabsContent value="overview" className="mt-4 space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* 基本情報 */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">基本情報</h3>
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-500" />
+                    基本情報
+                  </h3>
                   <div className="space-y-3">
                     <div>
                       <Label className="text-sm font-medium">プロジェクト名</Label>
@@ -341,314 +434,441 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                 </div>
 
                 {/* 効率性指標 */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">効率性指標</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600 dark:text-slate-400">工数効率</span>
-                        {getEfficiencyIcon(efficiency)}
-                      </div>
-                      <span className="text-lg font-bold text-gray-900 dark:text-white">
-                        {efficiency.toFixed(1)}%
-                      </span>
-                    </div>
-                    <Progress value={Math.min(efficiency, 150)} className="h-2" />
-                    
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600 dark:text-slate-400">コスト効率</span>
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-lg font-bold ${costDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {((formData.budget?.totalActualCost || 0) / (formData.budget?.totalPlannedCost || 1) * 100).toFixed(1)}%
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-green-500" />
+                    効率性指標
+                  </h3>
+                  <Card className="border-gray-200 dark:border-slate-600">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600 dark:text-slate-400">工数効率</span>
+                          {getEfficiencyIcon(efficiency)}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          差異: {formatCurrency(costDiff)}
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">
+                          {efficiency.toFixed(1)}%
+                        </span>
+                      </div>
+                      <Progress value={Math.min(efficiency, 150)} className="h-2" />
+                      
+                      <div className="flex items-center justify-between py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600 dark:text-slate-400">コスト効率</span>
+                          <DollarSign className="w-4 h-4 text-green-600" />
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-lg font-bold ${costDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {((formData.budget?.totalActualCost || 0) / (formData.budget?.totalPlannedCost || 1) * 100).toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            差異: {formatCurrency(costDiff)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="breakdown" className="mt-6 space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-indigo-500" />
-                  工数・コスト詳細
-                </h3>
-                <div className="space-y-3">
+            <TabsContent value="breakdown" className="mt-4">
+              <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 dark:bg-slate-700 px-6 py-3 border-b border-gray-200 dark:border-slate-600">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    工程別工数
+                  </h3>
+                </div>
+                
+                <div className="divide-y divide-gray-200 dark:divide-slate-600">
                   {/* 段取り */}
-                  <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800 dark:text-slate-200">段取り</span>
-                      <span className="text-sm text-gray-500 dark:text-slate-400">({formatCurrency(formData.budget?.setupRate || 0)}/h)</span>
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">段取り</span>
+                      <div className={`flex items-center gap-2 text-sm font-medium ${
+                        (formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0) > 0 ? 'text-red-600' : 
+                        (formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0) < 0 ? 'text-green-600' : 'text-gray-600'
+                      }`}>
+                        {getDifferenceIcon((formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0))}
+                        <span>
+                          {((formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0)) > 0 ? '+' : ''}
+                          {((formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0)).toFixed(1)}h
+                        </span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">計画工数</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.plannedHours?.setup || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            plannedHours: {
-                              ...formData.plannedHours,
-                              setup: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
+                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2 block">計画工数</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            value={formData.plannedHours?.setup ? formData.plannedHours.setup.toString() : ''}
+                            onChange={(e) => {
+                              const value = parseTimeInput(e.target.value);
+                              setFormData({
+                                ...formData,
+                                plannedHours: {
+                                  ...formData.plannedHours,
+                                  setup: value
+                                }
+                              });
+                            }}
+                            className="h-10 text-base"
+                            placeholder="2時間30分 または 2.5"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">作業者</Label>
+                              <Select
+                                value={formData.setupWorker || 'none'}
+                                onValueChange={(value) => setFormData({...formData, setupWorker: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">未選択</SelectItem>
+                                  {workers.map((worker) => (
+                                    <SelectItem key={worker.id} value={worker.id}>
+                                      {worker.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">機械</Label>
+                              <Select
+                                value={formData.setupMachine || 'none'}
+                                onValueChange={(value) => setFormData({...formData, setupMachine: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">なし</SelectItem>
+                                  {machines.filter(m => m.status === 'available').map((machine) => (
+                                    <SelectItem key={machine.id} value={machine.id}>
+                                      {machine.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-green-600 dark:text-green-400">実績工数</Label>
+                        <Label className="text-sm font-medium text-green-600 dark:text-green-400 mb-2 block">
+                          実績工数
+                          <span className="text-xs text-gray-500 ml-2">（日報自動連携・手動修正可）</span>
+                        </Label>
                         <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.actualHours?.setup || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            actualHours: {
-                              ...formData.actualHours,
-                              setup: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">機械選択・チャージ</Label>
-                        <Select
-                          value={formData.assignedMachine?.setupMachine || ''}
-                          onValueChange={(value) => {
-                            const machine = value === "none" ? null : machines.find(m => m.id === value);
+                          type="text"
+                          value={formData.actualHours?.setup ? formData.actualHours.setup.toString() : ''}
+                          onChange={(e) => {
+                            const value = parseTimeInput(e.target.value);
                             setFormData({
                               ...formData,
-                              assignedMachine: {
-                                ...formData.assignedMachine,
-                                setupMachine: value === "none" ? "" : value
-                              },
-                              budget: {
-                                ...formData.budget,
-                                setupRate: baseWorkerCharge + (machine?.hourlyRate || 0)
+                              actualHours: {
+                                ...formData.actualHours,
+                                setup: value
                               }
                             });
                           }}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="機械を選択..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">機械なし (作業者のみ ¥{baseWorkerCharge}/h)</SelectItem>
-                            {machines.filter(m => m.status === 'available' && (m.type === '段取り台' || m.type === 'クレーン')).map((machine) => (
-                              <SelectItem key={machine.id} value={machine.id}>
-                                {machine.name} (作業者¥{baseWorkerCharge} + 機械¥{machine.hourlyRate} = ¥{baseWorkerCharge + machine.hourlyRate}/h)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          className="h-10 text-base"
+                          placeholder="日報から自動更新"
+                        />
                       </div>
                     </div>
                   </div>
 
                   {/* 機械加工 */}
-                  <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800 dark:text-slate-200">機械加工</span>
-                      <span className="text-sm text-gray-500 dark:text-slate-400">({formatCurrency(formData.budget?.machiningRate || 0)}/h)</span>
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">機械加工</span>
+                      <div className={`flex items-center gap-2 text-sm font-medium ${
+                        (formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0) > 0 ? 'text-red-600' : 
+                        (formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0) < 0 ? 'text-green-600' : 'text-gray-600'
+                      }`}>
+                        {getDifferenceIcon((formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0))}
+                        <span>
+                          {((formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0)) > 0 ? '+' : ''}
+                          {((formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0)).toFixed(1)}h
+                        </span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">計画工数</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.plannedHours?.machining || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            plannedHours: {
-                              ...formData.plannedHours,
-                              machining: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
+                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2 block">計画工数</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            value={formData.plannedHours?.machining ? formData.plannedHours.machining.toString() : ''}
+                            onChange={(e) => {
+                              const value = parseTimeInput(e.target.value);
+                              setFormData({
+                                ...formData,
+                                plannedHours: {
+                                  ...formData.plannedHours,
+                                  machining: value
+                                }
+                              });
+                            }}
+                            className="h-10 text-base"
+                            placeholder="2時間30分 または 2.5"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">作業者</Label>
+                              <Select
+                                value={formData.machiningWorker || 'none'}
+                                onValueChange={(value) => setFormData({...formData, machiningWorker: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">未選択</SelectItem>
+                                  {workers.map((worker) => (
+                                    <SelectItem key={worker.id} value={worker.id}>
+                                      {worker.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">機械</Label>
+                              <Select
+                                value={formData.machiningMachine || 'none'}
+                                onValueChange={(value) => setFormData({...formData, machiningMachine: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">なし</SelectItem>
+                                  {machines.filter(m => m.status === 'available').map((machine) => (
+                                    <SelectItem key={machine.id} value={machine.id}>
+                                      {machine.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-green-600 dark:text-green-400">実績工数</Label>
+                        <Label className="text-sm font-medium text-green-600 dark:text-green-400 mb-2 block">
+                          実績工数
+                          <span className="text-xs text-gray-500 ml-2">（日報自動連携・手動修正可）</span>
+                        </Label>
                         <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.actualHours?.machining || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            actualHours: {
-                              ...formData.actualHours,
-                              machining: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">使用機械・チャージ</Label>
-                        <Select
-                          value={formData.assignedMachine?.machiningMachine || ''}
-                          onValueChange={(value) => {
-                            const machine = machines.find(m => m.id === value);
+                          type="text"
+                          value={formData.actualHours?.machining ? formData.actualHours.machining.toString() : ''}
+                          onChange={(e) => {
+                            const value = parseTimeInput(e.target.value);
                             setFormData({
                               ...formData,
-                              assignedMachine: {
-                                ...formData.assignedMachine,
-                                machiningMachine: value
-                              },
-                              budget: {
-                                ...formData.budget,
-                                machiningRate: baseWorkerCharge + (machine?.hourlyRate || 0)
+                              actualHours: {
+                                ...formData.actualHours,
+                                machining: value
                               }
                             });
                           }}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="機械を選択..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {machines.filter(m => m.status === 'available' && (m.type === '加工機' || m.type === '旋盤' || m.type === 'マシニング')).map((machine) => (
-                              <SelectItem key={machine.id} value={machine.id}>
-                                {machine.name} (作業者¥{baseWorkerCharge} + 機械¥{machine.hourlyRate} = ¥{baseWorkerCharge + machine.hourlyRate}/h)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          className="h-10 text-base"
+                          placeholder="日報から自動更新"
+                        />
                       </div>
                     </div>
                   </div>
 
                   {/* 仕上げ */}
-                  <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800 dark:text-slate-200">仕上げ</span>
-                      <span className="text-sm text-gray-500 dark:text-slate-400">({formatCurrency(formData.budget?.finishingRate || 0)}/h)</span>
+                  <div className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">仕上げ</span>
+                      <div className={`flex items-center gap-2 text-sm font-medium ${
+                        (formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0) > 0 ? 'text-red-600' : 
+                        (formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0) < 0 ? 'text-green-600' : 'text-gray-600'
+                      }`}>
+                        {getDifferenceIcon((formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0))}
+                        <span>
+                          {((formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0)) > 0 ? '+' : ''}
+                          {((formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0)).toFixed(1)}h
+                        </span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">計画工数</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.plannedHours?.finishing || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            plannedHours: {
-                              ...formData.plannedHours,
-                              finishing: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
+                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2 block">計画工数</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            value={formData.plannedHours?.finishing ? formData.plannedHours.finishing.toString() : ''}
+                            onChange={(e) => {
+                              const value = parseTimeInput(e.target.value);
+                              setFormData({
+                                ...formData,
+                                plannedHours: {
+                                  ...formData.plannedHours,
+                                  finishing: value
+                                }
+                              });
+                            }}
+                            className="h-10 text-base"
+                            placeholder="2時間30分 または 2.5"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">作業者</Label>
+                              <Select
+                                value={formData.finishingWorker || 'none'}
+                                onValueChange={(value) => setFormData({...formData, finishingWorker: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">未選択</SelectItem>
+                                  {workers.map((worker) => (
+                                    <SelectItem key={worker.id} value={worker.id}>
+                                      {worker.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">機械</Label>
+                              <Select
+                                value={formData.finishingMachine || 'none'}
+                                onValueChange={(value) => setFormData({...formData, finishingMachine: value === 'none' ? '' : value})}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">なし</SelectItem>
+                                  {machines.filter(m => m.status === 'available').map((machine) => (
+                                    <SelectItem key={machine.id} value={machine.id}>
+                                      {machine.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-green-600 dark:text-green-400">実績工数</Label>
+                        <Label className="text-sm font-medium text-green-600 dark:text-green-400 mb-2 block">
+                          実績工数
+                          <span className="text-xs text-gray-500 ml-2">（日報自動連携・手動修正可）</span>
+                        </Label>
                         <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.actualHours?.finishing || 0}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            actualHours: {
-                              ...formData.actualHours,
-                              finishing: parseFloat(e.target.value) || 0
-                            }
-                          })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">機械選択・チャージ</Label>
-                        <Select
-                          value={formData.assignedMachine?.finishingMachine || ''}
-                          onValueChange={(value) => {
-                            const machine = value === "none" ? null : machines.find(m => m.id === value);
+                          type="text"
+                          value={formData.actualHours?.finishing ? formData.actualHours.finishing.toString() : ''}
+                          onChange={(e) => {
+                            const value = parseTimeInput(e.target.value);
                             setFormData({
                               ...formData,
-                              assignedMachine: {
-                                ...formData.assignedMachine,
-                                finishingMachine: value === "none" ? "" : value
-                              },
-                              budget: {
-                                ...formData.budget,
-                                finishingRate: baseWorkerCharge + (machine?.hourlyRate || 0)
+                              actualHours: {
+                                ...formData.actualHours,
+                                finishing: value
                               }
                             });
                           }}
+                          className="h-10 text-base"
+                          placeholder="日報から自動更新"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* カスタム計画工程 */}
+                {customPlannedSteps.map((step, index) => (
+                  <div key={step.id} className="px-6 py-4 bg-green-50/50 dark:bg-green-900/10 border-t border-green-200 dark:border-green-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <Select
+                          value={step.name}
+                          onValueChange={(value) => updateCustomPlannedStep(step.id, 'name', value)}
                         >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="機械を選択..." />
+                          <SelectTrigger className="h-8 w-32 text-sm font-medium border-green-300 dark:border-green-600">
+                            <SelectValue placeholder="工程選択" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">機械なし (作業者のみ ¥{baseWorkerCharge}/h)</SelectItem>
-                            {machines.filter(m => m.status === 'available' && (m.type === '研磨機' || m.type === '仕上げ機')).map((machine) => (
-                              <SelectItem key={machine.id} value={machine.id}>
-                                {machine.name} (作業者¥{baseWorkerCharge} + 機械¥{machine.hourlyRate} = ¥{baseWorkerCharge + machine.hourlyRate}/h)
+                            {processTemplates.map((template) => (
+                              <SelectItem key={template} value={template}>
+                                {template}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <Badge variant="outline" className="text-xs border-green-500 text-green-600">追加工程</Badge>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* カスタム工程追加 */}
-                  <div className="border-2 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-green-800 dark:text-green-300">追加工程 (計画)</h4>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={addCustomPlannedStep}
-                        className="flex items-center gap-2 text-green-600 border-green-300 hover:bg-green-100"
+                        onClick={() => removeCustomPlannedStep(step.id)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
-                        <Plus className="w-4 h-4" />
-                        工程追加
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    
-                    {customPlannedSteps.length > 0 && (
-                      <div className="space-y-3">
-                        {customPlannedSteps.map((step) => (
-                          <div key={step.id} className="grid grid-cols-5 gap-3 p-3 bg-white dark:bg-slate-700 rounded border">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <Label className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2 block">計画工数</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            value={step.hours ? step.hours.toString() : ''}
+                            onChange={(e) => {
+                              const value = parseTimeInput(e.target.value);
+                              updateCustomPlannedStep(step.id, 'hours', value);
+                            }}
+                            className="h-10 text-base"
+                            placeholder="2時間30分 または 2.5"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs">工程名</Label>
-                              <Input
-                                value={step.name}
-                                onChange={(e) => updateCustomPlannedStep(step.id, 'name', e.target.value)}
-                                placeholder="検査、梱包等"
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">時間</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={step.hours}
-                                onChange={(e) => updateCustomPlannedStep(step.id, 'hours', parseFloat(e.target.value) || 0)}
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">機械選択</Label>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">作業者</Label>
                               <Select
-                                value={step.machineId}
-                                onValueChange={(value) => updateCustomPlannedStep(step.id, 'machineId', value === "none" ? "" : value)}
+                                value={step.workerId || 'none'}
+                                onValueChange={(value) => updateCustomPlannedStep(step.id, 'workerId', value === 'none' ? '' : value)}
                               >
-                                <SelectTrigger className="text-sm">
-                                  <SelectValue placeholder="機械選択..." />
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">未選択</SelectItem>
+                                  {workers.map((worker) => (
+                                    <SelectItem key={worker.id} value={worker.id}>
+                                      {worker.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600 dark:text-gray-400">機械</Label>
+                              <Select
+                                value={step.machineId || 'none'}
+                                onValueChange={(value) => {
+                                  const actualValue = value === 'none' ? '' : value;
+                                  const machine = actualValue ? machines.find(m => m.id === actualValue) : null;
+                                  updateCustomPlannedStep(step.id, 'machineId', actualValue);
+                                  updateCustomPlannedStep(step.id, 'machineCharge', machine?.hourlyRate || 0);
+                                  updateCustomPlannedStep(step.id, 'totalRate', step.workerCharge + (machine?.hourlyRate || 0));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="選択" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">なし</SelectItem>
@@ -660,101 +880,83 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="text-center">
-                              <Label className="text-xs">合計単価</Label>
-                              <div className="text-sm font-medium mt-1">¥{step.totalRate}/h</div>
-                            </div>
-                            <div className="flex items-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeCustomPlannedStep(step.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 合計・効率性表示 */}
-                  <div className="border-2 border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-blue-600 dark:text-blue-400 font-medium text-sm mb-2">計画合計</div>
-                        <div className="space-y-1">
-                          <div className="text-xs text-gray-500">基本工程: {formatHours(
-                            (formData.plannedHours?.setup || 0) + 
-                            (formData.plannedHours?.machining || 0) + 
-                            (formData.plannedHours?.finishing || 0)
-                          )}</div>
-                          <div className="text-xs text-gray-500">追加工程: {formatHours(
-                            customPlannedSteps.reduce((sum, step) => sum + step.hours, 0)
-                          )}</div>
-                          <div className="flex items-center justify-between border-t pt-1">
-                            <span className="font-bold">{formatHours(
-                              (formData.plannedHours?.setup || 0) + 
-                              (formData.plannedHours?.machining || 0) + 
-                              (formData.plannedHours?.finishing || 0) +
-                              customPlannedSteps.reduce((sum, step) => sum + step.hours, 0)
-                            )}</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">
-                              {formatCurrency(
-                                (formData.plannedHours?.setup || 0) * (formData.budget?.setupRate || 0) +
-                                (formData.plannedHours?.machining || 0) * (formData.budget?.machiningRate || 0) +
-                                (formData.plannedHours?.finishing || 0) * (formData.budget?.finishingRate || 0) +
-                                customPlannedSteps.reduce((sum, step) => sum + (step.hours * step.totalRate), 0)
-                              )}
-                            </span>
+                          <div className="text-xs text-gray-500">
+                            時間単価: ¥{step.totalRate}/h (作業者¥{step.workerCharge} + 機械¥{step.machineCharge})
                           </div>
                         </div>
                       </div>
                       <div>
-                        <div className="text-green-600 dark:text-green-400 font-medium text-sm mb-2">実績合計</div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold">{formatHours(
-                            (formData.actualHours?.setup || 0) + 
-                            (formData.actualHours?.machining || 0) + 
-                            (formData.actualHours?.finishing || 0)
-                          )}</span>
-                          <span className="font-bold text-green-600 dark:text-green-400">
-                            {formatCurrency(
-                              (formData.actualHours?.setup || 0) * (formData.budget?.setupRate || 0) +
-                              (formData.actualHours?.machining || 0) * (formData.budget?.machiningRate || 0) +
-                              (formData.actualHours?.finishing || 0) * (formData.budget?.finishingRate || 0)
-                            )}
-                          </span>
+                        <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">実績工数（日報自動連携）</Label>
+                        <div className="h-10 flex items-center px-3 border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 rounded-md text-base text-gray-500">
+                          日報から自動更新
                         </div>
-                        <div className="text-xs text-gray-500 mt-2">※実績は日報連携で自動更新</div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          カスタム工程の実績は日報の作業内容から自動判定されます
+                        </div>
                       </div>
                     </div>
                   </div>
+                ))}
+
+                {/* 計画工程追加ボタン */}
+                <div className="px-6 py-4 border-t border-dashed border-green-300 dark:border-green-600">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addCustomPlannedStep}
+                    className="w-full border-dashed border-green-300 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-300"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    計画工程を追加
+                  </Button>
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="daily-reports" className="mt-6 space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Database className="w-5 h-5 text-blue-600" />
-                  日報連携設定
-                </h3>
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <div className="flex items-center gap-2 mb-2">
+            <TabsContent value="daily-reports" className="mt-4 space-y-3">
+              <Card className="border-blue-200 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10">
+                <CardHeader className="p-4">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     <Database className="w-4 h-4 text-blue-600" />
-                    <span className="font-medium text-blue-800 dark:text-blue-300">自動同期</span>
+                    日報連携設定
+                  </h3>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">自動同期: 有効</span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      日報データから実績工数を自動取得・更新します。
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-500">
+                      ※手動で実績を入力した場合は日報データが優先されます
+                    </div>
                   </div>
-                  <div className="text-sm text-blue-700 dark:text-blue-400">
-                    日報データから実績工数を自動取得・更新します。手動で実績を入力した場合は日報データが優先されます。
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
+        </div>
+        
+        {/* フッター - 固定 */}
+        <div className="flex-shrink-0 flex items-center justify-end gap-2 p-4 border-t border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-800">
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="px-6"
+          >
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            className="px-6"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            保存
+          </Button>
         </div>
       </div>
     </div>

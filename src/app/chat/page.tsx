@@ -47,14 +47,17 @@ import {
   Check,
   AlertCircle,
   Shield,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useChat } from "./hooks/useChat";
 import type { ChatAttachment, ChatMessage, ChatChannel } from "@/lib/firebase/chat";
-import { updateChannel, deleteChannel, updateServer, deleteServer, getServerInfo, ServerInfo } from "@/lib/firebase/chat";
+import { updateChannel, deleteChannel, updateServer, deleteServer, getServerInfo, ServerInfo, createCategory, subscribeToCategories, ChannelCategory } from "@/lib/firebase/chat";
 import { initializeChatData } from "@/lib/firebase/initChatData";
 
 // 新しいコンポーネント
 import { ChannelCreateDialog } from "./components/ChannelCreateDialog";
+import { CategoryCreateDialog } from "./components/CategoryCreateDialog";
 import { MentionInput } from "./components/MentionInput";
 import { NotificationSystem } from "./components/NotificationSystem";
 import { ThreadPanel } from "./components/ThreadPanel";
@@ -166,6 +169,8 @@ const DiscordLikeChat = () => {
   } = useChat(currentUser!);
 
   // ローカル状態
+  const [categories, setCategories] = useState<ChannelCategory[]>([]);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserList, setShowUserList] = useState(true);
@@ -209,6 +214,7 @@ const DiscordLikeChat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const unsubscribeCategories = useRef<(() => void) | null>(null);
 
   // 計算された値
   const onlineUsers = getOnlineUsers();
@@ -233,15 +239,21 @@ const DiscordLikeChat = () => {
       setUploadingFiles([]);
     }
 
-    const success = await sendNewMessage(messageToSend, attachments);
-    if (success) {
-      trackAction('chat_message_sent', {
-        channelId: currentChannel.id,
-        messageLength: messageToSend.length,
-        hasAttachments: attachments.length > 0,
-        attachmentCount: attachments.length
-      });
-    } else {
+    try {
+      const success = await sendNewMessage(messageToSend, attachments);
+      
+      if (success) {
+        trackAction('chat_message_sent', {
+          channelId: currentChannel.id,
+          messageLength: messageToSend.length,
+          hasAttachments: attachments.length > 0,
+          attachmentCount: attachments.length
+        });
+      } else {
+        setMessageInput(messageToSend);
+      }
+    } catch (error) {
+      console.error('Error in handleSendMessage:', error);
       setMessageInput(messageToSend);
     }
   }, [messageInput, currentChannel, uploadingFiles, sendNewMessage, uploadFile, trackAction]);
@@ -305,11 +317,39 @@ const DiscordLikeChat = () => {
   }, [updateStatus]);
 
   const handleCreateChannel = useCallback(async (channelData: any) => {
-    const channelId = await createNewChannel(channelData);
-    if (channelId) {
-      console.log('チャンネル作成成功:', channelId);
+    try {
+      console.log('🔧 チャンネル作成開始:', channelData);
+      const channelId = await createNewChannel(channelData);
+      if (channelId) {
+        // 新しく作成したチャンネルを選択
+        selectChannel(channelId);
+        console.log('✅ チャンネル作成成功:', channelId);
+      } else {
+        console.error('❌ チャンネル作成に失敗しました');
+      }
+    } catch (error) {
+      console.error('💥 チャンネル作成エラー:', error);
     }
-  }, [createNewChannel]);
+  }, [createNewChannel, selectChannel]);
+
+  const handleCreateCategory = useCallback(async (categoryData: any) => {
+    try {
+      console.log('📁 カテゴリー作成開始:', categoryData);
+      const result = await createCategory({
+        ...categoryData,
+        createdBy: currentUser?.userId || 'unknown',
+      });
+      
+      if (result.id) {
+        console.log('✅ カテゴリー作成成功:', result.id);
+      } else {
+        console.error('❌ カテゴリー作成失敗:', result.error);
+      }
+    } catch (error) {
+      console.error('💥 カテゴリー作成エラー:', error);
+    }
+  }, [currentUser]);
+
 
   const handleUpdateChannel = useCallback(async (channelId: string, updates: Partial<ChatChannel>) => {
     try {
@@ -375,19 +415,34 @@ const DiscordLikeChat = () => {
 
   const handleInviteMember = useCallback(async (email: string, role: string) => {
     try {
-      // 実際の実装では招待メールを送信し、招待データをFirestoreに保存する
       console.log(`招待送信: ${email} (ロール: ${role})`);
       
-      // モック実装: 実際にはFirebase Functionsを使用してメール送信
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 送信をシミュレート
+      // TODO: Firebase Functionsでメール送信を実装
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 招待レコードをFirestoreに保存
-      // await addInvitation({ email, role, serverId: currentServer.id, expiresAt: ... });
-      
-      alert('招待メールを送信しました');
+      // 成功通知（NotificationSystemを活用）
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('notification', {
+          detail: {
+            title: '招待送信完了',
+            message: `${email} に招待メールを送信しました`,
+            type: 'success'
+          }
+        });
+        window.dispatchEvent(event);
+      }
     } catch (error) {
       console.error('招待送信エラー:', error);
-      throw error;
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('notification', {
+          detail: {
+            title: 'エラー',
+            message: '招待メールの送信に失敗しました',
+            type: 'error'
+          }
+        });
+        window.dispatchEvent(event);
+      }
     }
   }, []);
 
@@ -419,8 +474,20 @@ const DiscordLikeChat = () => {
       localStorage.setItem('chat-channel-settings', JSON.stringify(newSettings));
       return newSettings;
     });
-    console.log('通知設定:', { channelId, enabled });
-  }, []);
+    
+    // 通知設定変更の通知
+    const channelName = channels.find(c => c.id === channelId)?.name || 'チャンネル';
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('notification', {
+        detail: {
+          title: '通知設定を変更',
+          message: `${channelName} の通知を${enabled ? '有効' : '無効'}にしました`,
+          type: 'info'
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  }, [channels]);
 
   const handleToggleMute = useCallback((channelId: string, muted: boolean) => {
     setChannelSettings(prev => {
@@ -435,12 +502,35 @@ const DiscordLikeChat = () => {
       localStorage.setItem('chat-channel-settings', JSON.stringify(newSettings));
       return newSettings;
     });
-    console.log('ミュート設定:', { channelId, muted });
-  }, []);
+    
+    // ミュート設定変更の通知
+    const channelName = channels.find(c => c.id === channelId)?.name || 'チャンネル';
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('notification', {
+        detail: {
+          title: 'ミュート設定を変更',
+          message: `${channelName} を${muted ? 'ミュート' : 'ミュート解除'}しました`,
+          type: 'info'
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  }, [channels]);
 
   const handleCopyChannelId = useCallback((channelId: string) => {
     navigator.clipboard.writeText(channelId);
-    alert('チャンネルIDをコピーしました');
+    
+    // コピー完了通知
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('notification', {
+        detail: {
+          title: 'コピー完了',
+          message: 'チャンネルIDをクリップボードにコピーしました',
+          type: 'success'
+        }
+      });
+      window.dispatchEvent(event);
+    }
   }, []);
 
   const handleOpenThread = useCallback((message: ChatMessage) => {
@@ -572,6 +662,21 @@ const DiscordLikeChat = () => {
     initData();
   }, [channels.length, isLoading, currentUser, users.length, error]);
 
+  // カテゴリーのリアルタイム監視
+  useEffect(() => {
+    console.log('🏷️ カテゴリー監視を開始');
+    unsubscribeCategories.current = subscribeToCategories((categoriesData) => {
+      console.log('📁 カテゴリーデータ受信:', categoriesData);
+      setCategories(categoriesData);
+    });
+
+    return () => {
+      if (unsubscribeCategories.current) {
+        unsubscribeCategories.current();
+      }
+    };
+  }, []);
+
   // サーバー情報初期化
   useEffect(() => {
     const mockServer: ServerInfo = {
@@ -692,7 +797,9 @@ const DiscordLikeChat = () => {
                       className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
                       onClick={() => {
                         setShowServerMenu(false);
-                        alert('サーバーを削除（未実装）');
+                        if (window.confirm('本当にサーバーを削除しますか？この操作は取り消せません。')) {
+                          handleDeleteServer(currentServer?.id || '');
+                        }
                       }}
                     >
                       <Trash2 className="w-4 h-4 inline mr-2" />
@@ -707,63 +814,151 @@ const DiscordLikeChat = () => {
 
           {/* チャンネルリスト */}
           <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600 scrollbar-track-gray-100 dark:scrollbar-track-slate-800">
-            {Object.entries(
-              channels.reduce((acc, channel) => {
-                const category = channel.category || "その他";
-                if (!acc[category]) acc[category] = [];
-                acc[category].push(channel);
-                return acc;
-              }, {} as Record<string, any[]>)
-            ).map(([category, categoryChannels]) => (
-              <div key={category} className="mb-4">
+            {/* カテゴリー作成ボタン */}
+            <div className="mb-2 px-2">
+              <CategoryCreateDialog 
+                onCreateCategory={handleCreateCategory}
+                trigger={
+                  <button className="w-full flex items-center justify-center gap-2 px-2 py-1 text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors">
+                    <Plus className="w-3 h-3" />
+                    <span>カテゴリーを作成</span>
+                  </button>
+                }
+              />
+            </div>
+
+            {/* 未分類チャンネル */}
+            {channels.filter((ch: any) => !ch.categoryId && !ch.category).length > 0 && (
+              <div className="mb-4">
                 <div className="flex items-center justify-between px-2 py-1 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                  <span>{category}</span>
+                  <span>チャンネル</span>
                   <ChannelCreateDialog 
                     onCreateChannel={handleCreateChannel}
                     currentUserId={currentUser?.userId || ''}
+                    categoryId={undefined}
                     trigger={<Plus className="w-3 h-3 hover:text-gray-700 dark:hover:text-slate-200 cursor-pointer" />}
                   />
                 </div>
-                {categoryChannels.map((channel: any) => {
-                  const unreadCount = getUnreadCount(channel.id);
-                  return (
-                    <div
-                      key={channel.id}
-                      className={`w-full group flex items-center space-x-2 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
-                        currentChannel?.id === channel.id ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700" : "text-gray-700 dark:text-slate-300"
-                      }`}
-                      onContextMenu={(e) => handleChannelRightClick(e, channel)}
-                    >
-                      <button
-                        className="flex-1 flex items-center space-x-2 text-left"
-                        onClick={() => handleChannelSelect(channel.id)}
+                {channels
+                  .filter((ch: any) => !ch.categoryId && !ch.category)
+                  .map((channel: any) => {
+                    const unreadCount = getUnreadCount(channel.id);
+                    return (
+                      <div
+                        key={channel.id}
+                        className={`w-full group flex items-center space-x-2 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
+                          currentChannel?.id === channel.id ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-slate-300"
+                        }`}
+                        onContextMenu={(e) => handleChannelRightClick(e, channel)}
                       >
-                        {getChannelIcon(channel)}
-                        <span className="flex-1 truncate">{channel.name}</span>
-                        {unreadCount > 0 && !channelSettings.muted[channel.id] && (
-                          <Badge variant="destructive" className="text-xs px-1 min-w-0">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                        {channelSettings.muted[channel.id] && (
-                          <VolumeX className="w-3 h-3 text-gray-400 dark:text-slate-500" />
-                        )}
-                      </button>
-                      <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-slate-600 rounded"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingChannel(channel);
-                          setShowChannelSettings(true);
-                        }}
-                      >
-                        <Settings className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })}
+                        <button
+                          className="flex-1 flex items-center space-x-2 text-left"
+                          onClick={() => handleChannelSelect(channel.id)}
+                        >
+                          {getChannelIcon(channel)}
+                          <span className="flex-1 truncate text-sm">{channel.name}</span>
+                          {unreadCount > 0 && !channelSettings.muted[channel.id] && (
+                            <Badge variant="destructive" className="text-xs px-1 min-w-0">
+                              {unreadCount}
+                            </Badge>
+                          )}
+                          {channelSettings.muted[channel.id] && (
+                            <VolumeX className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                          )}
+                        </button>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-slate-600 rounded"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingChannel(channel);
+                            setShowChannelSettings(true);
+                          }}
+                        >
+                          <Settings className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
-            ))}
+            )}
+
+            {/* カテゴリーごとのチャンネル */}
+            {categories.map((category) => {
+              const isCollapsed = collapsedCategories.has(category.id);
+              return (
+              <div key={category.id} className="mb-4">
+                <div className="flex items-center justify-between px-2 py-1 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider group">
+                  <button
+                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-slate-200"
+                    onClick={() => {
+                      setCollapsedCategories(prev => {
+                        const newSet = new Set(prev);
+                        if (newSet.has(category.id)) {
+                          newSet.delete(category.id);
+                        } else {
+                          newSet.add(category.id);
+                        }
+                        return newSet;
+                      });
+                    }}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    )}
+                    <span>{category.name}</span>
+                  </button>
+                  <ChannelCreateDialog 
+                    onCreateChannel={handleCreateChannel}
+                    currentUserId={currentUser?.userId || ''}
+                    categoryId={category.id}
+                    trigger={<Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-gray-700 dark:hover:text-slate-200 cursor-pointer transition-opacity" />}
+                  />
+                </div>
+                {!isCollapsed && channels
+                  .filter((ch: any) => ch.categoryId === category.id || ch.category === category.name)
+                  .map((channel: any) => {
+                    const unreadCount = getUnreadCount(channel.id);
+                    return (
+                      <div
+                        key={channel.id}
+                        className={`w-full group flex items-center space-x-2 px-2 py-1 ml-3 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${
+                          currentChannel?.id === channel.id ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-slate-300"
+                        }`}
+                        onContextMenu={(e) => handleChannelRightClick(e, channel)}
+                      >
+                        <button
+                          className="flex-1 flex items-center space-x-2 text-left"
+                          onClick={() => handleChannelSelect(channel.id)}
+                        >
+                          {getChannelIcon(channel)}
+                          <span className="flex-1 truncate text-sm">{channel.name}</span>
+                          {unreadCount > 0 && !channelSettings.muted[channel.id] && (
+                            <Badge variant="destructive" className="text-xs px-1 min-w-0">
+                              {unreadCount}
+                            </Badge>
+                          )}
+                          {channelSettings.muted[channel.id] && (
+                            <VolumeX className="w-3 h-3 text-gray-400 dark:text-slate-500" />
+                          )}
+                        </button>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-slate-600 rounded"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingChannel(channel);
+                            setShowChannelSettings(true);
+                          }}
+                        >
+                          <Settings className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              );
+            })}
           </div>
       </div>
 
@@ -803,18 +998,13 @@ const DiscordLikeChat = () => {
               users={users}
               currentUserId={currentUser?.userId || ''}
             />
-            <Button variant="ghost" size="sm">
-              <Users className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Search className="w-4 h-4" />
-            </Button>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => setShowUserList(!showUserList)}
+              title={showUserList ? "ユーザーリストを非表示" : "ユーザーリストを表示"}
             >
-              <Settings className="w-4 h-4" />
+              <Users className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -880,6 +1070,7 @@ const DiscordLikeChat = () => {
             users={users}
             placeholder={`#${currentChannel?.name}にメッセージを送信...`}
             disabled={!currentChannel}
+            onFileAttach={handleFileAttach}
           />
           
           <input
@@ -1045,6 +1236,8 @@ const DiscordLikeChat = () => {
           onDelete={handleDeleteServer}
           users={users}
           currentUserId={currentUser?.userId || ''}
+          channels={channels}
+          categories={categories}
         />
 
         <InviteModal

@@ -8,7 +8,9 @@ import {
   ChatNotification,
   TypingStatus,
   Thread,
+  ChannelCategory,
   subscribeToChannels,
+  subscribeToCategories,
   subscribeToMessages,
   subscribeToUsers,
   subscribeToUnreadCounts,
@@ -29,6 +31,9 @@ import {
   createChannel,
   updateChannel,
   deleteChannel,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   searchMessages,
   searchChannelMessages,
   searchMessagesByDate,
@@ -84,7 +89,7 @@ interface UseChatReturn {
   searchByUser: (userId: string) => Promise<ChatMessage[]>;
   
   // Utilities
-  getUnreadCount: (channelId: string) => number;
+  getUnreadCount: (channelId?: string) => number;
   getOnlineUsers: () => ChatUser[];
   getCurrentUser: () => ChatUser | null;
   getUnreadNotificationCount: () => number;
@@ -100,7 +105,14 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     enableRealtime = true,
   } = options;
 
+  // パラメータの検証 - エラーを投げる代わりに安全なデフォルト値を使用
+  const isValidUserId = userId && typeof userId === 'string' && userId.trim() !== '';
+  if (!isValidUserId) {
+    console.warn('Invalid userId provided to useChat:', userId);
+  }
+
   // State
+  const [categories, setCategories] = useState<ChannelCategory[]>([]);
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<ChatUser[]>([]);
@@ -108,7 +120,30 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   const [notifications, setNotifications] = useState<ChatNotification[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string>('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
+    // ローカルストレージから折りたたみ状態を復元
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chat_collapsed_categories');
+      return new Set(saved ? JSON.parse(saved) : []);
+    }
+    return new Set();
+  });
+  const [selectedChannelId, setSelectedChannelIdState] = useState<string>(() => {
+    // ローカルストレージから前回のチャンネルIDを復元
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('chat_selected_channel_id') || '';
+    }
+    return '';
+  });
+  
+  // selectedChannelIdの設定時にローカルストレージにも保存
+  const setSelectedChannelId = useCallback((channelId: string) => {
+    setSelectedChannelIdState(channelId);
+    if (typeof window !== 'undefined' && channelId) {
+      localStorage.setItem('chat_selected_channel_id', channelId);
+    }
+  }, []);
+  
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +167,12 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
 
   // Initialize user and subscriptions
   useEffect(() => {
+    // 無効なuserIdの場合は初期化をスキップ
+    if (!isValidUserId) {
+      setIsLoading(false);
+      return;
+    }
+
     const initializeChat = async () => {
       try {
         setIsLoading(true);
@@ -151,9 +192,17 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
           // チャンネル監視
           unsubscribeChannels.current = subscribeToChannels((channelsData) => {
             setChannels(channelsData);
-            // 最初のチャンネルを自動選択
+            // 最初のチャンネルを自動選択（ただし、既に選択されているチャンネルがある場合はスキップ）
             if (channelsData.length > 0 && !selectedChannelId) {
-              setSelectedChannelId(channelsData[0].id);
+              // ローカルストレージに保存されているチャンネルIDが有効か確認
+              const savedChannelId = localStorage.getItem('chat_selected_channel_id');
+              const validChannel = savedChannelId && channelsData.find(ch => ch.id === savedChannelId);
+              
+              if (validChannel) {
+                setSelectedChannelId(savedChannelId);
+              } else {
+                setSelectedChannelId(channelsData[0].id);
+              }
             }
           });
 
@@ -193,9 +242,11 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       }
       
       // ユーザーをオフラインに
-      updateUserStatus(userId, 'offline').catch(console.error);
+      if (userId) {
+        updateUserStatus(userId, 'offline').catch(console.error);
+      }
     };
-  }, [userId, userName, userEmail, userRole, userDepartment, enableRealtime, selectedChannelId]);
+  }, [isValidUserId, userId, userName, userEmail, userRole, userDepartment, enableRealtime, selectedChannelId]);
 
   // メッセージ監視（選択されたチャンネルが変更された時）
   useEffect(() => {
@@ -252,12 +303,15 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   
   // ユーザーアクティビティ更新（1分ごと）
   useEffect(() => {
+    // 無効なuserIdの場合はアクティビティ更新をスキップ
+    if (!isValidUserId) return;
+
     const interval = setInterval(() => {
       updateUserActivity(userId).catch(console.error);
     }, 60000); // 1分ごと
 
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [isValidUserId, userId]);
 
   // Actions
   const selectChannel = useCallback((channelId: string) => {
@@ -401,6 +455,11 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     statusMessage?: string
   ): Promise<boolean> => {
     try {
+      if (!userId) {
+        console.warn('Cannot update status: userId is undefined');
+        return false;
+      }
+      
       const result = await updateUserStatus(userId, status, statusMessage);
       if (result.error) {
         setError(result.error);
@@ -532,10 +591,17 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   }, []);
 
   // Utilities
-  const getUnreadCount = useCallback((channelId: string): number => {
+  const getUnreadCount = useCallback((channelId?: string): number => {
+    if (!isValidUserId) return 0;
+    
+    // channelIdが指定されていない場合は全体の未読数を返す
+    if (!channelId) {
+      return unreadCounts.reduce((total, unread) => total + unread.count, 0);
+    }
+    
     const unread = unreadCounts.find(uc => uc.channelId === channelId);
     return unread?.count || 0;
-  }, [unreadCounts]);
+  }, [isValidUserId, unreadCounts]);
 
   const getOnlineUsers = useCallback((): ChatUser[] => {
     return onlineUsers;

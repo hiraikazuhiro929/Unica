@@ -65,6 +65,44 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
     return unsubscribe;
   }, [currentUserId]);
 
+
+  // カスタム通知イベントを監視
+  useEffect(() => {
+    const handleCustomNotification = (event: CustomEvent) => {
+      const { title, message, type } = event.detail;
+      
+      // トースト通知として表示
+      const customNotification: ChatNotification = {
+        id: `custom-${Date.now()}`,
+        userId: currentUserId,
+        title: title || 'システム通知',
+        message: message,
+        type: type || 'system',
+        channelId: '',
+        messageId: '',
+        fromUserId: 'system',
+        fromUserName: 'システム',
+        isRead: false,
+        createdAt: new Date() as any,
+      };
+      
+      // 通知リストに追加
+      setNotifications(prev => [customNotification, ...prev]);
+      
+      // 3秒後に自動的に既読にする
+      setTimeout(() => {
+        setNotifications(prev => 
+          prev.map(n => n.id === customNotification.id ? { ...n, isRead: true } : n)
+        );
+      }, 3000);
+    };
+
+    window.addEventListener('notification', handleCustomNotification as EventListener);
+    return () => {
+      window.removeEventListener('notification', handleCustomNotification as EventListener);
+    };
+  }, [currentUserId]);
+
   // 新しい通知があった場合の処理
   useEffect(() => {
     const unreadNotifications = notifications.filter(n => !n.isRead);

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChat } from "@/app/chat/hooks/useChat";
 import { getRoleDisplayName } from "@/lib/firebase/auth";
 import {
   Home,
@@ -114,10 +115,30 @@ export default function ModernSidebar() {
   const [pinned, setPinned] = useState<boolean>(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-  const [unreadChatCount, setUnreadChatCount] = useState<number>(5);
+  const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // チャットの未読数を取得
+  const chatHook = user ? useChat(user) : null;
+  useEffect(() => {
+    if (chatHook && user) {
+      const updateUnreadCount = () => {
+        try {
+          const count = chatHook.getUnreadCount();
+          setUnreadChatCount(count);
+        } catch (error) {
+          console.warn('Failed to get unread count:', error);
+        }
+      };
+      
+      updateUnreadCount();
+      const interval = setInterval(updateUnreadCount, 5000); // 5秒ごとに更新
+      
+      return () => clearInterval(interval);
+    }
+  }, [chatHook, user]);
 
   // ユーザーメニューの項目定義
   const userMenuItems = [

@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Send, AtSign, Users } from "lucide-react";
+import { Send, AtSign, Users, Paperclip } from "lucide-react";
 import type { ChatUser } from "@/lib/firebase/chat";
 
 interface MentionSuggestion {
@@ -22,6 +22,7 @@ interface MentionInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  onFileAttach?: () => void;
 }
 
 const SPECIAL_MENTIONS: MentionSuggestion[] = [
@@ -49,6 +50,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   placeholder = "メッセージを入力...",
   disabled = false,
   className = "",
+  onFileAttach,
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
@@ -233,7 +235,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-end space-x-2">
+      <div className="flex items-center space-x-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg p-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[48px]">
         <div className="flex-1 relative">
           {/* メイン入力フィールド */}
           <Input
@@ -243,7 +245,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="min-h-[44px] resize-none pr-20"
+            className="h-[32px] border-0 shadow-none focus:ring-0 focus-visible:ring-0 bg-transparent px-0"
           />
           
           {/* メンション入力のヒント */}
@@ -305,11 +307,34 @@ export const MentionInput: React.FC<MentionInputProps> = ({
           )}
         </div>
 
+        {/* ファイル添付ボタン */}
+        {onFileAttach && (
+          <Button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onFileAttach?.();
+            }}
+            disabled={disabled}
+            variant="ghost"
+            size="sm"
+            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 h-[32px] w-[32px] p-0 flex-shrink-0"
+            title="ファイルを添付"
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
+        )}
+
         {/* 送信ボタン */}
         <Button
-          onClick={onSend}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            onSend();
+          }}
           disabled={!value.trim() || disabled}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4"
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white h-[32px] w-[32px] p-0 flex-shrink-0"
         >
           <Send className="w-4 h-4" />
         </Button>

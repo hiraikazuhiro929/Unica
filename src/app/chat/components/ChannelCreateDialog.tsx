@@ -29,17 +29,9 @@ interface ChannelCreateDialogProps {
   onCreateChannel: (channelData: Omit<ChatChannel, 'id' | 'createdAt' | 'updatedAt' | 'memberCount'>) => Promise<void>;
   trigger?: React.ReactNode;
   currentUserId: string;
+  categoryId?: string; // カテゴリーIDを追加
 }
 
-const CHANNEL_CATEGORIES = [
-  { value: "製造", label: "製造", icon: "🏭" },
-  { value: "品質", label: "品質管理", icon: "✅" },
-  { value: "開発", label: "開発", icon: "💻" },
-  { value: "営業", label: "営業", icon: "📈" },
-  { value: "総務", label: "総務", icon: "📋" },
-  { value: "雑談", label: "雑談", icon: "💬" },
-  { value: "その他", label: "その他", icon: "📁" },
-];
 
 const CHANNEL_TYPES: Array<{
   value: ChatChannel['type'];
@@ -79,6 +71,7 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
   onCreateChannel,
   trigger,
   currentUserId,
+  categoryId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,7 +80,6 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
     description: "",
     topic: "",
     type: "text" as ChatChannel['type'],
-    category: "",
     isPrivate: false,
     allowedRoles: [] as string[],
   });
@@ -99,21 +91,34 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const channelData: Omit<ChatChannel, 'id' | 'createdAt' | 'updatedAt' | 'memberCount'> = {
+      const permissions: any = {
+        canRead: true,
+        canWrite: true,
+        canManage: false,
+      };
+
+      // allowedRolesがある場合のみ追加
+      if (formData.allowedRoles.length > 0) {
+        permissions.allowedRoles = formData.allowedRoles;
+      }
+
+      const channelData: any = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         topic: formData.topic.trim(),
         type: formData.type,
-        category: formData.category,
+        position: 0, // デフォルトポジション
         isPrivate: formData.isPrivate,
         createdBy: currentUserId,
-        permissions: {
-          canRead: true,
-          canWrite: true,
-          canManage: false,
-          allowedRoles: formData.allowedRoles.length > 0 ? formData.allowedRoles : undefined,
-        },
+        permissions: permissions,
       };
+
+      // カテゴリーIDがある場合のみcategoryIdを設定、ない場合はcategoryを設定
+      if (categoryId) {
+        channelData.categoryId = categoryId;
+      } else {
+        channelData.category = "general";
+      }
 
       await onCreateChannel(channelData);
       
@@ -123,7 +128,6 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
         description: "",
         topic: "",
         type: "text",
-        category: "",
         isPrivate: false,
         allowedRoles: [],
       });
@@ -145,7 +149,6 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
     }));
   };
 
-  const selectedCategory = CHANNEL_CATEGORIES.find(cat => cat.value === formData.category);
   const selectedType = CHANNEL_TYPES.find(type => type.value === formData.type);
 
   return (
@@ -231,34 +234,6 @@ export const ChannelCreateDialog: React.FC<ChannelCreateDialogProps> = ({
               </div>
             </div>
 
-            <div>
-              <Label>カテゴリー</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="カテゴリーを選択">
-                    {selectedCategory && (
-                      <span className="flex items-center gap-2">
-                        <span>{selectedCategory.icon}</span>
-                        {selectedCategory.label}
-                      </span>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {CHANNEL_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      <span className="flex items-center gap-2">
-                        <span>{category.icon}</span>
-                        {category.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
             <div className="flex items-center justify-between">
               <div>

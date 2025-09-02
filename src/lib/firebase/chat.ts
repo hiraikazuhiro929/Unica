@@ -30,6 +30,7 @@ import { db, storage } from './config';
 
 export const CHAT_COLLECTIONS = {
   SERVERS: 'chatServers',
+  CATEGORIES: 'chatCategories',
   CHANNELS: 'chatChannels',
   MESSAGES: 'chatMessages',
   USERS: 'chatUsers',
@@ -46,17 +47,47 @@ export const CHAT_COLLECTIONS = {
 // =============================================================================
 
 /**
- * オブジェクトからundefinedフィールドを除去する関数
+ * オブジェクトからundefinedフィールドを除去する関数（ネストされたオブジェクトも処理）
  */
 const removeUndefinedFields = (obj: any): any => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, value]) => value !== undefined)
-  );
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedFields(item));
+  }
+  
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (typeof value === 'object' && value !== null) {
+        result[key] = removeUndefinedFields(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
 };
 
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
+
+export interface ChannelCategory {
+  id: string;
+  name: string;
+  position: number;
+  isCollapsed?: boolean;
+  createdBy: string;
+  createdAt: any;
+  updatedAt: any;
+  permissions?: {
+    viewRole?: string[];
+    manageRole?: string[];
+  };
+}
 
 export interface ChatChannel {
   id: string;
@@ -64,7 +95,9 @@ export interface ChatChannel {
   description?: string;
   topic?: string;
   type: 'text' | 'voice' | 'announcement';
-  category?: string;
+  category?: string; // 互換性のため残す
+  categoryId?: string; // 新しいカテゴリーID
+  position?: number; // カテゴリー内での表示順
   isPrivate: boolean;
   createdBy: string;
   createdAt: any;
@@ -196,6 +229,181 @@ export interface Thread {
 }
 
 // =============================================================================
+// CATEGORY OPERATIONS
+// =============================================================================
+
+/**
+ * カテゴリー作成
+ */
+export const createCategory = async (
+  categoryData: Omit<ChannelCategory, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<{ id: string | null; error: string | null }> => {
+  try {
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.CATEGORIES), {
+      ...categoryData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    return { id: docRef.id, error: null };
+  } catch (error: any) {
+    console.error('Error creating category:', error);
+    return { id: null, error: error.message };
+  }
+};
+
+/**
+ * カテゴリー更新
+ */
+export const updateCategory = async (
+  categoryId: string,
+  updates: Partial<ChannelCategory>
+): Promise<{ error: string | null }> => {
+  try {
+    await updateDoc(doc(db, CHAT_COLLECTIONS.CATEGORIES, categoryId), {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating category:', error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * カテゴリー削除
+ */
+export const deleteCategory = async (
+  categoryId: string
+): Promise<{ error: string | null }> => {
+  try {
+    // カテゴリー内のチャンネルを未分類に移動
+    const channelsQuery = query(
+      collection(db, CHAT_COLLECTIONS.CHANNELS),
+      where('categoryId', '==', categoryId)
+    );
+    const channelsSnapshot = await getDocs(channelsQuery);
+    
+    const batch = writeBatch(db);
+    channelsSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, { 
+        categoryId: null,
+        category: '未分類',
+        updatedAt: serverTimestamp() 
+      });
+    });
+    
+    // カテゴリーを削除
+    batch.delete(doc(db, CHAT_COLLECTIONS.CATEGORIES, categoryId));
+    await batch.commit();
+    
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error deleting category:', error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * カテゴリー一覧取得
+ */
+export const getCategories = async (): Promise<ChannelCategory[]> => {
+  try {
+    const q = query(
+      collection(db, CHAT_COLLECTIONS.CATEGORIES),
+      orderBy('position', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as ChannelCategory));
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+};
+
+/**
+ * カテゴリーのリアルタイム監視
+ */
+export const subscribeToCategories = (
+  callback: (categories: ChannelCategory[]) => void
+) => {
+  const q = query(
+    collection(db, CHAT_COLLECTIONS.CATEGORIES),
+    orderBy('position', 'asc')
+  );
+  
+  return onSnapshot(q, (querySnapshot) => {
+    const categories = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as ChannelCategory));
+    
+    callback(categories);
+  });
+};
+
+/**
+ * カテゴリーの順序を更新
+ */
+export const updateCategoriesOrder = async (
+  categoryUpdates: { id: string; position: number }[]
+): Promise<{ error: string | null }> => {
+  try {
+    const batch = writeBatch(db);
+    
+    categoryUpdates.forEach(({ id, position }) => {
+      const docRef = doc(db, CHAT_COLLECTIONS.CATEGORIES, id);
+      batch.update(docRef, { 
+        position, 
+        updatedAt: serverTimestamp() 
+      });
+    });
+    
+    await batch.commit();
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating categories order:', error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * チャンネルの順序を更新
+ */
+export const updateChannelsOrder = async (
+  channelUpdates: { id: string; position: number; categoryId?: string }[]
+): Promise<{ error: string | null }> => {
+  try {
+    const batch = writeBatch(db);
+    
+    channelUpdates.forEach(({ id, position, categoryId }) => {
+      const docRef = doc(db, CHAT_COLLECTIONS.CHANNELS, id);
+      const updateData: any = { 
+        position, 
+        updatedAt: serverTimestamp() 
+      };
+      
+      if (categoryId !== undefined) {
+        updateData.categoryId = categoryId;
+      }
+      
+      batch.update(docRef, updateData);
+    });
+    
+    await batch.commit();
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating channels order:', error);
+    return { error: error.message };
+  }
+};
+
+// =============================================================================
 // CHANNEL OPERATIONS
 // =============================================================================
 
@@ -206,7 +414,7 @@ export const createChannel = async (
   channelData: Omit<ChatChannel, 'id' | 'createdAt' | 'updatedAt' | 'memberCount'>
 ): Promise<{ id: string | null; error: string | null }> => {
   try {
-    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.CHANNELS), {
+    const cleanChannelData = {
       ...channelData,
       memberCount: 0,
       permissions: channelData.permissions || {
@@ -216,7 +424,11 @@ export const createChannel = async (
       },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    // undefinedフィールドを除去してからFirestoreに保存
+    const cleanedData = removeUndefinedFields(cleanChannelData);
+    const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.CHANNELS), cleanedData);
 
     return { id: docRef.id, error: null };
   } catch (error: any) {
@@ -440,6 +652,7 @@ export const subscribeToChannels = (
 ) => {
   let q = query(
     collection(db, CHAT_COLLECTIONS.CHANNELS),
+    orderBy('position', 'asc'),
     orderBy('name', 'asc')
   );
 
@@ -571,6 +784,20 @@ export const subscribeToMessages = (
   callback: (messages: ChatMessage[]) => void,
   messageLimit: number = 50
 ) => {
+  // channelIdの検証 - より安全な方法
+  if (!channelId || typeof channelId !== 'string') {
+    console.warn('Invalid channelId provided to subscribeToMessages:', channelId);
+    callback([]);
+    return () => {}; // 空のunsubscribe関数を返す
+  }
+  
+  const trimmedChannelId = String(channelId).trim();
+  if (trimmedChannelId === '') {
+    console.warn('Empty channelId provided to subscribeToMessages:', channelId);
+    callback([]);
+    return () => {}; // 空のunsubscribe関数を返す
+  }
+
   const q = query(
     collection(db, CHAT_COLLECTIONS.MESSAGES),
     where('channelId', '==', channelId),
@@ -709,6 +936,28 @@ export const toggleReaction = async (
   userId: string
 ): Promise<{ error: string | null }> => {
   try {
+    // userIdの検証 - より安全な方法
+    if (!userId || typeof userId !== 'string') {
+      console.warn('Invalid userId provided to toggleReaction:', userId);
+      return { error: 'Invalid user ID' };
+    }
+    
+    const trimmedUserId = String(userId).trim();
+    if (trimmedUserId === '') {
+      console.warn('Empty userId provided to toggleReaction:', userId);
+      return { error: 'Empty user ID' };
+    }
+
+    // messageIdとemojiの検証も追加
+    if (!messageId || typeof messageId !== 'string' || messageId.trim() === '') {
+      console.warn('Invalid messageId provided to toggleReaction:', messageId);
+      return { error: 'Invalid message ID' };
+    }
+
+    if (!emoji || typeof emoji !== 'string' || emoji.trim() === '') {
+      console.warn('Invalid emoji provided to toggleReaction:', emoji);
+      return { error: 'Invalid emoji' };
+    }
     const messageRef = doc(db, CHAT_COLLECTIONS.MESSAGES, messageId);
     const messageDoc = await getDoc(messageRef);
     
@@ -725,7 +974,7 @@ export const toggleReaction = async (
     if (existingReactionIndex >= 0) {
       // 既存のリアクションがある場合
       const reaction = reactions[existingReactionIndex];
-      const userIndex = reaction.users.indexOf(userId);
+      const userIndex = reaction.users.indexOf(trimmedUserId);
       
       if (userIndex >= 0) {
         // ユーザーがすでにリアクションしている → 削除
@@ -738,7 +987,7 @@ export const toggleReaction = async (
         }
       } else {
         // ユーザーがリアクションしていない → 追加
-        reaction.users.push(userId);
+        reaction.users.push(trimmedUserId);
         reaction.count = reaction.users.length;
       }
     } else {
@@ -746,7 +995,7 @@ export const toggleReaction = async (
       reactions.push({
         emoji,
         count: 1,
-        users: [userId],
+        users: [trimmedUserId],
       });
     }
 
@@ -791,6 +1040,18 @@ export const updateUserStatus = async (
   statusMessage?: string
 ): Promise<{ error: string | null }> => {
   try {
+    // userIdの検証 - より安全な方法
+    if (!userId || typeof userId !== 'string') {
+      console.warn('Invalid userId provided to updateUserStatus:', userId);
+      return { error: 'Invalid user ID' };
+    }
+    
+    const trimmedUserId = String(userId).trim();
+    if (trimmedUserId === '') {
+      console.warn('Empty userId provided to updateUserStatus:', userId);
+      return { error: 'Empty user ID' };
+    }
+
     const updateData: any = {
       status,
       isOnline: status === 'online',
@@ -914,6 +1175,29 @@ export const updateUnreadCount = async (
   lastReadMessageId?: string
 ): Promise<{ error: string | null }> => {
   try {
+    // パラメータの検証 - より安全な方法
+    if (!userId || typeof userId !== 'string') {
+      console.warn('Invalid userId provided to updateUnreadCount:', userId);
+      return { error: 'Invalid user ID' };
+    }
+    
+    const trimmedUserId = String(userId).trim();
+    if (trimmedUserId === '') {
+      console.warn('Empty userId provided to updateUnreadCount:', userId);
+      return { error: 'Empty user ID' };
+    }
+    
+    if (!channelId || typeof channelId !== 'string') {
+      console.warn('Invalid channelId provided to updateUnreadCount:', channelId);
+      return { error: 'Invalid channel ID' };
+    }
+    
+    const trimmedChannelId = String(channelId).trim();
+    if (trimmedChannelId === '') {
+      console.warn('Empty channelId provided to updateUnreadCount:', channelId);
+      return { error: 'Empty channel ID' };
+    }
+
     const unreadId = `${userId}_${channelId}`;
     await setDoc(doc(db, CHAT_COLLECTIONS.UNREAD_COUNTS, unreadId), {
       userId,
@@ -937,6 +1221,20 @@ export const subscribeToUnreadCounts = (
   userId: string,
   callback: (unreadCounts: UnreadCount[]) => void
 ) => {
+  // userIdの検証 - より安全な方法
+  if (!userId || typeof userId !== 'string') {
+    console.warn('Invalid userId provided to subscribeToUnreadCounts:', userId);
+    callback([]);
+    return () => {}; // 空のunsubscribe関数を返す
+  }
+  
+  const trimmedUserId = String(userId).trim();
+  if (trimmedUserId === '') {
+    console.warn('Empty userId provided to subscribeToUnreadCounts:', userId);
+    callback([]);
+    return () => {}; // 空のunsubscribe関数を返す
+  }
+
   const q = query(
     collection(db, CHAT_COLLECTIONS.UNREAD_COUNTS),
     where('userId', '==', userId)
@@ -1331,7 +1629,19 @@ export const updateUserActivity = async (
   userId: string
 ): Promise<{ error: string | null }> => {
   try {
-    await updateDoc(doc(db, CHAT_COLLECTIONS.USERS, userId), {
+    // userIdの検証 - より安全な方法
+    if (!userId || typeof userId !== 'string') {
+      console.warn('Invalid userId provided to updateUserActivity:', userId);
+      return { error: 'Invalid user ID' };
+    }
+    
+    const trimmedUserId = String(userId).trim();
+    if (trimmedUserId === '') {
+      console.warn('Empty userId provided to updateUserActivity:', userId);
+      return { error: 'Empty user ID' };
+    }
+
+    await updateDoc(doc(db, CHAT_COLLECTIONS.USERS, trimmedUserId), {
       lastActivity: serverTimestamp(),
     });
     

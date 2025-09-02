@@ -178,8 +178,8 @@ export const WorkHoursAnalytics: React.FC<WorkHoursAnalyticsProps> = ({
       {/* Analytics Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">工数分析ダッシュボード</h2>
-          <p className="text-gray-600 mt-1">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">工数分析ダッシュボード</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             工数データの詳細分析と業績トレンドを表示します
           </p>
         </div>
@@ -326,20 +326,28 @@ interface MetricCardProps {
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, color }) => {
   const colorClasses = {
-    blue: "border-l-blue-500",
-    green: "border-l-green-500",
-    red: "border-l-red-500",
-    purple: "border-l-purple-500",
-    yellow: "border-l-yellow-500",
+    blue: "border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/10",
+    green: "border-l-green-500 bg-green-50/50 dark:bg-green-900/10",
+    red: "border-l-red-500 bg-red-50/50 dark:bg-red-900/10",
+    purple: "border-l-purple-500 bg-purple-50/50 dark:bg-purple-900/10",
+    yellow: "border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/10",
+  };
+
+  const textColorClasses = {
+    blue: "text-blue-600 dark:text-blue-400",
+    green: "text-green-600 dark:text-green-400",
+    red: "text-red-600 dark:text-red-400",
+    purple: "text-purple-600 dark:text-purple-400",
+    yellow: "text-yellow-600 dark:text-yellow-400",
   };
 
   return (
-    <Card className={`border-l-4 ${colorClasses[color]} shadow-sm`}>
+    <Card className={`border-l-4 ${colorClasses[color]} shadow-sm hover:shadow-md transition-shadow`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className={`text-2xl font-bold text-${color}-600`}>{value}</p>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+            <p className={`text-2xl font-bold ${textColorClasses[color]}`}>{value}</p>
             {trend && (
               <div className="flex items-center mt-1">
                 {trend.isPositive ? (
@@ -349,7 +357,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, colo
                 )}
                 <span
                   className={`text-xs ${
-                    trend.isPositive ? "text-green-600" : "text-red-600"
+                    trend.isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                   }`}
                 >
                   {trend.isPositive ? "+" : ""}{trend.value}%
@@ -357,7 +365,9 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, colo
               </div>
             )}
           </div>
-          {icon}
+          <div className="ml-3">
+            {icon}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -421,18 +431,18 @@ const EfficiencyTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {analyticsData.efficiencyByCategory.map((category: any) => (
-              <div key={category.name} className="p-4 border rounded-lg">
+              <div key={category.name} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{category.name}</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200">{category.name}</span>
                   <Badge
                     variant={category.efficiency >= 90 ? "default" : category.efficiency >= 75 ? "secondary" : "destructive"}
                   >
                     {category.efficiency.toFixed(1)}%
                   </Badge>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full ${
+                    className={`h-2 rounded-full transition-all ${
                       category.efficiency >= 90 ? "bg-green-500" :
                       category.efficiency >= 75 ? "bg-yellow-500" : "bg-red-500"
                     }`}
@@ -525,26 +535,26 @@ const ProductivityTab: React.FC<{
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {statistics.byWorker.map((worker) => (
-              <div key={worker.workerId} className="p-4 border rounded-lg">
+              <div key={worker.workerId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3 mb-3">
-                  <User className="w-5 h-5 text-blue-600" />
+                  <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <div className="font-medium">{worker.workerName}</div>
-                    <div className="text-sm text-gray-500">{worker.totalHours.toFixed(1)}h</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{worker.workerName}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{worker.totalHours.toFixed(1)}h</div>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">効率性</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">効率性</span>
                     <Badge
                       variant={worker.efficiency >= 90 ? "default" : worker.efficiency >= 75 ? "secondary" : "destructive"}
                     >
                       {worker.efficiency.toFixed(1)}%
                     </Badge>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${
+                      className={`h-2 rounded-full transition-all ${
                         worker.efficiency >= 90 ? "bg-green-500" :
                         worker.efficiency >= 75 ? "bg-yellow-500" : "bg-red-500"
                       }`}

@@ -227,8 +227,8 @@ export const getWorkHoursList = async (filters?: {
       return {
         id: doc.id,
         ...docData,
-        createdAt: docData.createdAt?.toDate()?.toISOString() || '',
-        updatedAt: docData.updatedAt?.toDate()?.toISOString() || ''
+        createdAt: docData.createdAt?.toDate ? docData.createdAt.toDate().toISOString() : (typeof docData.createdAt === 'string' ? docData.createdAt : ''),
+        updatedAt: docData.updatedAt?.toDate ? docData.updatedAt.toDate().toISOString() : (typeof docData.updatedAt === 'string' ? docData.updatedAt : '')
       } as EnhancedWorkHours;
     });
 
@@ -651,8 +651,8 @@ export const subscribeToWorkHoursList = (
       return {
         id: doc.id,
         ...docData,
-        createdAt: docData.createdAt?.toDate()?.toISOString() || '',
-        updatedAt: docData.updatedAt?.toDate()?.toISOString() || ''
+        createdAt: docData.createdAt?.toDate ? docData.createdAt.toDate().toISOString() : (typeof docData.createdAt === 'string' ? docData.createdAt : ''),
+        updatedAt: docData.updatedAt?.toDate ? docData.updatedAt.toDate().toISOString() : (typeof docData.updatedAt === 'string' ? docData.updatedAt : '')
       } as EnhancedWorkHours;
     });
 
