@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, Search, FileText, Clock, User, Filter, ChevronDown, Eye, Edit, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,302 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DailyReportEntry, WorkTimeEntry } from "@/app/tasks/types";
-import { getDailyReportsByWorker } from "@/lib/firebase/dailyReports";
+import { DailyReportEntry, WorkTimeEntry, Process } from "@/app/tasks/types";
+import { getDailyReportsByWorker, confirmDailyReport } from "@/lib/firebase/dailyReports";
+import { getProcessesList } from "@/lib/firebase/processes";
+import { ReplySection } from "@/app/daily-reports/components/ReplySection";
 import { useRouter } from "next/navigation";
+
+// ソートビューコンポーネント
+const DateSortView = ({ 
+  filteredReports, getStatusBadge, formatTime, canConfirm, handleConfirm,
+  setSelectedReport, selectedReport, canReply, currentUser, loadData,
+  getProjectNameByProcessId, router 
+}: any) => {
+  // 日付別グループ化
+  const groupedByDate = filteredReports.reduce((groups: any, report: DailyReportEntry) => {
+    const dateKey = report.date;
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(report);
+    return groups;
+  }, {});
+
+  // 日付順にソート（新しい順）
+  const sortedDates = Object.keys(groupedByDate).sort().reverse();
+
+  return (
+    <div className="space-y-4">
+      {sortedDates.map(date => (
+        <div key={date} className="space-y-2">
+          <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-slate-800 border-l-4 border-blue-500">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              {new Date(date).toLocaleDateString('ja-JP', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+              })}
+            </h3>
+            <span className="text-sm text-gray-500 dark:text-slate-400">({groupedByDate[date].length}件)</span>
+          </div>
+          
+          <div className="space-y-1">
+            {groupedByDate[date].map((report: DailyReportEntry) => (
+              <ReportItem
+                key={report.id}
+                report={report}
+                showDate={false}
+                getStatusBadge={getStatusBadge}
+                formatTime={formatTime}
+                canConfirm={canConfirm}
+                handleConfirm={handleConfirm}
+                setSelectedReport={setSelectedReport}
+                selectedReport={selectedReport}
+                canReply={canReply}
+                currentUser={currentUser}
+                loadData={loadData}
+                getProjectNameByProcessId={getProjectNameByProcessId}
+                router={router}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const UserSortView = ({ 
+  filteredReports, getStatusBadge, formatTime, canConfirm, handleConfirm,
+  setSelectedReport, selectedReport, canReply, currentUser, loadData,
+  getProjectNameByProcessId, router 
+}: any) => {
+  // ユーザー別グループ化
+  const groupedByUser = filteredReports.reduce((groups: any, report: DailyReportEntry) => {
+    const userKey = report.workerName;
+    if (!groups[userKey]) groups[userKey] = [];
+    groups[userKey].push(report);
+    return groups;
+  }, {});
+
+  // ユーザー名順にソート
+  const sortedUsers = Object.keys(groupedByUser).sort();
+
+  return (
+    <div className="space-y-4">
+      {sortedUsers.map(userName => (
+        <div key={userName} className="space-y-2">
+          <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-slate-800 border-l-4 border-green-500">
+            <User className="w-4 h-4 text-green-600" />
+            <h3 className="font-medium text-gray-900 dark:text-white">{userName}</h3>
+            <span className="text-sm text-gray-500 dark:text-slate-400">({groupedByUser[userName].length}件)</span>
+          </div>
+          
+          <div className="space-y-1">
+            {groupedByUser[userName]
+              .sort((a: DailyReportEntry, b: DailyReportEntry) => b.date.localeCompare(a.date))
+              .map((report: DailyReportEntry) => (
+              <ReportItem
+                key={report.id}
+                report={report}
+                showDate={true}
+                getStatusBadge={getStatusBadge}
+                formatTime={formatTime}
+                canConfirm={canConfirm}
+                handleConfirm={handleConfirm}
+                setSelectedReport={setSelectedReport}
+                selectedReport={selectedReport}
+                canReply={canReply}
+                currentUser={currentUser}
+                loadData={loadData}
+                getProjectNameByProcessId={getProjectNameByProcessId}
+                router={router}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const ReportItem = ({ 
+  report, showDate, getStatusBadge, formatTime, canConfirm, handleConfirm,
+  setSelectedReport, selectedReport, canReply, currentUser, loadData,
+  getProjectNameByProcessId, router 
+}: any) => {
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  const handleRowClick = () => {
+    setSelectedReport(report);
+    setIsDialogOpen(true);
+  };
+
+  const handleConfirmClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 行クリックを防ぐ
+    handleConfirm(report.id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 行クリックを防ぐ
+    router.push(`/daily-reports?edit=${report.id}`);
+  };
+
+  return (
+    <>
+      <div 
+        className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded p-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+        onClick={handleRowClick}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {showDate && (
+              <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-slate-400">
+                <Calendar className="w-3 h-3" />
+                <span>{new Date(report.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}</span>
+              </div>
+            )}
+            
+            {!showDate && (
+              <div className="flex items-center gap-1">
+                <User className="w-3 h-3 text-gray-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{report.workerName}</span>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{formatTime(report.totalWorkMinutes)}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {getStatusBadge(report)}
+              {report.adminReply && (
+                <Badge variant="outline" className="text-xs">
+                  💬 {report.adminReply.isRead ? '返信済' : '未読返信'}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {canConfirm && report.isSubmitted && !report.approved && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleConfirmClick}
+                className="text-green-600 border-green-200 hover:bg-green-50"
+              >
+                ✓ 確認
+              </Button>
+            )}
+
+            {!report.isSubmitted && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditClick}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                編集
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
+          <DialogHeader className="border-b border-gray-200 dark:border-slate-700 pb-3">
+            <DialogTitle className="text-xl font-bold">
+              日報詳細 - {new Date(report.date).toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+              })}
+            </DialogTitle>
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              作業者: {report.workerName} | 合計: {formatTime(report.totalWorkMinutes)} | {getStatusBadge(report)}
+            </p>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="py-4">
+              {/* 上部：基本情報（コンパクト） */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 dark:bg-slate-800 rounded">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-slate-300 text-sm">夢や希望:</span>
+                  <p className="text-gray-900 dark:text-white">{selectedReport.dreams}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-slate-300 text-sm">今日の目標:</span>
+                  <p className="text-gray-900 dark:text-white">{selectedReport.todaysGoals}</p>
+                </div>
+              </div>
+
+              {/* メイン2列レイアウト */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 左列：作業時間詳細 */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">作業時間詳細</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {selectedReport.workTimeEntries.map((entry: any) => (
+                      <div key={entry.id} className="text-sm p-3 bg-gray-50 dark:bg-slate-800 rounded border-l-2 border-blue-500">
+                        <div className="font-medium text-gray-900 dark:text-white mb-1">
+                          {entry.processId 
+                            ? `${getProjectNameByProcessId(entry.processId)} - ${entry.workContentName}`
+                            : `${entry.productionNumber} - ${entry.workContentName}`
+                          }
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-slate-400">
+                          <span>{entry.startTime} - {entry.endTime}</span>
+                          <span className="font-medium">{formatTime(entry.durationMinutes)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 右列：振り返り */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">今日の振り返り</h3>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">今日の結果</div>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.todaysResults}</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいったこと</div>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatWentWell}</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいかなかったこと</div>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatDidntGoWell}</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">社内への要望</div>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.requestsToManagement}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 返信セクション */}
+              <div className="pt-4 border-t border-gray-200 dark:border-slate-600">
+                <ReplySection 
+                  report={selectedReport}
+                  isAdmin={canReply}
+                  currentUser={currentUser}
+                  onReplyAdded={() => {
+                    loadData();
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
 
 // モックデータ（バックアップ用）
 const mockDailyReports: DailyReportEntry[] = [
@@ -102,38 +395,92 @@ export default function DailyReportsHistoryPage() {
   const router = useRouter();
   const [reports, setReports] = useState<DailyReportEntry[]>([]);
   const [filteredReports, setFilteredReports] = useState<DailyReportEntry[]>([]);
+  const [processes, setProcesses] = useState<Process[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [sortMode, setSortMode] = useState<'date' | 'user'>('date');
   const [selectedReport, setSelectedReport] = useState<DailyReportEntry | null>(null);
+  
+  // ユーザー権限管理 - 設定 > セキュリティ・権限設定 で確認・管理可能
+  // 実際の実装では認証システムから現在ユーザーの権限を取得
+  const [currentUser] = useState("会長"); 
+  const [userPermissions] = useState({
+    canConfirmReports: true,
+    canReplyToReports: true,
+    canViewAllReports: true,
+    canManageUsers: true,
+  });
+  
+  const canConfirm = userPermissions.canConfirmReports;
+  const canReply = userPermissions.canReplyToReports;
 
-  // 日報データを読み込み
-  useEffect(() => {
-    const loadReports = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await getDailyReportsByWorker("current-user", {
+  // 確認済み操作
+  const handleConfirm = async (reportId: string) => {
+    try {
+      console.log(`確認済みにする: ${reportId} by ${currentUser}`);
+      const result = await confirmDailyReport(reportId, currentUser);
+      
+      if (result.success) {
+        console.log('✅ 日報が確認済みになりました');
+        loadData(); // データを再読み込み
+      } else {
+        console.error('❌ 確認エラー:', result.error);
+        alert('確認処理に失敗しました: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ 確認エラー:', error);
+      alert('確認処理に失敗しました');
+    }
+  };
+  
+  // 工程IDから工事名を取得するヘルパー関数
+  const getProjectNameByProcessId = (processId?: string): string => {
+    if (!processId) return "不明";
+    const process = processes.find(p => p.id === processId);
+    return process?.projectName || "不明";
+  };
+
+  // データ読み込み関数
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // 日報データと工程データを並行して取得
+      const [reportsResult, processesResult] = await Promise.all([
+        getDailyReportsByWorker("current-user", {
           limit: 50,
           orderBy: "date",
           order: "desc"
-        });
-        
-        if (error) {
-          console.error('Error loading reports:', error);
-          setReports(mockDailyReports);
-        } else {
-          setReports(data);
-        }
-      } catch (error) {
-        console.error('Error loading reports:', error);
+        }),
+        getProcessesList()
+      ]);
+      
+      if (reportsResult.error) {
+        console.error('Error loading reports:', reportsResult.error);
         setReports(mockDailyReports);
-      } finally {
-        setIsLoading(false);
+      } else {
+        setReports(reportsResult.data);
       }
-    };
-    
-    loadReports();
+      
+      if (processesResult.error) {
+        console.error('Error loading processes:', processesResult.error);
+        setProcesses([]);
+      } else {
+        setProcesses(processesResult.data);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setReports(mockDailyReports);
+      setProcesses([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 日報データと工程データを読み込み
+  useEffect(() => {
+    loadData();
   }, []);
 
   // フィルタリング処理
@@ -155,13 +502,11 @@ export default function DailyReportsHistoryPage() {
       filtered = filtered.filter(report => {
         switch (statusFilter) {
           case "submitted":
-            return report.isSubmitted;
+            return report.isSubmitted && !report.approved;
           case "draft":
             return !report.isSubmitted;
           case "approved":
             return report.approved;
-          case "pending":
-            return report.isSubmitted && !report.approved;
           default:
             return true;
         }
@@ -202,9 +547,9 @@ export default function DailyReportsHistoryPage() {
       return <Badge variant="secondary">下書き</Badge>;
     }
     if (report.approved) {
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">承認済み</Badge>;
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">確認済み</Badge>;
     }
-    return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">承認待ち</Badge>;
+    return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">提出済み</Badge>;
   };
 
   return (
@@ -221,9 +566,8 @@ export default function DailyReportsHistoryPage() {
           
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
-              variant="outline"
               onClick={() => router.push("/daily-reports")}
-              className="w-full sm:w-auto bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-900 dark:text-white"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
               <FileText className="w-4 h-4 mr-2" />
               新規作成
@@ -233,7 +577,33 @@ export default function DailyReportsHistoryPage() {
 
         {/* フィルタ・検索セクション */}
         <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-4">
+            {/* ソートタブ */}
+            <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-600 pb-3">
+              <button
+                onClick={() => setSortMode('date')}
+                className={`flex items-center gap-2 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  sortMode === 'date'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                日付順
+              </button>
+              <button
+                onClick={() => setSortMode('user')}
+                className={`flex items-center gap-2 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  sortMode === 'user'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <User className="w-4 h-4" />
+                人名順
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 検索 */}
               <div className="relative">
@@ -255,8 +625,7 @@ export default function DailyReportsHistoryPage() {
                   <SelectItem value="all">すべて</SelectItem>
                   <SelectItem value="submitted">提出済み</SelectItem>
                   <SelectItem value="draft">下書き</SelectItem>
-                  <SelectItem value="approved">承認済み</SelectItem>
-                  <SelectItem value="pending">承認待ち</SelectItem>
+                  <SelectItem value="approved">確認済み</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -282,156 +651,37 @@ export default function DailyReportsHistoryPage() {
         </Card>
 
         {/* 日報一覧 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredReports.map((report) => (
-            <Card key={report.id} className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {new Date(report.date).toLocaleDateString("ja-JP", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                      {getStatusBadge(report)}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
-                      <User className="w-4 h-4" />
-                      <span>{report.workerName}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* 作業時間サマリー */}
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium">合計: {formatTime(report.totalWorkMinutes)}</span>
-                  <span className="text-gray-500">
-                    ({report.workTimeEntries.length}件の作業)
-                  </span>
-                </div>
-
-                {/* 製番一覧 */}
-                <div className="flex flex-wrap gap-1">
-                  {[...new Set(report.workTimeEntries.map(entry => entry.productionNumber))].map((productionNumber) => (
-                    <Badge key={productionNumber} variant="outline" className="text-xs">
-                      {productionNumber}
-                    </Badge>
-                  ))}
-                </div>
-
-                {/* 今日の目標（省略版） */}
-                <div className="text-sm text-gray-700 dark:text-slate-300 line-clamp-2">
-                  <strong>目標:</strong> {report.todaysGoals}
-                </div>
-
-                {/* アクションボタン */}
-                <div className="flex gap-2 pt-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedReport(report)}
-                        className="flex-1 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-900 dark:text-white border-gray-200 dark:border-slate-600"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        詳細
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          <FileText className="w-5 h-5" />
-                          日報詳細 - {report.date}
-                        </DialogTitle>
-                      </DialogHeader>
-                      {selectedReport && (
-                        <div className="space-y-4 py-4">
-                          {/* 基本情報 */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="text-gray-900 dark:text-white">
-                              <strong>作業者:</strong> {selectedReport.workerName}
-                            </div>
-                            <div className="text-gray-900 dark:text-white">
-                              <strong>合計作業時間:</strong> {formatTime(selectedReport.totalWorkMinutes)}
-                            </div>
-                          </div>
-
-                          {/* 夢や希望・目標 */}
-                          <div className="space-y-2">
-                            <div>
-                              <strong>夢や希望:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-pink-50 dark:bg-pink-900/30 rounded">{selectedReport.dreams}</p>
-                            </div>
-                            <div>
-                              <strong>今日の目標:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-green-50 dark:bg-green-900/30 rounded">{selectedReport.todaysGoals}</p>
-                            </div>
-                          </div>
-
-                          {/* 作業時間詳細 */}
-                          <div>
-                            <strong>作業時間詳細:</strong>
-                            <div className="mt-2 space-y-2">
-                              {selectedReport.workTimeEntries.map((entry) => (
-                                <div key={entry.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-700 rounded text-sm text-gray-900 dark:text-white">
-                                  <div>
-                                    <span className="font-medium">{entry.productionNumber}</span> - {entry.workContentName}
-                                  </div>
-                                  <div>
-                                    {entry.startTime} - {entry.endTime} ({formatTime(entry.durationMinutes)})
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* 振り返り */}
-                          <div className="space-y-2">
-                            <div>
-                              <strong>今日の結果:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-blue-50 dark:bg-blue-900/30 rounded">{selectedReport.todaysResults}</p>
-                            </div>
-                            <div>
-                              <strong>うまくいったこと:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-green-50 dark:bg-green-900/30 rounded">{selectedReport.whatWentWell}</p>
-                            </div>
-                            <div>
-                              <strong>うまくいかなかったこと:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-orange-50 dark:bg-orange-900/30 rounded">{selectedReport.whatDidntGoWell}</p>
-                            </div>
-                            <div>
-                              <strong>社内への要望:</strong>
-                              <p className="text-sm text-gray-700 dark:text-slate-300 mt-1 p-2 bg-purple-50 dark:bg-purple-900/30 rounded">{selectedReport.requestsToManagement}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </DialogContent>
-                  </Dialog>
-
-                  {!report.isSubmitted && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/daily-reports?edit=${report.id}`)}
-                      className="flex-1 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 text-gray-900 dark:text-white border-gray-200 dark:border-slate-600"
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      編集
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {sortMode === 'date' ? (
+          <DateSortView
+            filteredReports={filteredReports}
+            getStatusBadge={getStatusBadge}
+            formatTime={formatTime}
+            canConfirm={canConfirm}
+            handleConfirm={handleConfirm}
+            setSelectedReport={setSelectedReport}
+            selectedReport={selectedReport}
+            canReply={canReply}
+            currentUser={currentUser}
+            loadData={loadData}
+            getProjectNameByProcessId={getProjectNameByProcessId}
+            router={router}
+          />
+        ) : (
+          <UserSortView
+            filteredReports={filteredReports}
+            getStatusBadge={getStatusBadge}
+            formatTime={formatTime}
+            canConfirm={canConfirm}
+            handleConfirm={handleConfirm}
+            setSelectedReport={setSelectedReport}
+            selectedReport={selectedReport}
+            canReply={canReply}
+            currentUser={currentUser}
+            loadData={loadData}
+            getProjectNameByProcessId={getProjectNameByProcessId}
+            router={router}
+          />
+        )}
 
         {/* 空の状態 */}
         {filteredReports.length === 0 && (

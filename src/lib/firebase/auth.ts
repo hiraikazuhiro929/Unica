@@ -53,6 +53,12 @@ export interface AppUser {
   lastLogin?: any;
   createdAt: any;
   updatedAt: any;
+  permissions?: {
+    canConfirmReports?: boolean;
+    canReplyToReports?: boolean;
+    canViewAllReports?: boolean;
+    canManageUsers?: boolean;
+  };
 }
 
 export const signUpWithEmail = async (email: string, password: string, displayName: string) => {

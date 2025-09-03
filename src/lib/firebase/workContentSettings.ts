@@ -32,13 +32,18 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
       workContentTypes.push({ id: doc.id, ...doc.data() } as WorkContentType);
     });
 
+    // 重複を除去（同じnameJapaneseのものは最初のもののみ保持）
+    const uniqueTypes = workContentTypes.filter((type, index, self) => 
+      index === self.findIndex(t => t.nameJapanese === type.nameJapanese)
+    );
+
     // デフォルトデータがない場合は作成
-    if (workContentTypes.length === 0) {
+    if (uniqueTypes.length === 0) {
       await createDefaultWorkContentTypes();
       return getWorkContentTypes(); // 再帰的に呼び出し
     }
 
-    return { data: workContentTypes, error: null };
+    return { data: uniqueTypes, error: null };
   } catch (error: any) {
     console.error('Error getting work content types:', error);
     
@@ -55,8 +60,8 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
       },
       {
         id: "2",
-        name: "chamfering",
-        nameJapanese: "面取り",
+        name: "machining",
+        nameJapanese: "機械加工",
         isActive: true,
         order: 2,
         createdAt: new Date().toISOString(),
@@ -65,7 +70,7 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
       {
         id: "3",
         name: "finishing",
-        nameJapanese: "仕上げ",
+        nameJapanese: "仕上",
         isActive: true,
         order: 3,
         createdAt: new Date().toISOString(),
@@ -73,8 +78,8 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
       },
       {
         id: "4",
-        name: "machining",
-        nameJapanese: "機械加工",
+        name: "chamfering",
+        nameJapanese: "面取",
         isActive: true,
         order: 4,
         createdAt: new Date().toISOString(),
@@ -96,28 +101,22 @@ const createDefaultWorkContentTypes = async () => {
       order: 1,
     },
     {
-      name: "chamfering", 
-      nameJapanese: "面取り",
+      name: "machining",
+      nameJapanese: "機械加工",
       isActive: true,
       order: 2,
     },
     {
       name: "finishing",
-      nameJapanese: "仕上げ",
+      nameJapanese: "仕上",
       isActive: true,
       order: 3,
     },
     {
-      name: "machining",
-      nameJapanese: "機械加工",
+      name: "chamfering",
+      nameJapanese: "面取",
       isActive: true,
       order: 4,
-    },
-    {
-      name: "others",
-      nameJapanese: "その他",
-      isActive: true,
-      order: 5,
     },
   ];
 
@@ -184,6 +183,50 @@ export const updateWorkContentType = async (id: string, updateData: Partial<Work
       success: false,
       error: error.message
     };
+  }
+};
+
+/**
+ * 重複データを削除する（一度実行用）
+ */
+export const cleanupDuplicateWorkContentTypes = async () => {
+  try {
+    const q = query(collection(db, COLLECTION_NAME));
+    const querySnapshot = await getDocs(q);
+    
+    const allTypes: (WorkContentType & { docId: string })[] = [];
+    querySnapshot.forEach((doc) => {
+      allTypes.push({ docId: doc.id, id: doc.id, ...doc.data() } as WorkContentType & { docId: string });
+    });
+
+    // 日本語名でグループ化
+    const grouped = allTypes.reduce((acc, type) => {
+      if (!acc[type.nameJapanese]) {
+        acc[type.nameJapanese] = [];
+      }
+      acc[type.nameJapanese].push(type);
+      return acc;
+    }, {} as Record<string, (WorkContentType & { docId: string })[]>);
+
+    // 重複を削除（最初のもの以外を削除）
+    let deletedCount = 0;
+    for (const [name, types] of Object.entries(grouped)) {
+      if (types.length > 1) {
+        console.log(`重複発見: ${name} (${types.length}件)`);
+        // 最初のもの以外を削除
+        for (let i = 1; i < types.length; i++) {
+          await deleteDoc(doc(db, COLLECTION_NAME, types[i].docId));
+          deletedCount++;
+          console.log(`削除: ${name} - ${types[i].docId}`);
+        }
+      }
+    }
+
+    console.log(`✅ クリーンアップ完了: ${deletedCount}件の重複を削除しました`);
+    return { success: true, deletedCount };
+  } catch (error: any) {
+    console.error('❌ クリーンアップエラー:', error);
+    return { success: false, error: error.message };
   }
 };
 

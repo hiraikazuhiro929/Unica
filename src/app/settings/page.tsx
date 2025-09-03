@@ -376,13 +376,16 @@ export default function SettingsPage() {
 
         {/* セキュリティセクション */}
         {activeSection === 'security' && (
-          <div className="max-w-lg">
+          <div className="max-w-4xl">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">セキュリティ設定</h2>
-              <p className="text-gray-600">アカウントのセキュリティを強化</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">セキュリティ・権限設定</h2>
+              <p className="text-gray-600 dark:text-slate-400">アカウントのセキュリティと権限を管理</p>
             </div>
             
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* セキュリティ設定 */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">セキュリティ設定</h3>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm font-medium text-gray-700">二段階認証</Label>
@@ -454,11 +457,68 @@ export default function SettingsPage() {
                 </Select>
               </div>
 
-              <div className="pt-4">
-                <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-                  <Save className="w-4 h-4 mr-2" />
-                  変更を保存
-                </Button>
+                <div className="pt-4">
+                  <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                    <Save className="w-4 h-4 mr-2" />
+                    セキュリティ設定を保存
+                  </Button>
+                </div>
+              </div>
+
+              {/* 権限管理設定 */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">権限管理</h3>
+                
+                <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-medium text-gray-900 dark:text-white">現在の権限</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-slate-400">日報確認権限</span>
+                      <span className="text-green-600 font-medium">有効</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-slate-400">日報返信権限</span>
+                      <span className="text-green-600 font-medium">有効</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-slate-400">全日報閲覧権限</span>
+                      <span className="text-green-600 font-medium">有効</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-slate-400">ユーザー管理権限</span>
+                      <span className="text-green-600 font-medium">有効</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <User className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-1">権限の変更について</h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        権限の変更は管理者のみが行えます。権限の変更が必要な場合は、管理者にご連絡ください。
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-2">
+                        管理者の方は、メンバー管理画面から各ユーザーの権限を設定できます。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    variant="outline"
+                    onClick={() => window.open('/company/members', '_blank')}
+                    className="w-full"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    メンバー管理画面を開く
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

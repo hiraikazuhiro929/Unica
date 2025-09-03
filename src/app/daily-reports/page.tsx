@@ -20,59 +20,12 @@ import {
   migrateDraftFromLocalStorage 
 } from "@/lib/firebase/dailyReports";
 import { syncWorkHoursFromDailyReport } from "@/lib/firebase/workHours";
-import { getWorkContentTypes, subscribeToWorkContentTypes } from "@/lib/firebase/workContentSettings";
+import { getWorkContentTypes, subscribeToWorkContentTypes, cleanupDuplicateWorkContentTypes } from "@/lib/firebase/workContentSettings";
 import { useAutoSave } from "@/lib/utils/autoSave";
 import { validateDailyReportData } from "@/lib/utils/validation";
 import { showError, showSuccess } from "@/lib/utils/errorHandling";
 
-// デフォルトの作業内容（Firebase接続失敗時のフォールバック）
-const defaultWorkContentTypes: WorkContentType[] = [
-  {
-    id: "1",
-    name: "data",
-    nameJapanese: "データ",
-    isActive: true,
-    order: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "chamfering",
-    nameJapanese: "面取り",
-    isActive: true,
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "finishing",
-    nameJapanese: "仕上げ",
-    isActive: true,
-    order: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    name: "machining",
-    nameJapanese: "機械加工",
-    isActive: true,
-    order: 4,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    name: "others",
-    nameJapanese: "その他",
-    isActive: true,
-    order: 5,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+// デフォルトの作業内容は workContentSettings.ts で一元管理
 
 export default function DailyReportPage() {
   const [reportData, setReportData] = useState<Partial<DailyReportEntry>>({
@@ -92,7 +45,7 @@ export default function DailyReportPage() {
   });
 
   // Firebase state
-  const [workContentTypes, setWorkContentTypes] = useState<WorkContentType[]>(defaultWorkContentTypes);
+  const [workContentTypes, setWorkContentTypes] = useState<WorkContentType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasDraft, setHasDraft] = useState(false);
@@ -215,8 +168,9 @@ export default function DailyReportPage() {
 
   // Firebase下書き保存
   const saveDraftToFirebase = async () => {
-    if (!reportData.workerId || !reportData.date) return;
+    if (!reportData.workerId || !reportData.date || isSaving) return;
     
+    setIsSaving(true);
     try {
       const { id, error } = await saveDailyReportDraft(
         reportData.workerId,
@@ -235,6 +189,9 @@ export default function DailyReportPage() {
       }
     } catch (error: any) {
       console.error('Error saving draft:', error);
+      setError('下書きの保存に失敗しました');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -277,6 +234,58 @@ export default function DailyReportPage() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  // 作業内容データ更新（一時的）
+  const handleUpdateWorkContent = async () => {
+    try {
+      // Firebase初期化
+      const { collection, getDocs, updateDoc, doc, addDoc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
+      
+      const querySnapshot = await getDocs(collection(db, 'work-content-types'));
+      const docs = [];
+      querySnapshot.forEach((docSnapshot) => {
+        docs.push({ id: docSnapshot.id, data: docSnapshot.data() });
+      });
+
+      let updated = 0;
+      let added = 0;
+
+      // 既存データを更新・削除
+      for (const docData of docs) {
+        if (docData.data.nameJapanese === '仕上げ') {
+          await updateDoc(doc(db, 'work-content-types', docData.id), { 
+            nameJapanese: '仕上',
+            name: 'finishing',
+            order: 3
+          });
+          updated++;
+        } else if (docData.data.nameJapanese === 'その他' || docData.data.nameJapanese === '面取') {
+          // 面取・その他は削除
+          await updateDoc(doc(db, 'work-content-types', docData.id), { 
+            isActive: false // 削除の代わりに無効化
+          });
+          updated++;
+        }
+      }
+
+      // 面取を新規追加
+      await addDoc(collection(db, 'work-content-types'), {
+        name: 'chamfering',
+        nameJapanese: '面取',
+        isActive: true,
+        order: 4,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      added++;
+
+      alert(`✅ 更新完了: ${updated}件更新, ${added}件追加`);
+      window.location.reload();
+    } catch (error: any) {
+      alert(`❌ エラー: ${error.message}`);
+    }
   };
 
   // 下書きを削除
@@ -517,6 +526,14 @@ export default function DailyReportPage() {
                 <RefreshCw className="w-4 h-4 mr-1" />
                 再試行
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUpdateWorkContent}
+                className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+              >
+                作業内容データ更新
+              </Button>
             </div>
           </div>
         )}
@@ -524,7 +541,17 @@ export default function DailyReportPage() {
         {/* ヘッダー */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">日報作成</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">日報作成</h1>
+              <Button
+                variant="outline" 
+                size="sm"
+                onClick={handleUpdateWorkContent}
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              >
+                作業内容更新
+              </Button>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-gray-600 dark:text-slate-400">
                 {new Date(reportData.date || "").toLocaleDateString("ja-JP", {

@@ -179,6 +179,7 @@ export interface WorkTimeEntry {
   // 工程連携のための新フィールド
   processId?: string; // 関連する工程ID
   processName?: string; // 工程名（表示用）
+  projectName?: string; // 工事名・プロジェクト名（表示用）
   workStepId?: string; // 関連する作業手順ID
   workStepName?: string; // 作業手順名（表示用）
   managementNumber?: string; // 管理番号
@@ -232,6 +233,14 @@ export interface DailyReportEntry {
   approved: boolean;
   approvedBy?: string;
   approvedAt?: string;
+  
+  // 返信機能
+  adminReply?: {
+    content: string; // 返信内容
+    repliedBy: string; // 返信者名（会長など）
+    repliedAt: string; // 返信日時
+    isRead?: boolean; // 既読フラグ（作業者が読んだか）
+  };
   
   createdAt: string;
   updatedAt: string;
@@ -466,6 +475,24 @@ export interface SyncResult {
     syncedAt: string;
     syncSource: string;
     totalProcessingTime: number;
+  };
+}
+
+// ユーザー管理
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "supervisor" | "worker";
+  department?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  permissions: {
+    canConfirmReports: boolean;
+    canReplyToReports: boolean;
+    canViewAllReports: boolean;
+    canManageUsers: boolean;
   };
 }
 

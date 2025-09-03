@@ -60,12 +60,18 @@ const ProcessList = () => {
   
   // ガントチャート用のstate
   const [ganttViewType, setGanttViewType] = useState<"machine" | "person" | "project">("machine");
-  const [ganttPeriod, setGanttPeriod] = useState<"week" | "month" | "quarter">("month");
   const [showWeekends, setShowWeekends] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [ganttSearchQuery, setGanttSearchQuery] = useState("");
+  const [ganttStatusFilter, setGanttStatusFilter] = useState<Process["status"] | "all">("all");
+  const [ganttPriorityFilter, setGanttPriorityFilter] = useState<Process["priority"] | "all">("all");
+  const [ganttZoomLevel, setGanttZoomLevel] = useState(40); // ピクセル/日
   
   // 看板用のstate
   const [kanbanGroupBy, setKanbanGroupBy] = useState<"status" | "priority" | "assignee">("status");
   const [kanbanSortBy, setKanbanSortBy] = useState<"dueDate" | "priority" | "progress">("dueDate");
+  const [kanbanFilterPriority, setKanbanFilterPriority] = useState<Process["priority"] | "all">("all");
+  const [kanbanFilterAssignee, setKanbanFilterAssignee] = useState<string>("all");
   const [showCompleted, setShowCompleted] = useState(true);
 
   // カスタムフックを使用
@@ -270,6 +276,19 @@ const ProcessList = () => {
               {/* ガントチャート用設定 */}
               {activeView === 'gantt' && (
                 <div className="space-y-4">
+                  {/* 検索 */}
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">検索</div>
+                    <input
+                      type="text"
+                      placeholder="プロジェクト名..."
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      value={ganttSearchQuery}
+                      onChange={(e) => setGanttSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {/* 表示モード */}
                   <div>
                     <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">表示モード</div>
                     <div className="space-y-1">
@@ -299,38 +318,65 @@ const ProcessList = () => {
                       </button>
                     </div>
                   </div>
-                  
+
+                  {/* ステータスフィルタ */}
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">表示期間</div>
-                    <div className="space-y-1">
-                      <button 
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttPeriod === 'week' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
-                        }`}
-                        onClick={() => setGanttPeriod('week')}
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">ステータス</div>
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      value={ganttStatusFilter}
+                      onChange={(e) => setGanttStatusFilter(e.target.value as Process["status"] | "all")}
+                    >
+                      <option value="all">すべて</option>
+                      <option value="planning">計画</option>
+                      <option value="data-work">データ作業</option>
+                      <option value="processing">加工中</option>
+                      <option value="finishing">仕上げ</option>
+                      <option value="completed">完了</option>
+                      <option value="delayed">遅延</option>
+                    </select>
+                  </div>
+
+                  {/* 優先度フィルタ */}
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">優先度</div>
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      value={ganttPriorityFilter}
+                      onChange={(e) => setGanttPriorityFilter(e.target.value as Process["priority"] | "all")}
+                    >
+                      <option value="all">すべて</option>
+                      <option value="high">高</option>
+                      <option value="medium">中</option>
+                      <option value="low">低</option>
+                    </select>
+                  </div>
+                  
+
+                  {/* ズーム */}
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">ズーム</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setGanttZoomLevel(Math.max(20, ganttZoomLevel - 10))}
+                        className="px-3 py-1 text-sm border border-gray-200 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700"
                       >
-                        今週
+                        −
                       </button>
-                      <button 
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttPeriod === 'month' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
-                        }`}
-                        onClick={() => setGanttPeriod('month')}
+                      <span className="text-sm text-gray-600 dark:text-slate-400 flex-1 text-center">
+                        {Math.round((ganttZoomLevel / 40) * 100)}%
+                      </span>
+                      <button
+                        onClick={() => setGanttZoomLevel(Math.min(100, ganttZoomLevel + 10))}
+                        className="px-3 py-1 text-sm border border-gray-200 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700"
                       >
-                        今月
-                      </button>
-                      <button 
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttPeriod === 'quarter' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
-                        }`}
-                        onClick={() => setGanttPeriod('quarter')}
-                      >
-                        3ヶ月
+                        +
                       </button>
                     </div>
                   </div>
-                  
-                  <div>
+
+                  {/* 表示オプション */}
+                  <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
                       <input 
                         type="checkbox" 
@@ -340,7 +386,28 @@ const ProcessList = () => {
                       />
                       <span>週末を表示</span>
                     </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-700" 
+                        checked={showMinimap}
+                        onChange={(e) => setShowMinimap(e.target.checked)}
+                      />
+                      <span>ミニマップ表示</span>
+                    </label>
                   </div>
+
+                  {/* リセットボタン */}
+                  <button
+                    onClick={() => {
+                      setGanttSearchQuery("");
+                      setGanttStatusFilter("all");
+                      setGanttPriorityFilter("all");
+                    }}
+                    className="w-full px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700"
+                  >
+                    フィルタをリセット
+                  </button>
                 </div>
               )}
               
@@ -406,6 +473,38 @@ const ProcessList = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* 優先度フィルタ */}
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">優先度フィルタ</div>
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      value={kanbanFilterPriority}
+                      onChange={(e) => setKanbanFilterPriority(e.target.value as Process["priority"] | "all")}
+                    >
+                      <option value="all">全優先度</option>
+                      <option value="high">高優先度</option>
+                      <option value="medium">中優先度</option>
+                      <option value="low">低優先度</option>
+                    </select>
+                  </div>
+
+                  {/* 担当者フィルタ */}
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">担当者フィルタ</div>
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      value={kanbanFilterAssignee}
+                      onChange={(e) => setKanbanFilterAssignee(e.target.value)}
+                    >
+                      <option value="all">全担当者</option>
+                      {[...new Set(allProcesses.map(p => p.assignee).filter(Boolean))].map((assignee) => (
+                        <option key={assignee} value={assignee}>
+                          {assignee}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   
                   <div>
                     <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
@@ -418,6 +517,17 @@ const ProcessList = () => {
                       <span>完了を表示</span>
                     </label>
                   </div>
+
+                  {/* リセットボタン */}
+                  <button
+                    onClick={() => {
+                      setKanbanFilterPriority("all");
+                      setKanbanFilterAssignee("all");
+                    }}
+                    className="w-full px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700"
+                  >
+                    フィルタをリセット
+                  </button>
                 </div>
               )}
             </div>
@@ -491,7 +601,7 @@ const ProcessList = () => {
             </div>
 
             {/* コンテンツエリア */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-slate-900">
+            <div className={`flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-900 ${activeView === 'gantt' ? '' : 'p-6'}`}>
               {isProcessesLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
@@ -597,10 +707,14 @@ const ProcessList = () => {
 
                   {activeView === "gantt" && (
                     <GanttChart
-                      processes={showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed')}
+                      processes={(showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed')).filter(p => p.processingPlanDate)}
                       viewType={ganttViewType}
                       showWeekends={showWeekends}
-                      period={ganttPeriod}
+                      showMinimap={showMinimap}
+                      searchQuery={ganttSearchQuery}
+                      statusFilter={ganttStatusFilter}
+                      priorityFilter={ganttPriorityFilter}
+                      zoomLevel={ganttZoomLevel}
                       onProcessClick={openDetail}
                       onProcessUpdate={handleProcessUpdate}
                     />
@@ -630,6 +744,8 @@ const ProcessList = () => {
                         })()}
                         groupBy={kanbanGroupBy}
                         sortBy={kanbanSortBy}
+                        filterPriority={kanbanFilterPriority}
+                        filterAssignee={kanbanFilterAssignee}
                         showCompleted={showCompleted}
                         onProcessClick={openDetail}
                         onStatusChange={updateStatus}

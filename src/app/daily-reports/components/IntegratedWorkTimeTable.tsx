@@ -84,7 +84,11 @@ export default function IntegratedWorkTimeTable({
 
   // ローカル作業内容タイプの初期化
   useEffect(() => {
-    setLocalWorkContentTypes(workContentTypes);
+    
+    // カスタム作業内容のみを保持し、デフォルトデータは除外
+    setLocalWorkContentTypes(prev => 
+      prev.filter(wc => wc.id.startsWith('custom-'))
+    );
   }, [workContentTypes]);
 
   // 利用可能な機械を読み込み
@@ -178,6 +182,29 @@ export default function IntegratedWorkTimeTable({
   const handleWorkContentChange = (workContentId: string) => {
     if (workContentId === 'add-new') {
       setShowNewWorkContentForm(true);
+      return;
+    }
+
+    if (workContentId === 'delete-mode') {
+      // 削除できる作業内容を表示
+      const customWorkContents = localWorkContentTypes.filter(wc => wc.id.startsWith('custom-'));
+      if (customWorkContents.length === 0) {
+        alert('削除できるカスタム作業内容がありません');
+        return;
+      }
+      
+      // 削除する作業内容を選択
+      const selected = prompt(`削除する作業内容の番号を入力してください:\n${customWorkContents.map((wc, i) => `${i+1}. ${wc.nameJapanese}`).join('\n')}`);
+      
+      if (selected) {
+        const index = parseInt(selected) - 1;
+        if (index >= 0 && index < customWorkContents.length) {
+          const workContentToDelete = customWorkContents[index];
+          if (confirm(`「${workContentToDelete.nameJapanese}」を削除しますか？`)) {
+            deleteCustomWorkContent(workContentToDelete.id);
+          }
+        }
+      }
       return;
     }
     
@@ -296,6 +323,30 @@ export default function IntegratedWorkTimeTable({
       setShowNewWorkContentForm(true);
       return;
     }
+
+    if (workContentId === 'delete-mode') {
+      // 削除できる作業内容を表示
+      const customWorkContents = localWorkContentTypes.filter(wc => wc.id.startsWith('custom-'));
+      if (customWorkContents.length === 0) {
+        alert('削除できるカスタム作業内容がありません');
+        return;
+      }
+      
+      // 削除する作業内容を選択
+      const options = customWorkContents.map(wc => `${wc.nameJapanese} (${wc.id})`).join('\n');
+      const selected = prompt(`削除する作業内容の番号を入力してください:\n${customWorkContents.map((wc, i) => `${i+1}. ${wc.nameJapanese}`).join('\n')}`);
+      
+      if (selected) {
+        const index = parseInt(selected) - 1;
+        if (index >= 0 && index < customWorkContents.length) {
+          const workContentToDelete = customWorkContents[index];
+          if (confirm(`「${workContentToDelete.nameJapanese}」を削除しますか？`)) {
+            deleteCustomWorkContent(workContentToDelete.id);
+          }
+        }
+      }
+      return;
+    }
     
     const workContent = [...localWorkContentTypes, ...workContentTypes].find(wc => wc.id === workContentId);
     const updatedEntries = entries.map(entry => 
@@ -340,18 +391,12 @@ export default function IntegratedWorkTimeTable({
     return `${minutes}分`;
   };
 
-  // アクティブな作業内容タイプ（ローカル追加分も含む、重複除去）
-  const activeWorkContentTypes = [...localWorkContentTypes, ...(workContentTypes || [])]
-    .filter(wc => wc.isActive)
-    .reduce((unique, wc) => {
-      // IDで重複チェック、ローカル追加分を優先
-      const existingIndex = unique.findIndex(item => item.id === wc.id);
-      if (existingIndex === -1) {
-        unique.push(wc);
-      }
-      return unique;
-    }, [] as WorkContentType[])
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  // アクティブな作業内容タイプ（Firebaseデータ + ローカルカスタム分）
+  const activeWorkContentTypes = [
+    ...(workContentTypes || []).filter(wc => wc.isActive), // Firebaseのデータ
+    ...localWorkContentTypes.filter(wc => wc.isActive && wc.id.startsWith('custom-')) // カスタム追加分のみ
+  ].sort((a, b) => (a.order || 0) - (b.order || 0));
+
 
   // 選択中の工程情報
   const selectedProcess = availableProcesses.find(p => p.id === selectedProcessId);
@@ -475,14 +520,35 @@ export default function IntegratedWorkTimeTable({
                       </SelectTrigger>
                       <SelectContent>
                         {activeWorkContentTypes.map((workContent) => (
-                          <SelectItem key={workContent.id} value={workContent.id}>
-                            {workContent.nameJapanese}
-                          </SelectItem>
+                          <div key={workContent.id} className="flex items-center justify-between group">
+                            <SelectItem value={workContent.id} className="flex-1">
+                              {workContent.nameJapanese}
+                            </SelectItem>
+                            {workContent.id.startsWith('custom-') && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteCustomWorkContent(workContent.id);
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
                         ))}
                         <SelectItem value="add-new" className="border-t border-gray-200 dark:border-slate-600 text-blue-600 dark:text-blue-400">
                           <div className="flex items-center gap-2">
                             <Plus className="w-4 h-4" />
                             新しい作業内容を追加
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="delete-mode" className="text-red-600 dark:text-red-400">
+                          <div className="flex items-center gap-2">
+                            <Trash2 className="w-4 h-4" />
+                            作業内容を削除
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -587,14 +653,35 @@ export default function IntegratedWorkTimeTable({
                 </SelectTrigger>
                 <SelectContent>
                   {activeWorkContentTypes.map((workContent) => (
-                    <SelectItem key={workContent.id} value={workContent.id}>
-                      {workContent.nameJapanese}
-                    </SelectItem>
+                    <div key={workContent.id} className="flex items-center justify-between group">
+                      <SelectItem value={workContent.id} className="flex-1">
+                        {workContent.nameJapanese}
+                      </SelectItem>
+                      {workContent.id.startsWith('custom-') && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCustomWorkContent(workContent.id);
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
                   <SelectItem value="add-new" className="border-t border-gray-200 dark:border-slate-600 text-blue-600 dark:text-blue-400">
                     <div className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       新しい作業内容を追加
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="delete-mode" className="text-red-600 dark:text-red-400">
+                    <div className="flex items-center gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      作業内容を削除
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -690,33 +777,6 @@ export default function IntegratedWorkTimeTable({
           </div>
         )}
 
-        {/* カスタム作業内容管理 */}
-        {localWorkContentTypes.length > 0 && (
-          <div className="bg-gray-50 dark:bg-slate-700/30 border border-gray-200 dark:border-slate-600 rounded-lg p-4">
-            <h4 className="font-medium text-gray-800 dark:text-white mb-3 flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              追加した作業内容
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {localWorkContentTypes.map((workContent) => (
-                <div
-                  key={workContent.id}
-                  className="flex items-center gap-2 bg-white dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded px-3 py-1.5"
-                >
-                  <span className="text-sm text-gray-700 dark:text-slate-300">{workContent.nameJapanese}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteCustomWorkContent(workContent.id)}
-                    className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* 合計表示 */}
         {entries.length > 0 && (

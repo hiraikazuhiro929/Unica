@@ -31,6 +31,8 @@ interface KanbanBoardProps {
   processes: Process[];
   groupBy?: "status" | "priority" | "assignee";
   sortBy?: "dueDate" | "priority" | "progress";
+  filterPriority?: Process["priority"] | "all";
+  filterAssignee?: string;
   showCompleted?: boolean;
   onProcessClick: (process: Process) => void;
   onStatusChange: (processId: string, newStatus: Process["status"]) => void;
@@ -40,7 +42,9 @@ interface KanbanBoardProps {
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   processes,
   groupBy = "status",
-  sortBy: propsSortBy = "dueDate", 
+  sortBy = "dueDate", 
+  filterPriority = "all",
+  filterAssignee = "all",
   showCompleted = true,
   onProcessClick,
   onStatusChange,
@@ -49,18 +53,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   console.log('KanbanBoard rendered with processes:', processes.length);
   const [draggedProcess, setDraggedProcess] = useState<Process | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-  const [filterPriority, setFilterPriority] = useState<
-    Process["priority"] | "all"
-  >("all");
-  const [filterAssignee, setFilterAssignee] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"dueDate" | "priority" | "progress">(
-    propsSortBy
-  );
-  
-  // propsが変更された時にstateを更新
-  useEffect(() => {
-    setSortBy(propsSortBy);
-  }, [propsSortBy]);
 
   const columns = [
     {
@@ -222,80 +214,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   return (
     <div className="bg-transparent">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-lg text-gray-800 dark:text-white flex items-center gap-2">
-            <Grid3X3 className="w-5 h-5 text-gray-600 dark:text-slate-400" />
-            看板ビュー
-          </h3>
+      <div className="grid grid-cols-5 gap-4">
+        {columns.map((column) => {
+          const columnProcesses = getColumnProcesses(column.status);
+          const stats = getColumnStats(column.status);
+          const isDropTarget = dragOverColumn === column.status;
 
-          <div className="flex items-center gap-3">
-            {/* フィルター */}
-            <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg border border-gray-200 dark:border-slate-600 p-2">
-              <Select
-                value={filterPriority}
-                onValueChange={(value: string) =>
-                  setFilterPriority(value as Process["priority"] | "all")
-                }
-              >
-                <SelectTrigger className="w-32 border-0 shadow-none">
-                  <SelectValue placeholder="優先度" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全優先度</SelectItem>
-                  <SelectItem value="high">高優先度</SelectItem>
-                  <SelectItem value="medium">中優先度</SelectItem>
-                  <SelectItem value="low">低優先度</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filterAssignee}
-                onValueChange={(value: string) => setFilterAssignee(value)}
-              >
-                <SelectTrigger className="w-36 border-0 shadow-none">
-                  <SelectValue placeholder="担当者" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全担当者</SelectItem>
-                  {uniqueAssignees.map((assignee) => (
-                    <SelectItem key={assignee} value={assignee}>
-                      {assignee}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* ソート */}
-              <Select
-                value={sortBy}
-                onValueChange={(value: "dueDate" | "priority" | "progress") =>
-                  setSortBy(value)
-                }
-              >
-                <SelectTrigger className="w-32 border-0 shadow-none">
-                  <SelectValue placeholder="ソート" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dueDate">納期順</SelectItem>
-                  <SelectItem value="priority">優先度順</SelectItem>
-                  <SelectItem value="progress">進捗順</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="grid grid-cols-5 gap-4">
-          {columns.map((column) => {
-            const columnProcesses = getColumnProcesses(column.status);
-            const stats = getColumnStats(column.status);
-            const isDropTarget = dragOverColumn === column.status;
-
-            return (
-              <div
+          return (
+            <div
                 key={column.id}
                 className={`rounded-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur border border-gray-200/50 dark:border-slate-600/50 transition-all ${
                   isDropTarget ? "border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 scale-102" : ""
@@ -508,7 +434,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
             );
           })}
-        </div>
       </div>
     </div>
   );

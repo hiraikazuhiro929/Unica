@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Process } from "@/app/tasks/types";
-import { GanttHeader } from "@/app/tasks/components/gantt/GanttHeader";
 import { GanttBar } from "@/app/tasks/components/gantt/GanttBar";
 import {
   DndContext,
@@ -140,7 +139,11 @@ interface GanttChartProps {
   processes?: Process[];
   viewType?: "machine" | "person" | "project";
   showWeekends?: boolean;
-  period?: "week" | "month" | "quarter";
+  showMinimap?: boolean;
+  searchQuery?: string;
+  statusFilter?: Process["status"] | "all";
+  priorityFilter?: Process["priority"] | "all";
+  zoomLevel?: number;
   onProcessClick?: (process: Process) => void;
   onProcessUpdate?: (process: Process) => void;
   onProcessEdit?: (process: Process) => void;
@@ -162,37 +165,20 @@ const StatusBadge = ({ status }: { status: Process["status"] }) => {
 
 const GanttChartComponent: React.FC<GanttChartProps> = ({
   processes = [],
-  viewType: initialViewType = "machine",
-  showWeekends: propsShowWeekends = true,
-  period: propsPeriod = "month",
+  viewType = "machine",
+  showWeekends = true,
+  showMinimap = true,
+  searchQuery = "",
+  statusFilter = "all",
+  priorityFilter = "all",
+  zoomLevel: propsZoomLevel = 40,
   onProcessClick = () => {},
   onProcessUpdate = () => {},
   onProcessEdit = () => {},
   onProcessDelete = () => {},
   onProcessDuplicate = () => {},
 }) => {
-  const [viewType, setViewType] = useState<"machine" | "person" | "project">(
-    initialViewType
-  );
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
-  const [showWeekends, setShowWeekends] = useState(propsShowWeekends);
-  
-  // propsが変更された時にstateを更新
-  useEffect(() => {
-    setViewType(initialViewType);
-  }, [initialViewType]);
-  
-  useEffect(() => {
-    setShowWeekends(propsShowWeekends);
-  }, [propsShowWeekends]);
-  const [showMinimap, setShowMinimap] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Process["status"] | "all">(
-    "all"
-  );
-  const [priorityFilter, setPriorityFilter] = useState<
-    Process["priority"] | "all"
-  >("all");
   const [draggedProcess, setDraggedProcess] = useState<Process | null>(null);
   const [dropZone, setDropZone] = useState<DropZone | null>(null);
   const [jumpDate, setJumpDate] = useState(
@@ -208,12 +194,17 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
     edge: "left" | "right";
   } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(40); // ピクセル/日
+  const [zoomLevel, setZoomLevel] = useState(propsZoomLevel); // ピクセル/日
   const [dragEndTime, setDragEndTime] = useState(0); // ドラッグ終了時刻
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartDate, setResizeStartDate] = useState<Date | null>(null);
   const [originalProcess, setOriginalProcess] = useState<Process | null>(null);
   const [tempProcesses, setTempProcesses] = useState<Map<string, Process>>(new Map());
+
+  // propsのzoomLevelが変更されたら更新
+  useEffect(() => {
+    setZoomLevel(propsZoomLevel);
+  }, [propsZoomLevel]);
 
   const ganttRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
@@ -406,10 +397,27 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
       if (dateIndex >= 0 && dateIndex < dates.length) {
         const targetDate = dates[dateIndex];
 
+        // 日付の妥当性チェック
+        if (!draggedProcess.processingPlanDate) {
+          console.warn("加工予定日が未入力のため、移動できません:", draggedProcess.projectName);
+          return;
+        }
+
         const originalStartDate = new Date(draggedProcess.processingPlanDate);
         const originalEndDate = new Date(
-          draggedProcess.dueDate || draggedProcess.shipmentDate
+          draggedProcess.dueDate || draggedProcess.shipmentDate || draggedProcess.processingPlanDate
         );
+
+        // 日付が有効かチェック
+        if (isNaN(originalStartDate.getTime()) || isNaN(originalEndDate.getTime())) {
+          console.error("Invalid date values", {
+            processingPlanDate: draggedProcess.processingPlanDate,
+            dueDate: draggedProcess.dueDate,
+            shipmentDate: draggedProcess.shipmentDate
+          });
+          return;
+        }
+
         const duration = getDaysBetween(originalStartDate, originalEndDate) + 1;
 
         const offsetDays = Math.round(duration * dragOffset);
@@ -418,6 +426,12 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
         const newEndDate = new Date(newStartDate);
         newEndDate.setDate(newEndDate.getDate() + duration - 1);
+
+        // 新しい日付が有効かチェック
+        if (isNaN(newStartDate.getTime()) || isNaN(newEndDate.getTime())) {
+          console.error("Invalid new date values");
+          return;
+        }
 
         const updatedProcess = {
           ...draggedProcess,
@@ -445,22 +459,52 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
       let validResize = false;
 
       if (isResizing.edge === "left") {
+        // 開始日の妥当性チェック
+        if (!originalProcess.processingPlanDate) {
+          console.error("processingPlanDate is undefined in resize");
+          return;
+        }
+        
         const newStartDate = new Date(originalProcess.processingPlanDate);
+        if (isNaN(newStartDate.getTime())) {
+          console.error("Invalid processingPlanDate in resize");
+          return;
+        }
+        
         newStartDate.setDate(newStartDate.getDate() + daysDelta);
         
         // 終了日より後にならないようにチェック
-        const endDate = new Date(originalProcess.dueDate || originalProcess.shipmentDate);
-        if (newStartDate < endDate) {
+        const endDateStr = originalProcess.dueDate || originalProcess.shipmentDate || originalProcess.processingPlanDate;
+        const endDate = new Date(endDateStr);
+        
+        if (!isNaN(endDate.getTime()) && newStartDate < endDate) {
           newProcess.processingPlanDate = newStartDate.toISOString().split("T")[0];
           validResize = true;
         }
       } else {
-        const newEndDate = new Date(originalProcess.dueDate || originalProcess.shipmentDate);
+        // 終了日の妥当性チェック
+        const endDateStr = originalProcess.dueDate || originalProcess.shipmentDate || originalProcess.processingPlanDate;
+        if (!endDateStr) {
+          console.error("No valid end date found in resize");
+          return;
+        }
+        
+        const newEndDate = new Date(endDateStr);
+        if (isNaN(newEndDate.getTime())) {
+          console.error("Invalid end date in resize");
+          return;
+        }
+        
         newEndDate.setDate(newEndDate.getDate() + daysDelta);
         
         // 開始日より前にならないようにチェック
+        if (!originalProcess.processingPlanDate) {
+          console.error("processingPlanDate is undefined in resize");
+          return;
+        }
+        
         const startDate = new Date(originalProcess.processingPlanDate);
-        if (newEndDate > startDate) {
+        if (!isNaN(startDate.getTime()) && newEndDate > startDate) {
           newProcess.dueDate = newEndDate.toISOString().split("T")[0];
           validResize = true;
         }
@@ -500,48 +544,6 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
     };
   }, [isResizing, resizeStartX, originalProcess, zoomLevel, onProcessUpdate, tempProcesses]);
 
-  // ナビゲーション
-  const navigateDate = useCallback(
-    (direction: "prev" | "next" | "today") => {
-      if (!ganttRef.current) return;
-
-      if (direction === "today") {
-        const todayIndex = dates.findIndex(
-          (d) => d.toDateString() === today.toDateString()
-        );
-        if (todayIndex !== -1) {
-          const scrollPosition =
-            todayIndex * zoomLevel - ganttRef.current.clientWidth / 2;
-          ganttRef.current.scrollLeft = Math.max(0, scrollPosition);
-        }
-      } else {
-        const scrollAmount = ganttRef.current.clientWidth * 0.8;
-        if (direction === "prev") {
-          ganttRef.current.scrollLeft -= scrollAmount;
-        } else {
-          ganttRef.current.scrollLeft += scrollAmount;
-        }
-      }
-    },
-    [dates, today, zoomLevel]
-  );
-
-  // 日付ジャンプ
-  const handleJumpToDate = useCallback(() => {
-    if (!ganttRef.current) return;
-
-    const targetDate = new Date(jumpDate);
-    const targetIndex = dates.findIndex(
-      (d) => d.toDateString() === targetDate.toDateString()
-    );
-
-    if (targetIndex !== -1) {
-      const scrollPosition =
-        targetIndex * zoomLevel - ganttRef.current.clientWidth / 2;
-      ganttRef.current.scrollLeft = Math.max(0, scrollPosition);
-    }
-  }, [jumpDate, dates, zoomLevel]);
-
   // ミニマップクリック - 修正版
   const handleMinimapClick = useCallback(
     (e: React.MouseEvent) => {
@@ -580,24 +582,6 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
     },
     [projectDateRange, dates, zoomLevel]
   );
-
-  // ズーム機能
-  const handleZoom = useCallback((zoomIn: boolean) => {
-    setZoomLevel((prev) => {
-      if (zoomIn) {
-        return Math.min(120, prev + 20); // 最大120px
-      } else {
-        return Math.max(20, prev - 20); // 最小20px
-      }
-    });
-  }, []);
-
-  // フィルタリセット
-  const resetFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("all");
-    setPriorityFilter("all");
-  };
 
   // 進捗更新
   const handleProgressChange = useCallback(
@@ -650,7 +634,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
   // processesが空の場合の処理
   if (!processes || processes.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-slate-600 p-8">
+      <div className="bg-white dark:bg-slate-800 overflow-hidden border border-gray-200 dark:border-slate-600">
         <div className="text-center">
           <Grid3X3 className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
           <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">
@@ -678,31 +662,6 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
           return (
             <div className="bg-transparent">
-              {/* ヘッダー */}
-              <GanttHeader
-                viewType={viewType}
-                onViewTypeChange={setViewType}
-                datesLength={dates.length}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                filteredProcessesLength={filteredProcesses.length}
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                priorityFilter={priorityFilter}
-                onPriorityFilterChange={setPriorityFilter}
-                showWeekends={showWeekends}
-                onShowWeekendsChange={setShowWeekends}
-                showMinimap={showMinimap}
-                onShowMinimapChange={setShowMinimap}
-                onNavigateDate={navigateDate}
-                jumpDate={jumpDate}
-                onJumpDateChange={setJumpDate}
-                onJumpToDate={handleJumpToDate}
-                onDateRangeChange={() => {}} // 削除予定
-                onFiltersReset={resetFilters}
-                zoomLevel={zoomLevel}
-                onZoom={handleZoom}
-              />
 
               {/* ミニマップ */}
               {showMinimap && (
@@ -849,7 +808,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
               <div className="flex mt-4 overflow-hidden">
                 {/* リソースリスト */}
-                <div className="w-80 bg-white/60 dark:bg-slate-800/60 backdrop-blur border-r border-gray-200/50 dark:border-slate-600/50 flex-shrink-0 rounded-l-lg">
+                <div className="w-80 bg-white/60 dark:bg-slate-800/60 backdrop-blur border-r border-gray-200/50 dark:border-slate-600/50 flex-shrink-0">
                   <div className="p-4 border-t border-b border-gray-200/50 dark:border-slate-600/50 bg-white/80 dark:bg-slate-700/80">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-800 dark:text-white">

@@ -8,6 +8,7 @@ interface Toast {
 class ToastManager {
   private toasts: Toast[] = [];
   private listeners: ((toasts: Toast[]) => void)[] = [];
+  private idCounter = 0;
   
   private notify() {
     this.listeners.forEach(listener => listener([...this.toasts]));
@@ -21,7 +22,8 @@ class ToastManager {
   }
   
   show(message: string, type: 'success' | 'error' | 'info' = 'info') {
-    const id = Date.now().toString();
+    // ユニークなIDを生成（時刻 + カウンター）
+    const id = `${Date.now()}-${++this.idCounter}`;
     const toast: Toast = { id, message, type };
     
     this.toasts.push(toast);

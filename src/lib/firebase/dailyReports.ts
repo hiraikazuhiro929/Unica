@@ -92,6 +92,108 @@ export const updateDailyReport = async (id: string, updateData: Partial<DailyRep
 };
 
 /**
+ * 日報を確認済みにする
+ */
+export const confirmDailyReport = async (reportId: string, confirmedBy: string) => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, reportId);
+    const now = new Date().toISOString();
+    
+    await updateDoc(docRef, {
+      approved: true,
+      approvedBy: confirmedBy,
+      approvedAt: now,
+      updatedAt: now
+    });
+    
+    return {
+      success: true,
+      id: reportId
+    };
+  } catch (error: any) {
+    console.error('Error confirming daily report:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * 日報に返信を追加
+ */
+export const addReplyToDailyReport = async (
+  reportId: string, 
+  reply: {
+    content: string;
+    repliedBy: string;
+  }
+) => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, reportId);
+    const updatedData = {
+      adminReply: {
+        content: reply.content,
+        repliedBy: reply.repliedBy,
+        repliedAt: new Date().toISOString(),
+        isRead: false
+      },
+      updatedAt: new Date().toISOString()
+    };
+
+    await updateDoc(docRef, updatedData);
+    
+    return {
+      success: true,
+      id: reportId,
+      data: updatedData
+    };
+  } catch (error: any) {
+    console.error('Error adding reply to daily report:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * 返信を既読にする
+ */
+export const markReplyAsRead = async (reportId: string) => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, reportId);
+    const docSnapshot = await getDoc(docRef);
+    
+    if (!docSnapshot.exists()) {
+      throw new Error('Report not found');
+    }
+    
+    const reportData = docSnapshot.data() as DailyReportEntry;
+    
+    if (reportData.adminReply) {
+      const updatedData = {
+        'adminReply.isRead': true,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await updateDoc(docRef, updatedData);
+    }
+    
+    return {
+      success: true,
+      id: reportId
+    };
+  } catch (error: any) {
+    console.error('Error marking reply as read:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
  * 作業者の日報一覧を取得
  */
 export const getDailyReportsByWorker = async (workerId: string, options?: {
@@ -154,13 +256,20 @@ export const saveDailyReportDraft = async (workerId: string, date: string, draft
       updatedAt: new Date().toISOString()
     };
 
-    await updateDoc(docRef, draftDocument).catch(async () => {
+    try {
+      await updateDoc(docRef, draftDocument);
+    } catch (error: unknown) {
       // ドキュメントが存在しない場合は作成
-      await addDoc(collection(db, DRAFTS_COLLECTION_NAME), {
-        ...draftDocument,
-        createdAt: new Date().toISOString()
-      });
-    });
+      try {
+        await setDoc(docRef, {
+          ...draftDocument,
+          createdAt: new Date().toISOString()
+        });
+      } catch (createError: unknown) {
+        console.error('Failed to save draft:', createError);
+        throw createError;
+      }
+    }
     
     return {
       success: true,

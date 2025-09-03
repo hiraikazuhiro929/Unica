@@ -1225,6 +1225,90 @@ export default function CompanyMembersPage() {
                   className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
                 />
               </div>
+
+              {/* 権限設定 */}
+              <div className="pt-4 border-t border-gray-200 dark:border-slate-600">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
+                  権限設定
+                </label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canConfirmReports"
+                      checked={editingMember.permissions?.canConfirmReports || false}
+                      onCheckedChange={(checked) => 
+                        setEditingMember({
+                          ...editingMember,
+                          permissions: {
+                            ...editingMember.permissions,
+                            canConfirmReports: !!checked
+                          }
+                        })
+                      }
+                    />
+                    <label htmlFor="canConfirmReports" className="text-sm text-gray-700 dark:text-slate-300">
+                      日報確認権限
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canReplyToReports"
+                      checked={editingMember.permissions?.canReplyToReports || false}
+                      onCheckedChange={(checked) => 
+                        setEditingMember({
+                          ...editingMember,
+                          permissions: {
+                            ...editingMember.permissions,
+                            canReplyToReports: !!checked
+                          }
+                        })
+                      }
+                    />
+                    <label htmlFor="canReplyToReports" className="text-sm text-gray-700 dark:text-slate-300">
+                      日報返信権限
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canViewAllReports"
+                      checked={editingMember.permissions?.canViewAllReports || false}
+                      onCheckedChange={(checked) => 
+                        setEditingMember({
+                          ...editingMember,
+                          permissions: {
+                            ...editingMember.permissions,
+                            canViewAllReports: !!checked
+                          }
+                        })
+                      }
+                    />
+                    <label htmlFor="canViewAllReports" className="text-sm text-gray-700 dark:text-slate-300">
+                      全日報閲覧権限
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canManageUsers"
+                      checked={editingMember.permissions?.canManageUsers || false}
+                      onCheckedChange={(checked) => 
+                        setEditingMember({
+                          ...editingMember,
+                          permissions: {
+                            ...editingMember.permissions,
+                            canManageUsers: !!checked
+                          }
+                        })
+                      }
+                    />
+                    <label htmlFor="canManageUsers" className="text-sm text-gray-700 dark:text-slate-300">
+                      ユーザー管理権限
+                    </label>
+                  </div>
+                </div>
+              </div>
               
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditingMember(null)}>
@@ -1235,7 +1319,8 @@ export default function CompanyMembersPage() {
                     await updateAppUser(editingMember.uid, {
                       name: editingMember.name,
                       department: editingMember.department,
-                      employeeId: editingMember.employeeId
+                      employeeId: editingMember.employeeId,
+                      permissions: editingMember.permissions
                     });
                     await loadMembers();
                     alert('メンバー情報を更新しました');
