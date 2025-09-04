@@ -488,7 +488,7 @@ const FileManagementSystem = () => {
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
         <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-4">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
                 <FileText className="w-8 h-8 text-white" />
@@ -500,27 +500,17 @@ const FileManagementSystem = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              {/* 検索バー */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 focus:border-blue-500"
-                />
-              </div>
-              
-              {/* アップロードボタン */}
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                アップロード
-              </Button>
+            
+            {/* 検索バー */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-slate-500 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 w-80 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400"
+              />
             </div>
           </div>
         </div>
@@ -637,6 +627,31 @@ const FileManagementTab: React.FC<FileManagementTabProps> = ({
 }) => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // ファイル操作ハンドラー
+  const handleFileView = (file: FileItem) => {
+    // ファイルビューア機能（実装例）
+    if (file.type === 'pdf' || file.type === 'jpg' || file.type === 'png') {
+      window.open(file.filePath, '_blank');
+    } else {
+      alert(`${file.name} を表示します`);
+    }
+  };
+  
+  const handleFileDownload = (file: FileItem) => {
+    // ダウンロード機能（実装例）
+    const link = document.createElement('a');
+    link.href = file.filePath;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const handleFileEdit = (file: FileItem) => {
+    // 編集機能（実装例）
+    alert(`${file.name} の編集機能を開きます`);
+  };
 
   // フィルタリング
   const filteredFiles = files.filter(file => {
@@ -653,45 +668,54 @@ const FileManagementTab: React.FC<FileManagementTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* フィルター */}
-      <div className="flex items-center space-x-4">
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="カテゴリで絞り込み" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべてのカテゴリ</SelectItem>
-            {categories.map(category => {
-              const Icon = category.icon;
-              return (
-                <SelectItem key={category.id} value={category.id}>
-                  <div className="flex items-center space-x-2">
-                    <Icon className={`w-4 h-4 ${category.color}`} />
-                    <span>{category.name}</span>
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+      {/* フィルターとアップロードボタン */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
+              <SelectValue placeholder="カテゴリで絞り込み" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
+              <SelectItem value="all">すべてのカテゴリ</SelectItem>
+              {categories.map(category => {
+                const Icon = category.icon;
+                return (
+                  <SelectItem key={category.id} value={category.id}>
+                    <div className="flex items-center space-x-2">
+                      <Icon className={`w-4 h-4 ${category.color}`} />
+                      <span>{category.name}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="ステータスで絞り込み" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべてのステータス</SelectItem>
-            <SelectItem value="active">アクティブ</SelectItem>
-            <SelectItem value="draft">下書き</SelectItem>
-            <SelectItem value="archived">アーカイブ</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="flex-1" />
-        
-        <div className="text-sm text-gray-600 dark:text-slate-300">
-          {filteredFiles.length} / {files.length} 件表示
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
+              <SelectValue placeholder="ステータスで絞り込み" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
+              <SelectItem value="all">すべてのステータス</SelectItem>
+              <SelectItem value="active">アクティブ</SelectItem>
+              <SelectItem value="draft">下書き</SelectItem>
+              <SelectItem value="archived">アーカイブ</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <div className="text-sm text-gray-600 dark:text-slate-300">
+            {filteredFiles.length} / {files.length} 件表示
+          </div>
         </div>
+        
+        {/* アップロードボタン */}
+        <Button
+          onClick={onFileUpload}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          アップロード
+        </Button>
       </div>
 
       {/* ファイル一覧テーブル */}
@@ -752,13 +776,28 @@ const FileManagementTab: React.FC<FileManagementTabProps> = ({
                   </td>
                   <td className="p-4">
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                        onClick={() => handleFileView(file)}
+                      >
                         <Eye className="w-3 h-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                        onClick={() => handleFileDownload(file)}
+                      >
                         <Download className="w-3 h-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                        onClick={() => handleFileEdit(file)}
+                      >
                         <Edit className="w-3 h-3" />
                       </Button>
                     </div>
@@ -787,6 +826,15 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
 }) => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // 工具操作ハンドラー
+  const handleInventoryView = (item: InventoryItem) => {
+    alert(`${item.name}の詳細を表示します`);
+  };
+  
+  const handleInventoryEdit = (item: InventoryItem) => {
+    alert(`${item.name}の編集機能を開きます`);
+  };
 
   // フィルタリング
   const filteredInventory = inventory.filter(item => {
@@ -808,10 +856,10 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
       {/* フィルター */}
       <div className="flex items-center space-x-4">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
             <SelectValue placeholder="カテゴリで絞り込み" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
             <SelectItem value="all">すべてのカテゴリ</SelectItem>
             {categories.map(category => {
               const Icon = category.icon;
@@ -828,10 +876,10 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
             <SelectValue placeholder="ステータスで絞り込み" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
             <SelectItem value="all">すべてのステータス</SelectItem>
             <SelectItem value="available">利用可能</SelectItem>
             <SelectItem value="in-use">使用中</SelectItem>
@@ -900,10 +948,20 @@ const InventoryManagementTab: React.FC<InventoryManagementTabProps> = ({
                   </td>
                   <td className="p-4">
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                        onClick={() => handleInventoryView(item)}
+                      >
                         <Eye className="w-3 h-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                        onClick={() => handleInventoryEdit(item)}
+                      >
                         <Edit className="w-3 h-3" />
                       </Button>
                     </div>
@@ -930,6 +988,24 @@ const DrawingManagementTab: React.FC<DrawingManagementTabProps> = ({
 }) => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // 図面操作ハンドラー
+  const handleDrawingView = (drawing: DrawingItem) => {
+    alert(`${drawing.title}の詳細を表示します`);
+  };
+  
+  const handleDrawingDownload = (drawing: DrawingItem) => {
+    const link = document.createElement('a');
+    link.href = drawing.filePath;
+    link.download = `${drawing.drawingNumber}_${drawing.revision}.dwg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const handleDrawingEdit = (drawing: DrawingItem) => {
+    alert(`${drawing.title}の編集機能を開きます`);
+  };
 
   // フィルタリング
   const filteredDrawings = drawings.filter(drawing => {
@@ -950,10 +1026,10 @@ const DrawingManagementTab: React.FC<DrawingManagementTabProps> = ({
       {/* フィルター */}
       <div className="flex items-center space-x-4">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
             <SelectValue placeholder="図面種類で絞り込み" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
             <SelectItem value="all">すべての種類</SelectItem>
             <SelectItem value="assembly">組立図</SelectItem>
             <SelectItem value="part">部品図</SelectItem>
@@ -963,10 +1039,10 @@ const DrawingManagementTab: React.FC<DrawingManagementTabProps> = ({
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
             <SelectValue placeholder="ステータスで絞り込み" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
             <SelectItem value="all">すべてのステータス</SelectItem>
             <SelectItem value="draft">下書き</SelectItem>
             <SelectItem value="approved">承認済</SelectItem>
@@ -1032,13 +1108,28 @@ const DrawingManagementTab: React.FC<DrawingManagementTabProps> = ({
                 </td>
                 <td className="p-4">
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDrawingView(drawing)}
+                    >
                       <Eye className="w-3 h-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDrawingDownload(drawing)}
+                    >
                       <Download className="w-3 h-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDrawingEdit(drawing)}
+                    >
                       <Edit className="w-3 h-3" />
                     </Button>
                   </div>
@@ -1063,6 +1154,24 @@ const DeliveryManagementTab: React.FC<DeliveryManagementTabProps> = ({
   searchQuery 
 }) => {
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // 納品書操作ハンドラー
+  const handleDeliveryView = (delivery: DeliveryItem) => {
+    alert(`${delivery.deliveryNumber}の詳細を表示します`);
+  };
+  
+  const handleDeliveryDownload = (delivery: DeliveryItem) => {
+    const link = document.createElement('a');
+    link.href = delivery.filePath;
+    link.download = `${delivery.deliveryNumber}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const handleDeliveryEdit = (delivery: DeliveryItem) => {
+    alert(`${delivery.deliveryNumber}の編集機能を開きます`);
+  };
 
   // フィルタリング
   const filteredDeliveries = deliveries.filter(delivery => {
@@ -1081,10 +1190,10 @@ const DeliveryManagementTab: React.FC<DeliveryManagementTabProps> = ({
       {/* フィルター */}
       <div className="flex items-center space-x-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600">
             <SelectValue placeholder="ステータスで絞り込み" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600">
             <SelectItem value="all">すべてのステータス</SelectItem>
             <SelectItem value="pending">未発送</SelectItem>
             <SelectItem value="shipped">発送済</SelectItem>
@@ -1153,13 +1262,28 @@ const DeliveryManagementTab: React.FC<DeliveryManagementTabProps> = ({
                 </td>
                 <td className="p-4">
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDeliveryView(delivery)}
+                    >
                       <Eye className="w-3 h-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDeliveryDownload(delivery)}
+                    >
                       <Download className="w-3 h-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      onClick={() => handleDeliveryEdit(delivery)}
+                    >
                       <Edit className="w-3 h-3" />
                     </Button>
                   </div>
@@ -1224,32 +1348,38 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-slate-600">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">ファイルアップロード</h2>
-          <Button variant="outline" onClick={onClose}>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">ファイルアップロード</h2>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+          >
             ×
           </Button>
         </div>
 
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center ${
-            dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragOver 
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' 
+              : 'border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50'
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
         >
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <Upload className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
           {selectedFile ? (
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
-              <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400">{formatFileSize(selectedFile.size)}</p>
             </div>
           ) : (
             <div>
-              <p className="text-gray-600 mb-2">ファイルをドラッグ＆ドロップ</p>
-              <p className="text-gray-400 text-sm mb-4">または</p>
+              <p className="text-gray-600 dark:text-slate-300 mb-2">ファイルをドラッグ＆ドロップ</p>
+              <p className="text-gray-400 dark:text-slate-500 text-sm mb-4">または</p>
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -1257,7 +1387,11 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   onChange={handleFileSelect}
                   accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.gif,.xlsx,.xls,.csv,.zip,.rar,.7z"
                 />
-                <Button type="button" variant="outline">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+                >
                   ファイルを選択
                 </Button>
               </label>
@@ -1266,13 +1400,17 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
         </div>
 
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="outline" onClick={onClose}>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+          >
             キャンセル
           </Button>
           <Button
             onClick={handleUpload}
             disabled={!selectedFile}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             アップロード
           </Button>
