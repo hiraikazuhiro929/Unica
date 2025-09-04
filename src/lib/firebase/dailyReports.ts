@@ -10,7 +10,8 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  setDoc
 } from 'firebase/firestore';
 import { db } from './config';
 import { DailyReportEntry } from '@/app/tasks/types';

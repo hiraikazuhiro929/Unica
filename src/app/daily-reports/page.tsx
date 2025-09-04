@@ -501,7 +501,7 @@ export default function DailyReportPage() {
       <div className="max-w-6xl mx-auto">
         {/* エラー表示 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
               <AlertTriangle className="w-5 h-5" />
               <span className="font-medium">エラー</span>
@@ -512,7 +512,7 @@ export default function DailyReportPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setError(null)}
-                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-800/50"
               >
                 閉じる
               </Button>
@@ -521,7 +521,7 @@ export default function DailyReportPage() {
                 size="sm"
                 onClick={loadInitialData}
                 disabled={isLoading}
-                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-800/50"
               >
                 <RefreshCw className="w-4 h-4 mr-1" />
                 再試行
@@ -530,7 +530,7 @@ export default function DailyReportPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleUpdateWorkContent}
-                className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                className="border-blue-300 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-800/50"
               >
                 作業内容データ更新
               </Button>
@@ -561,12 +561,12 @@ export default function DailyReportPage() {
                 })}
               </p>
               {hasDraft && (
-                <span className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded border border-orange-200 dark:border-orange-800">
+                <span className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400 rounded border border-orange-200 dark:border-orange-800">
                   下書きあり
                 </span>
               )}
               {isSaving && (
-                <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3 animate-spin" />
                   保存中...
                 </span>
@@ -575,7 +575,7 @@ export default function DailyReportPage() {
           </div>
           
           {reportData.totalWorkMinutes! > 0 && (
-            <div className="flex items-center gap-2 text-lg font-semibold text-blue-700 dark:text-blue-400 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 text-lg font-semibold text-blue-700 dark:text-blue-400 px-3 py-2 bg-blue-50 dark:bg-blue-900/50 rounded border border-blue-200 dark:border-blue-800">
               <Clock className="w-5 h-5" />
               <span>合計: {totalHours}時間{totalMinutes}分</span>
             </div>
@@ -660,7 +660,7 @@ export default function DailyReportPage() {
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">作業実績</h2>
               </div>
               
-              <div className="bg-gray-50/50 dark:bg-slate-700/50 rounded-lg p-1">
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-1">
                 <IntegratedWorkTimeTable
                   entries={reportData.workTimeEntries || []}
                   workContentTypes={workContentTypes}
@@ -760,7 +760,7 @@ export default function DailyReportPage() {
                     size="sm"
                     onClick={migrateFromLocalStorage}
                     disabled={isMigrating || isSaving}
-                    className="text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                    className="text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-800/50"
                   >
                     {isMigrating ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                     データ移行
@@ -775,7 +775,7 @@ export default function DailyReportPage() {
                     variant="outline"
                     onClick={clearDraft}
                     disabled={isSaving}
-                    className="text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30"
+                    className="text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-800/50"
                   >
                     下書きクリア
                   </Button>

@@ -29,10 +29,10 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       <div className="space-y-4">
         {/* 営業担当 */}
         <div>
-          <Label className="text-gray-700 font-medium">営業担当</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">営業担当</Label>
           {editingField !== "salesPerson" ? (
             <div
-              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("salesPerson")}
             >
               <span className="text-gray-800 font-medium">
@@ -57,10 +57,10 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
 
         {/* 担当者 */}
         <div>
-          <Label className="text-gray-700 font-medium">担当者</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">担当者</Label>
           {editingField !== "assignee" ? (
             <div
-              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("assignee")}
             >
               <span className="text-gray-800 font-medium">
@@ -85,10 +85,10 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
 
         {/* 現場担当 */}
         <div>
-          <Label className="text-gray-700 font-medium">現場担当</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">現場担当</Label>
           {editingField !== "fieldPerson" ? (
             <div
-              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-purple-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-purple-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("fieldPerson")}
             >
               <span className="text-gray-800 font-medium">
@@ -113,7 +113,7 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
 
         {/* 割当機械 */}
         <div>
-          <Label className="text-gray-700 font-medium">割当機械</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">割当機械</Label>
           <MachineSelector
             selectedMachines={process.assignedMachines}
             onMachinesChange={(machines) =>

@@ -54,10 +54,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
       <div className="grid grid-cols-2 gap-4">
         {/* 受注日 */}
         <div>
-          <Label className="text-gray-700 font-medium">受注日</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">受注日</Label>
           {editingField !== "orderDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("orderDate")}
             >
               <span className="text-gray-800 font-medium">
@@ -97,10 +97,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
         {/* 入荷日 */}
         <div>
-          <Label className="text-gray-700 font-medium">入荷日</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">入荷日</Label>
           {editingField !== "arrivalDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("arrivalDate")}
             >
               <span className="text-gray-800 font-medium">
@@ -142,10 +142,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
         {/* データ作業日 */}
         <div>
-          <Label className="text-gray-700 font-medium">データ作業日</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">データ作業日</Label>
           {editingField !== "dataWorkDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("dataWorkDate")}
             >
               <span className="text-gray-800 font-medium">
@@ -187,10 +187,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
         {/* 加工開始予定日 */}
         <div>
-          <Label className="text-gray-700 font-medium">加工開始予定日</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">加工開始予定日</Label>
           {editingField !== "processingPlanDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("processingPlanDate")}
             >
               <span className="text-gray-800 font-medium">
@@ -234,10 +234,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
         {/* 出荷日 */}
         <div>
-          <Label className="text-gray-700 font-medium">出荷日</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">出荷日</Label>
           {editingField !== "shipmentDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("shipmentDate")}
             >
               <span className="text-gray-800 font-medium">
@@ -279,10 +279,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
         {/* 納期 */}
         <div>
-          <Label className="text-gray-700 font-medium">納期</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">納期</Label>
           {editingField !== "dueDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("dueDate")}
             >
               <span className="text-gray-800 font-medium">

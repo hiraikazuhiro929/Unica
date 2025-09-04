@@ -42,6 +42,8 @@ import {
   ChevronDown,
   ChevronRight,
   MinusCircle,
+  ChevronsDown,
+  ChevronsUp,
 } from "lucide-react";
 import type { 
   WorkHours, 
@@ -220,7 +222,15 @@ const WorkHoursManagement = () => {
     const totalActualHours = filteredData.reduce((sum, wh) => sum + (wh.actualHours?.total || 0), 0);
     const totalPlannedCost = filteredData.reduce((sum, wh) => sum + (wh.budget?.totalPlannedCost || 0), 0);
     const totalActualCost = filteredData.reduce((sum, wh) => sum + (wh.budget?.totalActualCost || 0), 0);
-    const averageEfficiency = totalPlannedHours > 0 ? (totalActualHours / totalPlannedHours) * 100 : 0;
+    
+    // 着手済み案件（実工数が0より大きい）のみで効率計算
+    const activeProjects = filteredData.filter(wh => (wh.actualHours?.total || 0) > 0);
+    const averageEfficiency = activeProjects.length > 0 
+      ? activeProjects.reduce((sum, wh) => {
+          const efficiency = (wh.actualHours?.total || 0) / (wh.plannedHours?.total || 1);
+          return sum + efficiency;
+        }, 0) / activeProjects.length * 100
+      : 0;
 
     const byStatus = {
       planning: filteredData.filter(wh => wh.status === "planning").length,
@@ -276,6 +286,7 @@ const WorkHoursManagement = () => {
       totalPlannedCost,
       totalActualCost,
       averageEfficiency,
+      activeProjectCount: activeProjects.length,
       byStatus,
       overBudget,
       byWorker,
@@ -556,7 +567,7 @@ const WorkHoursManagement = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen overflow-hidden flex flex-col">
         {/* ヘッダー - リアルタイムステータス付き */}
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 shadow-sm px-6 py-3">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3">
@@ -575,7 +586,7 @@ const WorkHoursManagement = () => {
               </div>
 
               {/* リアルタイムインジケーター */}
-              <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 dark:bg-slate-700 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Activity className={`w-4 h-4 ${currentStatus.isWorkingHours ? 'text-green-500 animate-pulse' : 'text-gray-400'}`} />
                   <span className="text-sm">
@@ -640,13 +651,13 @@ const WorkHoursManagement = () => {
         {/* メインコンテンツ - 3列レイアウト */}
         <div className="flex-1 overflow-hidden flex">
           {/* 左側：統計・ダッシュボード */}
-          <div className="w-80 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 p-4 overflow-y-auto">
+          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
             <div className="space-y-4">
               {/* 全体効率メーター */}
-              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 border-blue-200 dark:border-blue-700">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">全体効率</h3>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">着手済み案件効率</h3>
                     <BarChart3 className="w-4 h-4 text-blue-600" />
                   </div>
                 </CardHeader>
@@ -678,20 +689,28 @@ const WorkHoursManagement = () => {
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center flex-col">
                         <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                          {statistics.efficiency.toFixed(1)}%
+                          {statistics.activeProjectCount > 0 ? statistics.efficiency.toFixed(1) : '-'}%
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-slate-400">効率</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400">平均効率</span>
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-4">
+                  <div className="mt-4 space-y-2">
                     <div className="text-center">
-                      <div className="text-xs text-gray-500 dark:text-slate-400">計画</div>
-                      <div className="text-sm font-semibold">{formatHours(statistics.totalPlannedHours)}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">着手済み案件</div>
+                      <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        {statistics.activeProjectCount}件 / {statistics.totalProjects}件
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 dark:text-slate-400">実績</div>
-                      <div className="text-sm font-semibold">{formatHours(statistics.totalActualHours)}</div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 dark:text-slate-400">計画中</div>
+                        <div className="text-sm font-semibold text-yellow-600">{statistics.byStatus.planning}件</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 dark:text-slate-400">進行中</div>
+                        <div className="text-sm font-semibold text-blue-600">{statistics.byStatus.inProgress}件</div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -699,7 +718,7 @@ const WorkHoursManagement = () => {
 
               {/* アラート */}
               {statistics.overBudget > 0 && (
-                <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700">
+                <Card className="bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-700">
                   <CardContent className="p-3">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -717,7 +736,7 @@ const WorkHoursManagement = () => {
               )}
 
               {/* ステータス別内訳 */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                 <CardHeader className="pb-2">
                   <h3 className="text-sm font-semibold">ステータス別内訳</h3>
                 </CardHeader>
@@ -740,7 +759,7 @@ const WorkHoursManagement = () => {
               </Card>
 
               {/* コスト状況 */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold">コスト状況</h3>
@@ -777,7 +796,7 @@ const WorkHoursManagement = () => {
           </div>
 
           {/* 中央：工数テーブル */}
-          <div className="flex-1 flex flex-col bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700">
+          <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
             {/* フィルター */}
             <div className="border-b border-gray-200 dark:border-slate-700 px-4 py-3">
               <div className="flex items-center gap-3">
@@ -808,7 +827,7 @@ const WorkHoursManagement = () => {
                   onClick={() => setShowAnalyticsModal(true)}
                   variant="outline"
                   size="sm"
-                  className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                  className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-800/50"
                 >
                   <BarChart3 className="w-4 h-4 mr-1" />
                   分析
@@ -818,7 +837,7 @@ const WorkHoursManagement = () => {
                   onClick={createSampleData}
                   variant="outline"
                   size="sm"
-                  className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                  className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-800/50"
                 >
                   <Database className="w-4 h-4 mr-1" />
                   サンプル作成
@@ -841,7 +860,7 @@ const WorkHoursManagement = () => {
             {/* 工数テーブル */}
             <div className="flex-1 overflow-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                   <tr>
                     <th className="text-left p-3 font-semibold text-gray-900 dark:text-white text-sm">案件</th>
                     <th className="text-center p-3 font-semibold text-gray-900 dark:text-white text-sm">計画工数</th>
@@ -864,8 +883,8 @@ const WorkHoursManagement = () => {
                     return (
                       <React.Fragment key={wh.id}>
                         <tr 
-                          className={`border-b border-gray-200 dark:border-slate-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors ${
-                            isOverBudget ? 'bg-red-50/50 dark:bg-red-900/10' : ''
+                          className={`border-b border-gray-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-800/30 transition-colors ${
+                            isOverBudget ? 'bg-red-50 dark:bg-red-800/20' : ''
                           }`}
                         >
                         <td 
@@ -888,11 +907,6 @@ const WorkHoursManagement = () => {
                           <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
                             {formatHours(wh.plannedHours?.total || 0)}
                           </div>
-                          <div className="text-xs text-gray-500 space-x-1">
-                            <span>段:{(wh.plannedHours?.setup || 0).toFixed(1)}</span>
-                            <span>機:{(wh.plannedHours?.machining || 0).toFixed(1)}</span>
-                            <span>仕:{(wh.plannedHours?.finishing || 0).toFixed(1)}</span>
-                          </div>
                           <div className="text-xs text-gray-500 mt-1">
                             ¥{((wh.budget?.totalPlannedCost || 0) / 1000).toFixed(0)}K
                           </div>
@@ -900,11 +914,6 @@ const WorkHoursManagement = () => {
                         <td className="p-3 text-center">
                           <div className={`text-sm font-medium ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
                             {formatHours(wh.actualHours?.total || 0)}
-                          </div>
-                          <div className="text-xs text-gray-500 space-x-1">
-                            <span>段:{(wh.actualHours?.setup || 0).toFixed(1)}</span>
-                            <span>機:{(wh.actualHours?.machining || 0).toFixed(1)}</span>
-                            <span>仕:{(wh.actualHours?.finishing || 0).toFixed(1)}</span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             ¥{((wh.budget?.totalActualCost || 0) / 1000).toFixed(0)}K
@@ -948,11 +957,12 @@ const WorkHoursManagement = () => {
                               size="sm"
                               onClick={() => toggleRowExpansion(wh.id!)}
                               className="h-7 w-7 p-0 hover:bg-blue-100 dark:hover:bg-blue-800"
+                              title={expandedRows.has(wh.id!) ? "工程別詳細を折りたたむ" : "工程別詳細を展開"}
                             >
                               {expandedRows.has(wh.id!) ? (
-                                <ChevronDown className="w-3 h-3" />
+                                <ChevronsUp className="w-3 h-3" />
                               ) : (
-                                <ChevronRight className="w-3 h-3" />
+                                <ChevronsDown className="w-3 h-3" />
                               )}
                             </Button>
                             <Button
@@ -982,146 +992,201 @@ const WorkHoursManagement = () => {
 
                       {/* 展開された詳細行 */}
                       {expandedRows.has(wh.id!) && (
-                        <tr className="bg-gray-50 dark:bg-slate-700/50">
-                          <td colSpan={8} className="p-0">
-                            <div className="px-6 py-4 border-l-4 border-blue-500">
-                              <h4 className="text-sm font-semibold text-gray-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-blue-500" />
+                        <>
+                          {/* ヘッダー行 */}
+                          <tr className="bg-blue-50 dark:bg-blue-800/30">
+                            <td colSpan={8} className="px-3 py-2">
+                              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <Clock className="w-3 h-3 text-blue-500" />
                                 工程別詳細
                               </h4>
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {/* 段取り */}
-                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-600">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="font-medium text-gray-800 dark:text-slate-200">段取り</span>
-                                    <div className={`flex items-center gap-1 text-sm font-medium ${
-                                      (wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0) > 0 ? 'text-red-600' : 
-                                      (wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0) < 0 ? 'text-green-600' : 'text-gray-600'
-                                    }`}>
-                                      {(wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0) > 0 ? (
-                                        <TrendingUp className="w-3 h-3" />
-                                      ) : (wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0) < 0 ? (
-                                        <TrendingDown className="w-3 h-3" />
-                                      ) : (
-                                        <MinusCircle className="w-3 h-3" />
-                                      )}
-                                      <span>
-                                        {((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)) > 0 ? '+' : ''}
-                                        {((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)).toFixed(1)}h
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-blue-600 dark:text-blue-400">計画</span>
-                                      <span className="font-medium">{(wh.plannedHours?.setup || 0).toFixed(1)}h</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-green-600 dark:text-green-400">実績</span>
-                                      <span className="font-medium">{(wh.actualHours?.setup || 0).toFixed(1)}h</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* 機械加工 */}
-                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-600">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="font-medium text-gray-800 dark:text-slate-200">機械加工</span>
-                                    <div className={`flex items-center gap-1 text-sm font-medium ${
-                                      (wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0) > 0 ? 'text-red-600' : 
-                                      (wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0) < 0 ? 'text-green-600' : 'text-gray-600'
-                                    }`}>
-                                      {(wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0) > 0 ? (
-                                        <TrendingUp className="w-3 h-3" />
-                                      ) : (wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0) < 0 ? (
-                                        <TrendingDown className="w-3 h-3" />
-                                      ) : (
-                                        <MinusCircle className="w-3 h-3" />
-                                      )}
-                                      <span>
-                                        {((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)) > 0 ? '+' : ''}
-                                        {((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)).toFixed(1)}h
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-blue-600 dark:text-blue-400">計画</span>
-                                      <span className="font-medium">{(wh.plannedHours?.machining || 0).toFixed(1)}h</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-green-600 dark:text-green-400">実績</span>
-                                      <span className="font-medium">{(wh.actualHours?.machining || 0).toFixed(1)}h</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* 仕上げ */}
-                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-600">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="font-medium text-gray-800 dark:text-slate-200">仕上げ</span>
-                                    <div className={`flex items-center gap-1 text-sm font-medium ${
-                                      (wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0) > 0 ? 'text-red-600' : 
-                                      (wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0) < 0 ? 'text-green-600' : 'text-gray-600'
-                                    }`}>
-                                      {(wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0) > 0 ? (
-                                        <TrendingUp className="w-3 h-3" />
-                                      ) : (wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0) < 0 ? (
-                                        <TrendingDown className="w-3 h-3" />
-                                      ) : (
-                                        <MinusCircle className="w-3 h-3" />
-                                      )}
-                                      <span>
-                                        {((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)) > 0 ? '+' : ''}
-                                        {((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)).toFixed(1)}h
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-blue-600 dark:text-blue-400">計画</span>
-                                      <span className="font-medium">{(wh.plannedHours?.finishing || 0).toFixed(1)}h</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-green-600 dark:text-green-400">実績</span>
-                                      <span className="font-medium">{(wh.actualHours?.finishing || 0).toFixed(1)}h</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* カスタム工程 */}
-                                {wh.customPlannedSteps?.map((step: any) => (
-                                  <div key={step.id} className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                                    <div className="flex items-center justify-between mb-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-medium text-gray-800 dark:text-slate-200">{step.name}</span>
-                                        <Badge variant="outline" className="text-xs border-green-500 text-green-600">追加</Badge>
-                                      </div>
-                                      <div className="flex items-center gap-1 text-sm font-medium text-gray-600">
-                                        <MinusCircle className="w-3 h-3" />
-                                        <span>-</span>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-blue-600 dark:text-blue-400">計画</span>
-                                        <span className="font-medium">{(step.hours || 0).toFixed(1)}h</span>
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-green-600 dark:text-green-400">実績</span>
-                                        <span className="font-medium text-gray-400">日報連携</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
+                            </td>
+                          </tr>
+                          
+                          {/* 段取り行 */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="p-3">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">段取り</div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                {(wh.plannedHours?.setup || 0).toFixed(1)}h
                               </div>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-green-600">
+                                {(wh.actualHours?.setup || 0).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`text-sm font-bold ${
+                                (wh.plannedHours?.setup || 0) > 0 ? 
+                                  ((wh.actualHours?.setup || 0) / (wh.plannedHours?.setup || 1) * 100) <= 100 ? 'text-green-600' : 
+                                  ((wh.actualHours?.setup || 0) / (wh.plannedHours?.setup || 1) * 100) <= 120 ? 'text-yellow-600' : 'text-red-600'
+                                : 'text-gray-500'
+                              }`}>
+                                {(wh.plannedHours?.setup || 0) > 0 ? 
+                                  ((wh.actualHours?.setup || 0) / (wh.plannedHours?.setup || 1) * 100).toFixed(0) + '%'
+                                  : '-'
+                                }
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className={`text-sm font-medium ${
+                                ((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)) > 0 ? 'text-red-600' : 
+                                ((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)) < 0 ? 'text-green-600' : 'text-gray-600'
+                              }`}>
+                                {((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)) > 0 ? '+' : ''}
+                                {((wh.actualHours?.setup || 0) - (wh.plannedHours?.setup || 0)).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">段取り</Badge>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                          </tr>
+
+                          {/* 機械加工行 */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="p-3">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">機械加工</div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                {(wh.plannedHours?.machining || 0).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-green-600">
+                                {(wh.actualHours?.machining || 0).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`text-sm font-bold ${
+                                (wh.plannedHours?.machining || 0) > 0 ? 
+                                  ((wh.actualHours?.machining || 0) / (wh.plannedHours?.machining || 1) * 100) <= 100 ? 'text-green-600' : 
+                                  ((wh.actualHours?.machining || 0) / (wh.plannedHours?.machining || 1) * 100) <= 120 ? 'text-yellow-600' : 'text-red-600'
+                                : 'text-gray-500'
+                              }`}>
+                                {(wh.plannedHours?.machining || 0) > 0 ? 
+                                  ((wh.actualHours?.machining || 0) / (wh.plannedHours?.machining || 1) * 100).toFixed(0) + '%'
+                                  : '-'
+                                }
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className={`text-sm font-medium ${
+                                ((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)) > 0 ? 'text-red-600' : 
+                                ((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)) < 0 ? 'text-green-600' : 'text-gray-600'
+                              }`}>
+                                {((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)) > 0 ? '+' : ''}
+                                {((wh.actualHours?.machining || 0) - (wh.plannedHours?.machining || 0)).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Badge className="bg-orange-100 text-orange-800 text-xs">加工</Badge>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                          </tr>
+
+                          {/* 仕上げ行 */}
+                          <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td className="p-3">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">仕上げ</div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                {(wh.plannedHours?.finishing || 0).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="text-sm font-medium text-green-600">
+                                {(wh.actualHours?.finishing || 0).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`text-sm font-bold ${
+                                (wh.plannedHours?.finishing || 0) > 0 ? 
+                                  ((wh.actualHours?.finishing || 0) / (wh.plannedHours?.finishing || 1) * 100) <= 100 ? 'text-green-600' : 
+                                  ((wh.actualHours?.finishing || 0) / (wh.plannedHours?.finishing || 1) * 100) <= 120 ? 'text-yellow-600' : 'text-red-600'
+                                : 'text-gray-500'
+                              }`}>
+                                {(wh.plannedHours?.finishing || 0) > 0 ? 
+                                  ((wh.actualHours?.finishing || 0) / (wh.plannedHours?.finishing || 1) * 100).toFixed(0) + '%'
+                                  : '-'
+                                }
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className={`text-sm font-medium ${
+                                ((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)) > 0 ? 'text-red-600' : 
+                                ((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)) < 0 ? 'text-green-600' : 'text-gray-600'
+                              }`}>
+                                {((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)) > 0 ? '+' : ''}
+                                {((wh.actualHours?.finishing || 0) - (wh.plannedHours?.finishing || 0)).toFixed(1)}h
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Badge className="bg-green-100 text-green-800 text-xs">仕上</Badge>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs text-gray-400">-</span>
+                            </td>
+                          </tr>
+
+                          {/* カスタム工程行 */}
+                          {wh.customPlannedSteps?.map((step: any) => (
+                            <tr key={step.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 bg-green-50/30 dark:bg-green-900/10">
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{step.name}</span>
+                                  <Badge variant="outline" className="text-xs border-green-500 text-green-600">追加</Badge>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                  {(step.hours || 0).toFixed(1)}h
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="text-sm text-gray-400">
+                                  日報連携
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="text-sm font-medium text-gray-400">-</div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="text-sm font-medium text-gray-400">-</div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <Badge variant="outline" className="text-xs border-green-500 text-green-600">カスタム</Badge>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="text-xs text-gray-400">-</span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="text-xs text-gray-400">-</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </>
                       )}
                     </React.Fragment>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
@@ -1136,8 +1201,8 @@ const WorkHoursManagement = () => {
           </div>
 
           {/* 右側：マスタ管理・詳細情報 */}
-          <div className="w-80 bg-white dark:bg-slate-800 flex flex-col">
-            <div className="border-b border-gray-200 dark:border-slate-700 p-4">
+          <div className="w-80 bg-white dark:bg-gray-800 flex flex-col">
+            <div className="border-b border-gray-200 dark:border-gray-700 p-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">マスタ管理</h3>
             </div>
             
@@ -1377,7 +1442,7 @@ const WorkHoursManagement = () => {
       {/* Analytics Modal */}
       {showAnalyticsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-600">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">工数分析</h2>
               <Button
@@ -1390,7 +1455,7 @@ const WorkHoursManagement = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 作業者別効率 */}
-              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">作業者別効率</h3>
                 <div className="space-y-3">
                   {statistics.byWorker.map((worker) => (
@@ -1416,7 +1481,7 @@ const WorkHoursManagement = () => {
               </div>
 
               {/* 機械稼働率 */}
-              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">機械稼働率</h3>
                 <div className="space-y-3">
                   {statistics.byMachine.map((machine) => (

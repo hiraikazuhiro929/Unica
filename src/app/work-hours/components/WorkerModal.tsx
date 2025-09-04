@@ -79,7 +79,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-md border border-gray-200 dark:border-slate-600 shadow-xl">
-        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-700 dark:to-slate-600">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-600" />
@@ -146,7 +146,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
                 <Badge
                   key={index}
                   variant="secondary"
-                  className="cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20"
+                  className="cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/50"
                   onClick={() => removeSkill(skill)}
                 >
                   {skill} ×
@@ -156,7 +156,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
           </div>
 
           {worker && (
-            <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <User className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium text-gray-700 dark:text-slate-300">

@@ -148,12 +148,12 @@ const ProcessList = () => {
   // ステータス別カラー
   const getStatusColor = (status: Process["status"]) => {
     const colors = {
-      planning: "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
-      "data-work": "bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800",
-      processing: "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-      finishing: "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800",
-      completed: "bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700",
-      delayed: "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800",
+      planning: "bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+      "data-work": "bg-purple-50 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800",
+      processing: "bg-amber-50 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+      finishing: "bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800",
+      completed: "bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700",
+      delayed: "bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800",
     };
     return colors[status];
   };
@@ -174,10 +174,10 @@ const ProcessList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="ml-16 h-screen flex flex-col">
         {/* シンプルなヘッダー */}
-        <div className="bg-white dark:bg-slate-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <ClipboardList className="w-8 h-8 text-blue-600" />
@@ -230,7 +230,7 @@ const ProcessList = () => {
                   <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">ステータス</div>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'all' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'all' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('all')}
                   >
@@ -238,7 +238,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'planning' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'planning' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('planning')}
                   >
@@ -246,7 +246,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'processing' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'processing' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('processing')}
                   >
@@ -254,7 +254,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'completed' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'completed' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('completed')}
                   >
@@ -294,7 +294,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'machine' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'machine' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('machine')}
                       >
@@ -302,7 +302,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'person' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'person' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('person')}
                       >
@@ -310,7 +310,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'project' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'project' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('project')}
                       >
@@ -419,7 +419,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'status' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'status' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('status')}
                       >
@@ -427,7 +427,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('priority')}
                       >
@@ -435,7 +435,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'assignee' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'assignee' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('assignee')}
                       >
@@ -449,7 +449,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'dueDate' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'dueDate' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('dueDate')}
                       >
@@ -457,7 +457,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('priority')}
                       >
@@ -465,7 +465,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'progress' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'progress' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('progress')}
                       >

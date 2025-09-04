@@ -385,7 +385,7 @@ const OverviewTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[]
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Status Distribution */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">ステータス分布</h3>
         </CardHeader>
@@ -395,7 +395,7 @@ const OverviewTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[]
       </Card>
 
       {/* Efficiency Trend */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">効率性トレンド</h3>
         </CardHeader>
@@ -405,7 +405,7 @@ const OverviewTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[]
       </Card>
 
       {/* Recent Activity */}
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">最近のアクティビティ</h3>
         </CardHeader>
@@ -424,14 +424,14 @@ const EfficiencyTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours
   return (
     <div className="space-y-6">
       {/* Efficiency by Category */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">カテゴリ別効率性</h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {analyticsData.efficiencyByCategory.map((category: any) => (
-              <div key={category.name} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <div key={category.name} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-gray-800 dark:text-gray-200">{category.name}</span>
                   <Badge
@@ -457,7 +457,7 @@ const EfficiencyTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours
 
       {/* Top and Bottom Performers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
           <CardHeader>
             <h3 className="text-lg font-semibold">効率性上位プロジェクト</h3>
           </CardHeader>
@@ -466,7 +466,7 @@ const EfficiencyTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
           <CardHeader>
             <h3 className="text-lg font-semibold">改善要プロジェクト</h3>
           </CardHeader>
@@ -487,7 +487,7 @@ const CostsTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[] }>
     <div className="space-y-6">
       {/* Cost Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
           <CardHeader>
             <h3 className="text-lg font-semibold">コスト内訳</h3>
           </CardHeader>
@@ -496,7 +496,7 @@ const CostsTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[] }>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
           <CardHeader>
             <h3 className="text-lg font-semibold">予算 vs 実績</h3>
           </CardHeader>
@@ -507,7 +507,7 @@ const CostsTab: React.FC<{ analyticsData: any; workHours: EnhancedWorkHours[] }>
       </div>
 
       {/* Cost Variance Analysis */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">コスト差異分析</h3>
         </CardHeader>
@@ -528,14 +528,14 @@ const ProductivityTab: React.FC<{
   return (
     <div className="space-y-6">
       {/* Worker Productivity */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">作業者生産性</h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {statistics.byWorker.map((worker) => (
-              <div key={worker.workerId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
+              <div key={worker.workerId} className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3 mb-3">
                   <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
@@ -569,7 +569,7 @@ const ProductivityTab: React.FC<{
       </Card>
 
       {/* Machine Utilization */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">機械稼働率</h3>
         </CardHeader>
@@ -672,7 +672,7 @@ const ProjectsTab: React.FC<{ workHours: EnhancedWorkHours[]; analyticsData: any
       </div>
 
       {/* Projects Table */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
         <CardHeader>
           <h3 className="text-lg font-semibold">プロジェクト一覧</h3>
         </CardHeader>
@@ -692,7 +692,7 @@ const ProjectsTab: React.FC<{ workHours: EnhancedWorkHours[]; analyticsData: any
               </thead>
               <tbody>
                 {sortedProjects.map((project) => (
-                  <tr key={project.id} className="border-b hover:bg-gray-50">
+                  <tr key={project.id} className="border-b hover:bg-gray-50 dark:hover:bg-slate-700/50">
                     <td className="p-3">
                       <div className="font-medium">{project.projectName}</div>
                       <div className="text-xs text-gray-500">{project.managementNumber}</div>
@@ -941,7 +941,7 @@ const CostVarianceTable: React.FC<{ workHours: EnhancedWorkHours[] }> = ({ workH
               : 0;
 
             return (
-              <tr key={wh.id} className="border-b hover:bg-gray-50">
+              <tr key={wh.id} className="border-b hover:bg-gray-50 dark:hover:bg-slate-700/50">
                 <td className="p-3">{wh.projectName}</td>
                 <td className="p-3">¥{wh.budget.totalPlannedCost.toLocaleString()}</td>
                 <td className="p-3">¥{wh.budget.totalActualCost.toLocaleString()}</td>
@@ -971,7 +971,7 @@ const PerformanceList: React.FC<{ projects: any[]; isTopPerformers: boolean }> =
   return (
     <div className="space-y-3">
       {projects.map((project, index) => (
-        <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
           <div className="flex items-center gap-3">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
               isTopPerformers ? "bg-green-500" : "bg-red-500"

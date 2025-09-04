@@ -23,7 +23,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
         {/* 基本工数 */}
         <div className="space-y-3">
           <div className="flex items-center py-1">
-            <Label className="text-gray-700 font-medium w-32">
+            <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               段取り (時間)
             </Label>
             <span className="font-semibold text-gray-800">
@@ -32,7 +32,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
           </div>
 
           <div className="flex items-center py-1">
-            <Label className="text-gray-700 font-medium w-32">
+            <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               機械加工 (時間)
             </Label>
             <span className="font-semibold text-gray-800">
@@ -41,7 +41,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
           </div>
 
           <div className="flex items-center py-1">
-            <Label className="text-gray-700 font-medium w-32">
+            <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               仕上げ (時間)
             </Label>
             <span className="font-semibold text-gray-800">
@@ -63,7 +63,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             {process.workDetails.additionalSetup &&
               process.workDetails.additionalSetup > 0 && (
                 <div className="flex items-center py-1">
-                  <Label className="text-gray-700 font-medium w-32">
+                  <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加段取り
                   </Label>
                   <span className="font-semibold text-gray-800">
@@ -75,7 +75,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             {process.workDetails.additionalMachining &&
               process.workDetails.additionalMachining > 0 && (
                 <div className="flex items-center py-1">
-                  <Label className="text-gray-700 font-medium w-32">
+                  <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加機械加工
                   </Label>
                   <span className="font-semibold text-gray-800">
@@ -87,7 +87,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             {process.workDetails.additionalFinishing &&
               process.workDetails.additionalFinishing > 0 && (
                 <div className="flex items-center py-1">
-                  <Label className="text-gray-700 font-medium w-32">
+                  <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加仕上げ
                   </Label>
                   <span className="font-semibold text-gray-800">

@@ -310,9 +310,9 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-5xl h-[90vh] flex flex-col border border-gray-200 dark:border-slate-600 shadow-xl">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-5xl h-[90vh] flex flex-col border border-gray-200 dark:border-gray-600 shadow-xl">
         {/* ヘッダー - 固定 */}
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -344,7 +344,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
         {/* コンテンツ - スクロール可能 */}
         <div className="flex-1 overflow-y-auto p-4">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-white dark:bg-slate-800 z-10">
+            <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <TabsTrigger value="overview" className="text-sm">基本情報</TabsTrigger>
               <TabsTrigger value="breakdown" className="text-sm">工数・コスト</TabsTrigger>
               <TabsTrigger value="daily-reports" className="text-sm">日報連携</TabsTrigger>
@@ -439,7 +439,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                     <Activity className="w-4 h-4 text-green-500" />
                     効率性指標
                   </h3>
-                  <Card className="border-gray-200 dark:border-slate-600">
+                  <Card className="bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between py-2">
                         <div className="flex items-center gap-2">
@@ -473,8 +473,8 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
             </TabsContent>
 
             <TabsContent value="breakdown" className="mt-4">
-              <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                <div className="bg-gray-50 dark:bg-slate-700 px-6 py-3 border-b border-gray-200 dark:border-slate-600">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 border-b border-gray-200 dark:border-gray-600">
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-indigo-500" />
                     工程別工数
@@ -791,7 +791,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
 
                 {/* カスタム計画工程 */}
                 {customPlannedSteps.map((step, index) => (
-                  <div key={step.id} className="px-6 py-4 bg-green-50/50 dark:bg-green-900/10 border-t border-green-200 dark:border-green-700">
+                  <div key={step.id} className="px-6 py-4 bg-green-50 dark:bg-green-900/50 border-t border-green-200 dark:border-green-700">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <Select
@@ -816,7 +816,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeCustomPlannedStep(step.id)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-800/50"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -915,7 +915,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
             </TabsContent>
 
             <TabsContent value="daily-reports" className="mt-4 space-y-3">
-              <Card className="border-blue-200 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10">
+              <Card className="border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/50">
                 <CardHeader className="p-4">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     <Database className="w-4 h-4 text-blue-600" />
@@ -942,7 +942,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
         </div>
         
         {/* フッター - 固定 */}
-        <div className="flex-shrink-0 flex items-center justify-end gap-2 p-4 border-t border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-800">
+        <div className="flex-shrink-0 flex items-center justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
           <Button 
             variant="outline" 
             onClick={onClose}

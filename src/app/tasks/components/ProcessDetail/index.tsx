@@ -79,7 +79,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6"
       onMouseDown={(e) => {
         if (
           !document.getSelection()?.toString() &&
@@ -91,7 +91,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
       }}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-600"
         style={{ borderTopColor: getClientColor(editedProcess.orderClient) }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -118,7 +118,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
         </div>
 
         {/* コンテンツ */}
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1 bg-gray-50 dark:bg-gray-800">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 左カラム */}
             <div className="space-y-6">

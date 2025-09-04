@@ -218,7 +218,7 @@ export default function ModernSidebar() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="h-full bg-slate-800 dark:bg-slate-900 backdrop-blur-sm border-r border-slate-700 dark:border-slate-800 shadow-lg flex flex-col py-4 overflow-hidden transition-colors duration-300">
+      <div className="h-full bg-slate-800 dark:bg-slate-900 border-r border-slate-700 dark:border-slate-800 shadow-lg flex flex-col py-4 overflow-hidden transition-colors duration-300">
         {/* ロゴ */}
         <div className="mb-8 px-3">
           <div className="flex items-center">
@@ -254,8 +254,8 @@ export default function ModernSidebar() {
                 <button
                   className={`w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                     isActive 
-                      ? "bg-slate-200 dark:bg-slate-700/50" 
-                      : "hover:bg-slate-200 dark:hover:bg-slate-700/30"
+                      ? "bg-slate-200 dark:bg-slate-700" 
+                      : "hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                   onClick={() => toggleExpanded(item.id)}
                 >
@@ -303,7 +303,7 @@ export default function ModernSidebar() {
                         <button
                           key={index}
                           onClick={() => router.push(subItem.path)}
-                          className="w-full flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+                          className="w-full flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
                         >
                           <SubIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-200 dark:group-hover:text-slate-200 transition-colors" />
                           <span className="ml-3 text-slate-300 dark:text-slate-300 group-hover:text-white dark:group-hover:text-white transition-colors">
@@ -323,7 +323,7 @@ export default function ModernSidebar() {
         <div className="px-2 space-y-1 border-t border-slate-300 dark:border-slate-700 pt-4">
           {/* クイックアクセス */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
             onClick={() => router.push("/shortcuts")}
           >
             <Zap className="w-6 h-6 text-slate-300 dark:text-slate-400 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-all duration-300 flex-shrink-0" />
@@ -338,7 +338,7 @@ export default function ModernSidebar() {
           
           {/* タスク管理 */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
             onClick={() => router.push("/task")}
           >
             <CheckSquare className="w-6 h-6 text-slate-300 dark:text-slate-400 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-all duration-300 flex-shrink-0" />
@@ -353,7 +353,7 @@ export default function ModernSidebar() {
           
           {/* メモ */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
             onClick={() => router.push("/notes")}
           >
             <StickyNote className="w-6 h-6 text-slate-300 dark:text-slate-400 group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-all duration-300 flex-shrink-0" />
@@ -368,7 +368,7 @@ export default function ModernSidebar() {
           
           {/* カレンダー */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
             onClick={() => router.push("/calendar")}
           >
             <Calendar className="w-6 h-6 text-slate-300 dark:text-slate-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-all duration-300 flex-shrink-0" />
@@ -383,7 +383,7 @@ export default function ModernSidebar() {
           
           {/* チャット */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group relative"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group relative"
             onClick={() => {
               router.push("/chat");
               setUnreadChatCount(0);
@@ -406,7 +406,7 @@ export default function ModernSidebar() {
           
           {/* 検索 */}
           <button 
-            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 group"
+            className="w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 group"
             onClick={() => router.push("/search")}
           >
             <Search className="w-6 h-6 text-slate-300 dark:text-slate-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-all duration-300 flex-shrink-0" />
@@ -423,7 +423,7 @@ export default function ModernSidebar() {
         
         {/* ユーザー設定 */}
         <div className="mt-2 relative" style={{ paddingLeft: '16px' }} ref={userMenuRef}>
-          <div className="flex items-center py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700/50 cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
+          <div className="flex items-center py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0">
               {user?.name?.charAt(0) || 'U'}
             </div>
@@ -456,7 +456,7 @@ export default function ModernSidebar() {
                     {isDivider && <div className="border-t border-slate-300 dark:border-slate-600 my-2" />}
                     <button
                       className={`w-full flex items-center px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors ${
-                        item.label === "ログアウト" ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" : "text-slate-700 dark:text-slate-300"
+                        item.label === "ログアウト" ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-800/50" : "text-slate-700 dark:text-slate-300"
                       }`}
                       onClick={async () => {
                         console.log('🔘 User menu item clicked:', item.label, item.path || item.action);

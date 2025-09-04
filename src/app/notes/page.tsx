@@ -51,14 +51,14 @@ import { storage } from "@/lib/firebase/config";
 // Google Keep風カラーパレット
 const NOTE_COLORS = [
   { name: "デフォルト", value: "bg-white", class: "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600" },
-  { name: "黄色", value: "bg-yellow-100", class: "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-800/50" },
-  { name: "オレンジ", value: "bg-orange-100", class: "bg-orange-100 dark:bg-orange-900/20 border-orange-300 dark:border-orange-800/50" },
-  { name: "赤", value: "bg-red-100", class: "bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-800/50" },
-  { name: "ピンク", value: "bg-pink-100", class: "bg-pink-100 dark:bg-pink-900/20 border-pink-300 dark:border-pink-800/50" },
-  { name: "紫", value: "bg-purple-100", class: "bg-purple-100 dark:bg-purple-900/20 border-purple-300 dark:border-purple-800/50" },
-  { name: "青", value: "bg-blue-100", class: "bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800/50" },
-  { name: "青緑", value: "bg-teal-100", class: "bg-teal-100 dark:bg-teal-900/20 border-teal-300 dark:border-teal-800/50" },
-  { name: "緑", value: "bg-green-100", class: "bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-800/50" },
+  { name: "黄色", value: "bg-yellow-100", class: "bg-yellow-100 dark:bg-yellow-900/50 border-yellow-300 dark:border-yellow-800/50" },
+  { name: "オレンジ", value: "bg-orange-100", class: "bg-orange-100 dark:bg-orange-900/50 border-orange-300 dark:border-orange-800/50" },
+  { name: "赤", value: "bg-red-100", class: "bg-red-100 dark:bg-red-900/50 border-red-300 dark:border-red-800/50" },
+  { name: "ピンク", value: "bg-pink-100", class: "bg-pink-100 dark:bg-pink-900/50 border-pink-300 dark:border-pink-800/50" },
+  { name: "紫", value: "bg-purple-100", class: "bg-purple-100 dark:bg-purple-900/50 border-purple-300 dark:border-purple-800/50" },
+  { name: "青", value: "bg-blue-100", class: "bg-blue-100 dark:bg-blue-900/50 border-blue-300 dark:border-blue-800/50" },
+  { name: "青緑", value: "bg-teal-100", class: "bg-teal-100 dark:bg-teal-900/50 border-teal-300 dark:border-teal-800/50" },
+  { name: "緑", value: "bg-green-100", class: "bg-green-100 dark:bg-green-900/50 border-green-300 dark:border-green-800/50" },
   { name: "グレー", value: "bg-gray-100", class: "bg-gray-100 dark:bg-slate-700 border-gray-300 dark:border-slate-600" },
 ];
 
@@ -1188,7 +1188,7 @@ const NotesPage = () => {
                   {(note as any).labels.slice(0, 3).map((label: string, index: number) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full"
+                      className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded-full"
                     >
                       <Tag className="w-3 h-3 mr-1" />
                       {label}
@@ -1329,7 +1329,7 @@ const NotesPage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <div className="ml-16 h-screen flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white dark:bg-slate-800/95 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 px-6 py-4 transition-colors">
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 transition-colors">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <StickyNote className="w-8 h-8 text-yellow-600 dark:text-yellow-500" />

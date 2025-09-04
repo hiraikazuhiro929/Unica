@@ -48,13 +48,13 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
       <div className="grid grid-cols-2 gap-3">
         {/* 案件名 */}
         <div className="col-span-2">
-          <Label className="text-gray-700 font-medium">案件名</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">案件名</Label>
           {editingField !== "projectName" ? (
             <div
-              className="p-3 hover:bg-blue-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("projectName")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {process.projectName || "未設定"}
               </span>
             </div>
@@ -76,13 +76,13 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* 管理番号 */}
         <div className="col-span-2">
-          <Label className="text-gray-700 font-medium">管理番号</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">管理番号</Label>
           {editingField !== "managementNumber" ? (
             <div
-              className="p-3 hover:bg-blue-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("managementNumber")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {process.managementNumber || "未設定"}
               </span>
             </div>
@@ -106,14 +106,14 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* 受注先 */}
         <div>
-          <Label className="text-gray-700 font-medium">受注先</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">受注先</Label>
           <div className="relative">
             {editingField !== "orderClient" ? (
               <div
-                className="p-3 hover:bg-blue-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+                className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
                 onClick={() => setEditingField("orderClient")}
               >
-                <span className="text-gray-800 font-medium">
+                <span className="text-gray-800 dark:text-gray-200 font-medium">
                   {process.orderClient || "未設定"}
                 </span>
               </div>
@@ -147,13 +147,13 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* 数量 */}
         <div>
-          <Label className="text-gray-700 font-medium">数量</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">数量</Label>
           {editingField !== "quantity" ? (
             <div
-              className="p-3 hover:bg-blue-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 transition-all min-h-[44px] flex items-center bg-gray-50"
+              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
               onClick={() => setEditingField("quantity")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {process.quantity}個
               </span>
             </div>
@@ -178,7 +178,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* 優先度 */}
         <div>
-          <Label className="text-gray-700 font-medium">優先度</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">優先度</Label>
           <Select
             value={process.priority}
             onValueChange={(value: Process["priority"]) =>
@@ -198,7 +198,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* ステータス */}
         <div>
-          <Label className="text-gray-700 font-medium">ステータス</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">ステータス</Label>
           <Select
             value={process.status}
             onValueChange={(value: Process["status"]) =>
@@ -221,7 +221,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
         {/* 備考 */}
         <div className="col-span-2">
-          <Label className="text-gray-700 font-medium">備考</Label>
+          <Label className="text-gray-700 dark:text-gray-300 font-medium">備考</Label>
           <Textarea
             value={process.remarks}
             onChange={(e) => handleFieldChange("remarks", e.target.value)}
