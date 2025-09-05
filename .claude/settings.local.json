@@ -8,7 +8,18 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(npm run build:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\tasks/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\tasks/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\daily-reports\\components/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\work-hours\\components/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\lib\\firebase/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\lib\\firebase/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\lib\\firebase/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\lib\\firebase/**)",
+      "Bash(npm run type-check:*)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\daily-reports\\components/**)",
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica/**)"
     ],
     "deny": [],
     "ask": []

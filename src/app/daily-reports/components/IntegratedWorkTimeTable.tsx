@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Clock, Settings, BarChart3, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WorkTimeEntry, WorkContentType } from "@/app/tasks/types";
+import TimelineWorkTable from "./TimelineWorkTable";
 
 interface IntegratedWorkTimeTableProps {
   entries: WorkTimeEntry[];
@@ -42,7 +42,13 @@ export default function IntegratedWorkTimeTable({
   onProcessProgressUpdate,
   disabled = false 
 }: IntegratedWorkTimeTableProps) {
-  const [newEntry, setNewEntry] = useState<Partial<WorkTimeEntry>>({
+  const [workFrames, setWorkFrames] = useState<any[]>([]);
+  const [availableProcesses, setAvailableProcesses] = useState<AvailableProcess[]>([]);
+  const [availableMachines, setAvailableMachines] = useState<Machine[]>([]);
+  const [localWorkContentTypes, setLocalWorkContentTypes] = useState<WorkContentType[]>([]);
+  const [isLoadingProcesses, setIsLoadingProcesses] = useState(false);
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
+  const [newEntry, setNewEntry] = useState({
     startTime: "",
     endTime: "",
     workContentId: "",
@@ -50,17 +56,12 @@ export default function IntegratedWorkTimeTable({
     durationMinutes: 0,
     machineId: "",
     machineName: "",
+    operationType: '手動' as '自動' | '手動'
   });
-  
-  const [availableProcesses, setAvailableProcesses] = useState<AvailableProcess[]>([]);
-  const [availableMachines, setAvailableMachines] = useState<Machine[]>([]);
   const [selectedProcessId, setSelectedProcessId] = useState<string>("");
   const [processProgress, setProcessProgress] = useState<number>(0);
-  const [isLoadingProcesses, setIsLoadingProcesses] = useState(false);
-  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
-  const [newWorkContentName, setNewWorkContentName] = useState('');
+  const [newWorkContentName, setNewWorkContentName] = useState("");
   const [showNewWorkContentForm, setShowNewWorkContentForm] = useState(false);
-  const [localWorkContentTypes, setLocalWorkContentTypes] = useState<WorkContentType[]>([]);
 
   // 利用可能な工程を読み込み
   useEffect(() => {
@@ -281,6 +282,7 @@ export default function IntegratedWorkTimeTable({
       managementNumber: selectedProcess?.managementNumber || "",
       isSyncedToProcess: !!selectedProcessId,
       syncedAt: selectedProcessId ? new Date().toISOString() : "",
+      operationType: newEntry.operationType || '手動',
     };
 
     onEntriesChange([...entries, entry]);
@@ -294,6 +296,7 @@ export default function IntegratedWorkTimeTable({
       durationMinutes: 0,
       machineId: "",
       machineName: "",
+      operationType: '手動',
     });
   };
 
@@ -401,6 +404,14 @@ export default function IntegratedWorkTimeTable({
   // 選択中の工程情報
   const selectedProcess = availableProcesses.find(p => p.id === selectedProcessId);
 
+  // 作業枠モードのデータ変換
+  const handleWorkFramesChange = (frames: any[]) => {
+    setWorkFrames(frames);
+    // 作業枠のデータを通常のエントリー形式に変換
+    const allEntries = frames.flatMap(frame => frame.entries);
+    onEntriesChange(allEntries);
+  };
+
   return (
     <Card className="shadow border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
       <CardHeader className="pb-4">
@@ -410,391 +421,15 @@ export default function IntegratedWorkTimeTable({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* 工程選択と進捗 */}
-        <div className="p-4 bg-blue-50 dark:bg-slate-700/50 border border-blue-200 dark:border-slate-600 rounded-lg">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-            <div className="flex-1 space-y-2">
-              <Label className="text-gray-700 dark:text-slate-300">工程選択</Label>
-              <Select 
-                value={selectedProcessId} 
-                onValueChange={handleProcessSelect}
-                disabled={disabled || isLoadingProcesses}
-              >
-                <SelectTrigger className="bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white">
-                  <SelectValue placeholder="工程を選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProcesses.map((process) => (
-                    <SelectItem key={process.id} value={process.id}>
-                      {process.managementNumber} - {process.projectName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedProcess && (
-                <div className="text-sm text-gray-600 dark:text-slate-400">
-                  選択中: {selectedProcess.projectName}
-                </div>
-              )}
-            </div>
-            
-            {selectedProcessId && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
-                  <BarChart3 className="w-4 h-4" />
-                  進捗
-                </Label>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={processProgress.toString()}
-                    onValueChange={(value) => handleProgressChange(Number(value))}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className="w-20 bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-48">
-                      {Array.from({ length: 21 }, (_, i) => i * 5).map((progress) => (
-                        <SelectItem key={progress} value={progress.toString()}>
-                          {progress}%
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="bg-gray-200 dark:bg-slate-600 rounded-full h-2.5 w-40">
-                    <div 
-                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, Math.max(0, processProgress))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 既存エントリ一覧 */}
-        {entries.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-medium text-gray-800 dark:text-white">作業実績</h3>
-            {entries.map((entry, index) => (
-              <div
-                key={entry.id}
-                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-3 sm:p-4"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
-                  {/* 開始時間 */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">開始時間</Label>
-                    <Input
-                      type="time"
-                      value={entry.startTime}
-                      onChange={(e) => updateEntryTime(entry.id, "startTime", e.target.value)}
-                      disabled={disabled}
-                      className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* 終了時間 */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">終了時間</Label>
-                    <Input
-                      type="time"
-                      value={entry.endTime}
-                      onChange={(e) => updateEntryTime(entry.id, "endTime", e.target.value)}
-                      disabled={disabled}
-                      className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  
-                  {/* 作業内容 */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">作業内容</Label>
-                    <Select
-                      value={entry.workContentId}
-                      onValueChange={(value) => updateEntryWorkContent(entry.id, value)}
-                      disabled={disabled}
-                    >
-                      <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeWorkContentTypes.map((workContent) => (
-                          <div key={workContent.id} className="flex items-center justify-between group">
-                            <SelectItem value={workContent.id} className="flex-1">
-                              {workContent.nameJapanese}
-                            </SelectItem>
-                            {workContent.id.startsWith('custom-') && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteCustomWorkContent(workContent.id);
-                                }}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                        <SelectItem value="add-new" className="border-t border-gray-200 dark:border-slate-600 text-blue-600 dark:text-blue-400">
-                          <div className="flex items-center gap-2">
-                            <Plus className="w-4 h-4" />
-                            新しい作業内容を追加
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="delete-mode" className="text-red-600 dark:text-red-400">
-                          <div className="flex items-center gap-2">
-                            <Trash2 className="w-4 h-4" />
-                            作業内容を削除
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* 使用機械 */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">使用機械</Label>
-                    <Select
-                      value={entry.machineId || "none"}
-                      onValueChange={(value) => updateEntryMachine(entry.id, value)}
-                      disabled={disabled}
-                    >
-                      <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
-                        <SelectValue placeholder="未選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">未選択</SelectItem>
-                        {availableMachines.map((machine) => (
-                          <SelectItem key={machine.id} value={machine.id}>
-                            <div className="flex flex-col">
-                              <span>{machine.name}</span>
-                              <span className="text-xs text-gray-500 dark:text-slate-400">{machine.type}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* 時間表示 */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">時間</Label>
-                    <div className="h-9 flex items-center px-3 bg-gray-50 dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded-md text-sm text-gray-700 dark:text-slate-300">
-                      {formatDuration(entry.durationMinutes)}
-                    </div>
-                  </div>
-                  
-                  {/* 削除ボタン */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-transparent">削除</Label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeEntry(entry.id)}
-                      disabled={disabled}
-                      className="h-9 w-full sm:w-9 px-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="sm:hidden ml-2">削除</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 新規エントリ追加フォーム */}
-        <div className="bg-blue-50 dark:bg-slate-700/50 border border-blue-200 dark:border-slate-600 rounded-lg p-3 sm:p-4">
-          <h3 className="font-medium text-gray-800 dark:text-white mb-3 flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            新しい作業時間を追加
-          </h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
-            {/* 開始時間 */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">開始時間</Label>
-              <Input
-                type="time"
-                value={newEntry.startTime}
-                onChange={(e) => handleTimeChange("startTime", e.target.value)}
-                disabled={disabled}
-                className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white"
-              />
-            </div>
-            
-            {/* 終了時間 */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">終了時間</Label>
-              <Input
-                type="time"
-                value={newEntry.endTime}
-                onChange={(e) => handleTimeChange("endTime", e.target.value)}
-                disabled={disabled}
-                className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white"
-              />
-            </div>
-            
-            {/* 作業内容 */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">作業内容</Label>
-              <Select
-                value={newEntry.workContentId}
-                onValueChange={handleWorkContentChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
-                  <SelectValue placeholder="選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeWorkContentTypes.map((workContent) => (
-                    <div key={workContent.id} className="flex items-center justify-between group">
-                      <SelectItem value={workContent.id} className="flex-1">
-                        {workContent.nameJapanese}
-                      </SelectItem>
-                      {workContent.id.startsWith('custom-') && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteCustomWorkContent(workContent.id);
-                          }}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <SelectItem value="add-new" className="border-t border-gray-200 dark:border-slate-600 text-blue-600 dark:text-blue-400">
-                    <div className="flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      新しい作業内容を追加
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="delete-mode" className="text-red-600 dark:text-red-400">
-                    <div className="flex items-center gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      作業内容を削除
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* 使用機械 */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">使用機械</Label>
-              <Select
-                value={newEntry.machineId || "none"}
-                onValueChange={handleMachineChange}
-                disabled={disabled || isLoadingMachines}
-              >
-                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-white">
-                  <SelectValue placeholder="未選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">未選択</SelectItem>
-                  {availableMachines.map((machine) => (
-                    <SelectItem key={machine.id} value={machine.id}>
-                      <div className="flex flex-col">
-                        <span>{machine.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-slate-400">{machine.type}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* 時間表示 */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-600 dark:text-slate-400">時間</Label>
-              <div className="h-9 flex items-center px-3 bg-gray-50 dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded-md text-sm text-gray-700 dark:text-slate-300">
-                {newEntry.durationMinutes! > 0 ? formatDuration(newEntry.durationMinutes!) : "0分"}
-              </div>
-            </div>
-            
-            {/* 追加ボタン */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-transparent">追加</Label>
-              <Button
-                onClick={addEntry}
-                disabled={disabled || !newEntry.startTime || !newEntry.endTime || !newEntry.workContentId || newEntry.durationMinutes! <= 0}
-                className="h-9 w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white border-0"
-              >
-                <Plus className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">追加</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* 新規作業内容追加フォーム */}
-        {showNewWorkContentForm && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
-            <h4 className="font-medium text-gray-800 dark:text-white mb-3 flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              新しい作業内容を追加
-            </h4>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  value={newWorkContentName}
-                  onChange={(e) => setNewWorkContentName(e.target.value)}
-                  placeholder="作業内容名を入力（例: バリ取り、検査、梱包等）"
-                  className="bg-white dark:bg-slate-600 border-gray-200 dark:border-slate-500 focus:border-green-400 dark:focus:border-green-400 text-gray-900 dark:text-white"
-                  onKeyPress={(e) => e.key === 'Enter' && addNewWorkContent()}
-                />
-              </div>
-              <Button
-                onClick={addNewWorkContent}
-                disabled={!newWorkContentName.trim()}
-                className="bg-green-600 hover:bg-green-700 text-white px-4"
-              >
-                追加
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowNewWorkContentForm(false);
-                  setNewWorkContentName('');
-                }}
-                className="border-gray-300 dark:border-slate-600"
-              >
-                キャンセル
-              </Button>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-slate-400 mt-2">
-              製造現場の実際の作業に合わせて、細かい作業内容を追加できます。
-            </p>
-          </div>
-        )}
-
-
-        {/* 合計表示 */}
-        {entries.length > 0 && (
-          <div className="bg-blue-50/50 dark:bg-slate-700/30 border border-blue-200 dark:border-slate-600 rounded-lg p-3 text-center">
-            <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">合計作業時間</div>
-            <div className="text-lg font-semibold text-blue-700 dark:text-blue-400">
-              {formatDuration(entries.reduce((sum, entry) => sum + entry.durationMinutes, 0))}
-            </div>
-          </div>
-        )}
-
-        {/* 工程未選択時のメッセージ */}
-        {!selectedProcessId && (
-          <div className="text-center py-8 text-gray-500 dark:text-slate-400">
-            <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>工程を選択して作業実績を入力してください</p>
-          </div>
-        )}
+        {/* タイムライン形式の作業時間記録 */}
+        <TimelineWorkTable
+          entries={entries}
+          workContentTypes={workContentTypes}
+          availableProcesses={availableProcesses}
+          availableMachines={availableMachines}
+          onEntriesChange={onEntriesChange}
+          disabled={disabled}
+        />
       </CardContent>
     </Card>
   );

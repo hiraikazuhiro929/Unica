@@ -138,17 +138,17 @@ const ReportItem = ({
   };
 
   const handleConfirmClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 行クリックを防ぐ
+    e.stopPropagation();
     handleConfirm(report.id);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 行クリックを防ぐ
+    e.stopPropagation();
     router.push(`/daily-reports?edit=${report.id}`);
   };
 
   return (
-    <>
+    <div key={report.id}>
       <div 
         className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded p-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
         onClick={handleRowClick}
@@ -239,69 +239,194 @@ const ReportItem = ({
                 </div>
               </div>
 
-              {/* メイン2列レイアウト */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* 左列：作業時間詳細 */}
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">作業時間詳細</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {selectedReport.workTimeEntries.map((entry: any) => (
-                      <div key={entry.id} className="text-sm p-3 bg-gray-50 dark:bg-slate-800 rounded border-l-2 border-blue-500">
-                        <div className="font-medium text-gray-900 dark:text-white mb-1">
-                          {entry.processId 
-                            ? `${getProjectNameByProcessId(entry.processId)} - ${entry.workContentName}`
-                            : `${entry.productionNumber} - ${entry.workContentName}`
-                          }
-                        </div>
-                        <div className="flex justify-between text-gray-600 dark:text-slate-400">
-                          <span>{entry.startTime} - {entry.endTime}</span>
-                          <span className="font-medium">{formatTime(entry.durationMinutes)}</span>
+              {/* 作業時間詳細（全幅テーブル形式） */}
+              <div className="mb-8">
+                <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">作業時間詳細</h3>
+                
+                {/* 工程作業 */}
+                {Object.entries(
+                  selectedReport.workTimeEntries
+                    .filter((e: any) => e.isSyncedToProcess && e.processId)
+                    .reduce((groups: Record<string, any[]>, entry: any) => {
+                      const key = entry.processId;
+                      if (!groups[key]) groups[key] = [];
+                      groups[key].push(entry);
+                      return groups;
+                    }, {})
+                ).map(([processId, processEntries]) => (
+                  <div key={processId} className="mb-6">
+                    {/* 工程ヘッダー */}
+                    <div className="flex items-center justify-between mb-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🔧</span>
+                        <div>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {processEntries[0].managementNumber || processEntries[0].productionNumber} - {processEntries[0].processName || '工程作業'}
+                          </span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                            ({processEntries.length}件の作業)
+                          </span>
                         </div>
                       </div>
-                    ))}
+                      {/* 進捗表示 */}
+                      {processEntries.some((e: any) => e.progress !== undefined && e.progress > 0) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">進捗:</span>
+                          <div className="w-20 h-2 bg-gray-200 rounded-full">
+                            <div 
+                              className="h-2 bg-blue-500 rounded-full"
+                              style={{ width: `${Math.round(processEntries.reduce((sum: number, entry: any) => sum + (entry.progress || 0), 0) / processEntries.length)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-blue-600 dark:text-blue-400 min-w-10">
+                            {Math.round(processEntries.reduce((sum: number, entry: any) => sum + (entry.progress || 0), 0) / processEntries.length)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 作業テーブル */}
+                    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100 dark:bg-slate-800">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">#</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">作業内容</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">機械</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">操作</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">時間</th>
+                            <th className="px-4 py-2 text-right text-gray-900 dark:text-white font-medium">所要時間</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                          {processEntries.map((entry: any, index: number) => (
+                            <tr key={entry.id} className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+                              <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                                {String(index + 1).padStart(2, '0')}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                {entry.workContentName}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                {entry.machineName && entry.machineName !== 'なし' ? entry.machineName : '-'}
+                              </td>
+                              <td className="px-4 py-3">
+                                {entry.operationType && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    entry.operationType === '自動' 
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
+                                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                  }`}>
+                                    {entry.operationType}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                {entry.startTime} - {entry.endTime}
+                              </td>
+                              <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
+                                {formatTime(entry.durationMinutes)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                ))}
+                
+                {/* 一般作業 */}
+                {selectedReport.workTimeEntries.filter((e: any) => !e.isSyncedToProcess).length > 0 && (
+                  <div className="mb-6">
+                    {/* 一般作業ヘッダー */}
+                    <div className="flex items-center gap-3 mb-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                      <span className="text-lg">⏰</span>
+                      <div>
+                        <span className="font-medium text-gray-900 dark:text-white">一般作業</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                          ({selectedReport.workTimeEntries.filter((e: any) => !e.isSyncedToProcess).length}件の作業)
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* 一般作業テーブル */}
+                    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100 dark:bg-slate-800">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">#</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">作業内容</th>
+                            <th className="px-4 py-2 text-left text-gray-900 dark:text-white font-medium">時間</th>
+                            <th className="px-4 py-2 text-right text-gray-900 dark:text-white font-medium">所要時間</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                          {selectedReport.workTimeEntries
+                            .filter((e: any) => !e.isSyncedToProcess)
+                            .map((entry: any, index: number) => (
+                              <tr key={entry.id} className="bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                                  {String(index + 1).padStart(2, '0')}
+                                </td>
+                                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                  {entry.workContentName}
+                                </td>
+                                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                  {entry.startTime} - {entry.endTime}
+                                </td>
+                                <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
+                                  {formatTime(entry.durationMinutes)}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* 右列：振り返り */}
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">今日の振り返り</h3>
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
-                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">今日の結果</div>
-                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.todaysResults}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
-                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいったこと</div>
-                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatWentWell}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
-                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいかなかったこと</div>
-                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatDidntGoWell}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
-                      <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">社内への要望</div>
-                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.requestsToManagement}</p>
-                    </div>
+              {/* 振り返りセクション */}
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2 mb-4">今日の振り返り</h3>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                    <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">今日の結果</div>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.todaysResults}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                    <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいったこと</div>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatWentWell}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                    <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">うまくいかなかったこと</div>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.whatDidntGoWell}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded">
+                    <div className="font-medium text-gray-700 dark:text-slate-300 mb-2 text-sm">社内への要望</div>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedReport.requestsToManagement}</p>
                   </div>
                 </div>
               </div>
 
               {/* 返信セクション */}
-              <div className="pt-4 border-t border-gray-200 dark:border-slate-600">
-                <ReplySection 
-                  report={selectedReport}
-                  isAdmin={canReply}
-                  currentUser={currentUser}
-                  onReplyAdded={() => {
-                    loadData();
-                  }}
-                />
-              </div>
+              {selectedReport && (
+                <div className="pt-4 border-t border-gray-200 dark:border-slate-600">
+                  <ReplySection 
+                    report={selectedReport}
+                    isAdmin={canReply}
+                    currentUser={currentUser}
+                    onReplyAdded={() => {
+                      loadData();
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
 

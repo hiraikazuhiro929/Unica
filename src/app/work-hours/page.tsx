@@ -75,7 +75,10 @@ import {
 import { WorkHoursDetailModal } from '@/app/work-hours/components/WorkHoursDetailModal';
 import { WorkerModal } from '@/app/work-hours/components/WorkerModal';
 import { MachineModal } from '@/app/work-hours/components/MachineModal';
-import { useDailyReportSync } from '@/app/work-hours/hooks/useDailyReportSync';
+import { getOrders } from "@/lib/firebase/orders";
+import { getProcessesList } from "@/lib/firebase/processes";
+import type { Order } from "@/app/tasks/types";
+import type { Process } from "@/app/tasks/types";
 
 const WorkHoursManagement = () => {
   const router = useRouter();
@@ -95,9 +98,11 @@ const WorkHoursManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  
-  // 日報同期フック
-  const { syncStats, isSyncing, syncError, triggerManualSync } = useDailyReportSync();
+  const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
+  const [availableProcesses, setAvailableProcesses] = useState<Process[]>([]);
+  const [showCreateFromOptions, setShowCreateFromOptions] = useState(false);
+  const [showOrderSelectionModal, setShowOrderSelectionModal] = useState(false);
+  const [showProcessSelectionModal, setShowProcessSelectionModal] = useState(false);
 
   // マスタデータ - 作業者・機械
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -105,11 +110,82 @@ const WorkHoursManagement = () => {
   const [isWorkerLoading, setIsWorkerLoading] = useState(true);
   const [isMachineLoading, setIsMachineLoading] = useState(true);
 
+  // 外側クリックで選択オプションを閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showCreateFromOptions) {
+        setShowCreateFromOptions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCreateFromOptions]);
+
+  // 受注案件から工数レコードを作成
+  const createWorkHoursFromOrder = (order: Order) => {
+    const newWorkHours: Partial<EnhancedWorkHours> = {
+      projectName: order.projectName,
+      managementNumber: order.managementNumber || `ORD-${order.id?.slice(-8)}`,
+      clientName: order.clientName || '',
+      orderAmount: order.totalAmount || 0,
+      estimatedHours: order.estimatedDays ? order.estimatedDays * 8 : 40, // 1日8時間として計算
+      actualHours: 0,
+      progress: 0,
+      status: 'planning' as const,
+      description: order.description || `${order.projectName}の工数管理`,
+      startDate: order.deliveryDate ? new Date(new Date(order.deliveryDate).getTime() - 30*24*60*60*1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], // 納期の30日前
+      endDate: order.deliveryDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], // 30日後
+      priority: order.priority || 'medium',
+      workerId: 'current-user',
+      workerName: '現在のユーザー',
+      // 追加情報
+      orderInfo: {
+        orderId: order.id,
+        originalOrder: order
+      }
+    };
+
+    setSelectedWorkHours(newWorkHours as EnhancedWorkHours);
+    setShowDetailModal(true);
+    setShowOrderSelectionModal(false);
+  };
+
+  // 工程から工数レコードを作成
+  const createWorkHoursFromProcess = (process: Process) => {
+    const newWorkHours: Partial<EnhancedWorkHours> = {
+      projectName: process.name,
+      managementNumber: process.managementNumber || `PROC-${process.id?.slice(-8)}`,
+      clientName: process.clientName || '',
+      orderAmount: 0, // 工程では金額情報がない場合が多い
+      estimatedHours: process.estimatedHours || 40,
+      actualHours: process.actualHours || 0,
+      progress: process.progress || 0,
+      status: process.status || 'planning' as const,
+      description: process.description || `${process.name}の工数管理`,
+      startDate: process.startDate || new Date().toISOString().split('T')[0],
+      endDate: process.endDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      priority: process.priority || 'medium',
+      workerId: 'current-user',
+      workerName: '現在のユーザー',
+      // 追加情報
+      processInfo: {
+        processId: process.id,
+        originalProcess: process
+      }
+    };
+
+    setSelectedWorkHours(newWorkHours as EnhancedWorkHours);
+    setShowDetailModal(true);
+    setShowProcessSelectionModal(false);
+  };
+
   // Load all data
   useEffect(() => {
     loadWorkHoursData();
     loadWorkersData();
     loadMachinesData();
+    loadAvailableData();
     
     // Subscribe to real-time updates
     const unsubscribeWorkHours = subscribeToWorkHoursList({
@@ -136,6 +212,33 @@ const WorkHoursManagement = () => {
       unsubscribeMachines();
     };
   }, []);
+
+  // 受注案件と工程を読み込み
+  const loadAvailableData = async () => {
+    try {
+      // 受注案件を取得
+      const { data: ordersData, error: ordersError } = await getOrders({
+        limit: 50,
+        orderByField: 'createdAt',
+        orderDirection: 'desc'
+      });
+      if (ordersData && !ordersError) {
+        setAvailableOrders(ordersData);
+      }
+
+      // 工程を取得
+      const { data: processesData, error: processesError } = await getProcessesList({
+        limit: 50,
+        orderByField: 'createdAt',
+        orderDirection: 'desc'
+      });
+      if (processesData && !processesError) {
+        setAvailableProcesses(processesData);
+      }
+    } catch (error) {
+      console.error('Failed to load available data:', error);
+    }
+  };
 
   const loadWorkHoursData = async () => {
     setIsLoading(true);
@@ -208,8 +311,7 @@ const WorkHoursManagement = () => {
     return {
       isWorkingHours: now >= 8 && now <= 18,
       activeCount: activeProjects.length,
-      todayUpdatedCount: todayUpdated.length,
-      lastSyncTime: syncStats?.lastSyncTime || null,
+      todayUpdatedCount: todayUpdated.length
     };
   };
 
@@ -606,53 +708,14 @@ const WorkHoursManagement = () => {
               </div>
             </div>
 
-            {/* 日報同期ステータス */}
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-slate-400">日報同期</div>
-                <div className="flex items-center gap-2">
-                  {isSyncing ? (
-                    <Badge className="bg-blue-500 text-white animate-pulse">
-                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                      同期中...
-                    </Badge>
-                  ) : syncError ? (
-                    <Badge variant="destructive">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      エラー
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-green-500 text-white">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      同期済み
-                    </Badge>
-                  )}
-                  {syncStats?.lastSyncTime && (
-                    <span className="text-xs text-gray-500">
-                      {new Date(syncStats.lastSyncTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Button
-                onClick={triggerManualSync}
-                disabled={isSyncing}
-                size="sm"
-                variant="outline"
-                className="border-blue-500 text-blue-600 hover:bg-blue-50"
-              >
-                <Link2 className="w-4 h-4 mr-1" />
-                手動同期
-              </Button>
-            </div>
           </div>
         </div>
 
         {/* メインコンテンツ - 3列レイアウト */}
         <div className="flex-1 overflow-hidden flex">
           {/* 左側：統計・ダッシュボード */}
-          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
-            <div className="space-y-4">
+          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+            <div className="space-y-3">
               {/* 全体効率メーター */}
               <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 border-blue-200 dark:border-blue-700">
                 <CardHeader className="pb-2">
@@ -663,39 +726,39 @@ const WorkHoursManagement = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center">
-                    <div className="relative w-32 h-32">
-                      <svg className="w-32 h-32 transform -rotate-90">
+                    <div className="relative w-24 h-24">
+                      <svg className="w-24 h-24 transform -rotate-90">
                         <circle
-                          cx="64"
-                          cy="64"
-                          r="56"
+                          cx="48"
+                          cy="48"
+                          r="40"
                           stroke="currentColor"
-                          strokeWidth="12"
+                          strokeWidth="8"
                           fill="none"
                           className="text-gray-200 dark:text-slate-600"
                         />
                         <circle
-                          cx="64"
-                          cy="64"
-                          r="56"
+                          cx="48"
+                          cy="48"
+                          r="40"
                           stroke="currentColor"
-                          strokeWidth="12"
+                          strokeWidth="8"
                           fill="none"
-                          strokeDasharray={`${2 * Math.PI * 56}`}
-                          strokeDashoffset={`${2 * Math.PI * 56 * (1 - statistics.efficiency / 100)}`}
+                          strokeDasharray={`${2 * Math.PI * 40}`}
+                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - statistics.efficiency / 100)}`}
                           className={statistics.efficiency <= 100 ? "text-green-500" : statistics.efficiency <= 120 ? "text-yellow-500" : "text-red-500"}
                           strokeLinecap="round"
                         />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center flex-col">
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">
                           {statistics.activeProjectCount > 0 ? statistics.efficiency.toFixed(1) : '-'}%
                         </span>
                         <span className="text-xs text-gray-500 dark:text-slate-400">平均効率</span>
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-2 space-y-2">
                     <div className="text-center">
                       <div className="text-xs text-gray-500 dark:text-slate-400">着手済み案件</div>
                       <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -833,27 +896,76 @@ const WorkHoursManagement = () => {
                   分析
                 </Button>
                 
-                <Button
-                  onClick={createSampleData}
-                  variant="outline"
-                  size="sm"
-                  className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-800/50"
-                >
-                  <Database className="w-4 h-4 mr-1" />
-                  サンプル作成
-                </Button>
-
-                <Button
-                  onClick={() => {
-                    setSelectedWorkHours(null);
-                    setShowDetailModal(true);
-                  }}
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  新規作成
-                </Button>
+                <div className="relative">
+                  <Button
+                    onClick={() => setShowCreateFromOptions(true)}
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    新規作成
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                  
+                  {showCreateFromOptions && (
+                    <div className="absolute top-full mt-1 right-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 min-w-[200px]">
+                      <div className="p-2">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm"
+                          onClick={() => {
+                            const newWorkHours: Partial<EnhancedWorkHours> = {
+                              projectName: '',
+                              managementNumber: '',
+                              clientName: '',
+                              orderAmount: 0,
+                              estimatedHours: 40,
+                              actualHours: 0,
+                              progress: 0,
+                              status: 'planning' as const,
+                              description: '',
+                              startDate: new Date().toISOString().split('T')[0],
+                              endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+                              priority: 'medium',
+                              workerId: 'current-user',
+                              workerName: '現在のユーザー'
+                            };
+                            setSelectedWorkHours(newWorkHours as EnhancedWorkHours);
+                            setShowDetailModal(true);
+                            setShowCreateFromOptions(false);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          空の工数レコード作成
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm"
+                          onClick={() => {
+                            setShowCreateFromOptions(false);
+                            setShowOrderSelectionModal(true);
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          受注案件から作成（{availableOrders.length}件）
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm"
+                          onClick={() => {
+                            setShowCreateFromOptions(false);
+                            setShowProcessSelectionModal(true);
+                          }}
+                        >
+                          <Wrench className="w-4 h-4 mr-2" />
+                          工程から作成（{availableProcesses.length}件）
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1207,10 +1319,9 @@ const WorkHoursManagement = () => {
             </div>
             
             <Tabs defaultValue="workers" className="flex-1">
-              <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
+              <TabsList className="grid w-full grid-cols-2 m-4 mb-0">
                 <TabsTrigger value="workers" className="text-xs">作業者</TabsTrigger>
                 <TabsTrigger value="machines" className="text-xs">機械</TabsTrigger>
-                <TabsTrigger value="sync" className="text-xs">同期</TabsTrigger>
               </TabsList>
               
               <TabsContent value="workers" className="flex-1 p-4 overflow-auto">
@@ -1345,49 +1456,6 @@ const WorkHoursManagement = () => {
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="sync" className="flex-1 p-4 overflow-auto">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium">日報同期状況</h4>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-7 text-xs"
-                      onClick={triggerManualSync}
-                      disabled={isSyncing}
-                    >
-                      <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
-                      同期
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">最終同期</div>
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {syncStats?.lastSyncTime ? 
-                          new Date(syncStats.lastSyncTime).toLocaleString('ja-JP') : 
-                          '未同期'
-                        }
-                      </div>
-                    </div>
-                    <div className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">同期件数</div>
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {syncStats?.syncedCount || 0}件
-                      </div>
-                    </div>
-                    {syncError && (
-                      <div className="p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
-                        <div className="text-xs text-red-600 mb-1">エラー</div>
-                        <div className="text-sm text-red-700 dark:text-red-400">
-                          {syncError}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -1534,6 +1602,108 @@ const WorkHoursManagement = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 受注案件選択モーダル */}
+      {showOrderSelectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                受注案件から工数レコードを作成
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {availableOrders.length > 0 ? (
+                availableOrders.map((order) => (
+                  <Card key={order.id} className="border hover:border-blue-300 transition-colors cursor-pointer">
+                    <CardContent className="p-4" onClick={() => createWorkHoursFromOrder(order)}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-lg">{order.projectName}</h3>
+                          <p className="text-sm text-gray-600 dark:text-slate-400">
+                            {order.managementNumber} | {order.clientName}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            納期: {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('ja-JP') : '未設定'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-600">
+                            ¥{order.totalAmount?.toLocaleString() || '未設定'}
+                          </div>
+                          <Badge variant="outline">{order.priority || 'medium'}</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  利用可能な受注案件がありません
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end">
+              <Button variant="outline" onClick={() => setShowOrderSelectionModal(false)}>
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 工程選択モーダル */}
+      {showProcessSelectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                工程から工数レコードを作成
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {availableProcesses.length > 0 ? (
+                availableProcesses.map((process) => (
+                  <Card key={process.id} className="border hover:border-blue-300 transition-colors cursor-pointer">
+                    <CardContent className="p-4" onClick={() => createWorkHoursFromProcess(process)}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-lg">{process.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-slate-400">
+                            {process.managementNumber} | {process.clientName || ''}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Progress value={process.progress || 0} className="w-24 h-2" />
+                            <span className="text-sm text-gray-500">{process.progress || 0}%</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">
+                            予定: {process.estimatedHours || 0}h
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            実績: {process.actualHours || 0}h
+                          </div>
+                          <Badge variant="outline">{process.status || 'planning'}</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  利用可能な工程がありません
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end">
+              <Button variant="outline" onClick={() => setShowProcessSelectionModal(false)}>
+                キャンセル
+              </Button>
             </div>
           </div>
         </div>

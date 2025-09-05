@@ -32,6 +32,7 @@ import {
 import type { EnhancedWorkHours } from '@/app/tasks/types';
 import type { Worker } from '@/lib/firebase/workers';
 import type { Machine } from '@/lib/firebase/machines';
+import { calculateTotalCharge } from "@/lib/utils/chargeCalculation";
 
 interface WorkHoursDetailModalProps {
   workHours: EnhancedWorkHours | null;

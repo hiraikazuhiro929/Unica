@@ -173,16 +173,22 @@ export interface WorkTimeEntry {
   durationMinutes: number; // 自動計算される時間（分）
   
   // 機械関連
-  machineId?: string; // 使用機械ID
+  machineId?: string; // 使用機械ID（'none'で機械なし）
   machineName?: string; // 使用機械名
   
   // 工程連携のための新フィールド
   processId?: string; // 関連する工程ID
   processName?: string; // 工程名（表示用）
+  
+  // 自動/手動運転フラグ（新規追加）
+  operationType?: '手動' | '自動'; // デフォルト: '手動'
+  humanCost?: number; // 人件費（計算結果）
+  machineCost?: number; // 機械費（計算結果）
   projectName?: string; // 工事名・プロジェクト名（表示用）
   workStepId?: string; // 関連する作業手順ID
   workStepName?: string; // 作業手順名（表示用）
   managementNumber?: string; // 管理番号
+  progress?: number; // 作業進捗（0-100%）
   isSyncedToProcess: boolean; // 工程に同期済みかどうか
   syncedAt?: string; // 同期日時
 }
