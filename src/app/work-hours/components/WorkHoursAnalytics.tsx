@@ -885,36 +885,338 @@ const StatusDistributionChart: React.FC<{ workHours: EnhancedWorkHours[] }> = ({
 };
 
 const EfficiencyTrendChart: React.FC<{ data: any[] }> = ({ data }) => {
+  // 効率性データの計算
+  const efficiencyData = data.slice(-7).map((item, index) => {
+    const estimatedHours = item.estimatedHours || 8;
+    const actualHours = item.hours || estimatedHours;
+    const efficiency = estimatedHours > 0 ? (estimatedHours / actualHours) * 100 : 100;
+    
+    return {
+      date: new Date(Date.now() - (6 - index) * 24 * 60 * 60 * 1000).toLocaleDateString('ja-JP', { 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      efficiency: Math.min(Math.max(efficiency, 20), 200), // 20-200%の範囲に制限
+      actualHours,
+      estimatedHours,
+    };
+  });
+
+  const maxEfficiency = Math.max(...efficiencyData.map(d => d.efficiency));
+  const minEfficiency = Math.min(...efficiencyData.map(d => d.efficiency));
+
   return (
-    <div className="flex items-center justify-center h-48 text-gray-500">
-      <div className="text-center">
-        <LineChart className="w-12 h-12 mx-auto mb-2" />
-        <p>効率性トレンドチャート</p>
-        <p className="text-xs">実装予定</p>
+    <div className="h-48 p-4">
+      <div className="h-full relative">
+        {/* Y軸ラベル */}
+        <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400 pr-2">
+          <span>{Math.ceil(maxEfficiency)}%</span>
+          <span>100%</span>
+          <span>{Math.floor(minEfficiency)}%</span>
+        </div>
+        
+        {/* チャートエリア */}
+        <div className="ml-8 h-full flex items-end justify-between">
+          {efficiencyData.map((point, index) => {
+            const height = ((point.efficiency - minEfficiency) / (maxEfficiency - minEfficiency)) * 140;
+            const isGood = point.efficiency >= 90 && point.efficiency <= 110;
+            
+            return (
+              <div key={index} className="flex flex-col items-center flex-1 mx-1">
+                <div className="relative h-36 flex items-end mb-2">
+                  <div
+                    className={`w-2 rounded-t transition-all duration-300 ${
+                      isGood ? 'bg-green-500' : point.efficiency > 110 ? 'bg-blue-500' : 'bg-orange-500'
+                    }`}
+                    style={{ height: `${height}px` }}
+                    title={`効率性: ${point.efficiency.toFixed(1)}%\n予定: ${point.estimatedHours}h\n実績: ${point.actualHours}h`}
+                  />
+                  {/* 100%ライン */}
+                  {index === 0 && (
+                    <div 
+                      className="absolute left-0 right-0 border-t border-dashed border-gray-300"
+                      style={{ 
+                        bottom: `${((100 - minEfficiency) / (maxEfficiency - minEfficiency)) * 140}px` 
+                      }}
+                    />
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 transform -rotate-45 origin-center">
+                  {point.date}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* 凡例 */}
+        <div className="absolute bottom-0 right-0 flex items-center space-x-3 text-xs">
+          <div className="flex items-center space-x-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <span className="text-gray-600">最適(90-110%)</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+            <span className="text-gray-600">高効率(110%+)</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-2 h-2 bg-orange-500 rounded-full" />
+            <span className="text-gray-600">要改善(90%未満)</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 const CostBreakdownChart: React.FC<{ data: any[] }> = ({ data }) => {
+  // コストデータの集計
+  const costBreakdown = data.reduce((acc, item) => {
+    const category = item.category || '一般作業';
+    const hours = item.hours || 0;
+    const hourlyRate = item.hourlyRate || 3000; // デフォルト時給
+    const cost = hours * hourlyRate;
+    
+    acc[category] = (acc[category] || 0) + cost;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const totalCost = Object.values(costBreakdown).reduce((sum, cost) => sum + cost, 0);
+  
+  // 上位5カテゴリーを取得
+  const sortedCategories = Object.entries(costBreakdown)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500', 
+    'bg-yellow-500',
+    'bg-purple-500',
+    'bg-pink-500'
+  ];
+
+  const borderColors = [
+    'border-blue-500',
+    'border-green-500',
+    'border-yellow-500', 
+    'border-purple-500',
+    'border-pink-500'
+  ];
+
   return (
-    <div className="flex items-center justify-center h-48 text-gray-500">
-      <div className="text-center">
-        <PieChart className="w-12 h-12 mx-auto mb-2" />
-        <p>コスト内訳チャート</p>
-        <p className="text-xs">実装予定</p>
-      </div>
+    <div className="h-48 p-4 flex items-center">
+      {totalCost === 0 ? (
+        <div className="flex items-center justify-center w-full text-gray-500">
+          <div className="text-center">
+            <PieChart className="w-12 h-12 mx-auto mb-2" />
+            <p>コストデータなし</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center w-full">
+          {/* 円グラフ部分（簡易版） */}
+          <div className="relative w-32 h-32 mr-6">
+            <div className="w-32 h-32 rounded-full border-4 border-gray-200 relative overflow-hidden">
+              {sortedCategories.map(([category, cost], index) => {
+                const percentage = (cost / totalCost) * 100;
+                const rotation = sortedCategories.slice(0, index).reduce((sum, [,prevCost]) => 
+                  sum + (prevCost / totalCost) * 360, 0
+                );
+                
+                return (
+                  <div
+                    key={category}
+                    className={`absolute inset-0 ${colors[index]} opacity-80`}
+                    style={{
+                      clipPath: `polygon(50% 50%, 50% 0%, ${
+                        50 + 50 * Math.cos((rotation + percentage * 3.6) * Math.PI / 180)
+                      }% ${
+                        50 + 50 * Math.sin((rotation + percentage * 3.6) * Math.PI / 180)
+                      }%, 50% 50%)`
+                    }}
+                  />
+                );
+              })}
+              <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-xs font-semibold">総額</div>
+                  <div className="text-sm">¥{Math.round(totalCost / 1000)}K</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 凡例 */}
+          <div className="flex-1 space-y-2">
+            {sortedCategories.map(([category, cost], index) => {
+              const percentage = (cost / totalCost) * 100;
+              return (
+                <div key={category} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <div className={`w-3 h-3 rounded-full ${colors[index]}`} />
+                    <span className="text-sm text-gray-700 truncate">{category}</span>
+                  </div>
+                  <div className="text-right ml-2">
+                    <div className="text-sm font-medium">¥{cost.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* その他の合計 */}
+            {sortedCategories.length < Object.keys(costBreakdown).length && (
+              <div className="flex items-center justify-between border-t pt-2">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-gray-400" />
+                  <span className="text-sm text-gray-700">その他</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium">
+                    ¥{(totalCost - sortedCategories.reduce((sum, [,cost]) => sum + cost, 0)).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const BudgetVsActualChart: React.FC<{ data: any[] }> = ({ data }) => {
+  // プロジェクト別の予算対実績データを集計
+  const projectData = data.reduce((acc, item) => {
+    const projectName = item.relatedOrderTitle || 'その他';
+    const hours = item.hours || 0;
+    const estimatedHours = item.estimatedHours || hours;
+    const hourlyRate = item.hourlyRate || 3000;
+    
+    if (!acc[projectName]) {
+      acc[projectName] = { 
+        budget: 0, 
+        actual: 0, 
+        budgetHours: 0, 
+        actualHours: 0 
+      };
+    }
+    
+    acc[projectName].budget += estimatedHours * hourlyRate;
+    acc[projectName].actual += hours * hourlyRate;
+    acc[projectName].budgetHours += estimatedHours;
+    acc[projectName].actualHours += hours;
+    
+    return acc;
+  }, {} as Record<string, { budget: number; actual: number; budgetHours: number; actualHours: number }>);
+
+  // 上位5プロジェクトを取得
+  const sortedProjects = Object.entries(projectData)
+    .sort(([,a], [,b]) => (b.budget + b.actual) - (a.budget + a.actual))
+    .slice(0, 5);
+
+  if (sortedProjects.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-48 text-gray-500">
+        <div className="text-center">
+          <BarChart3 className="w-12 h-12 mx-auto mb-2" />
+          <p>プロジェクトデータなし</p>
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...sortedProjects.flatMap(([,data]) => [data.budget, data.actual]));
+
   return (
-    <div className="flex items-center justify-center h-48 text-gray-500">
-      <div className="text-center">
-        <BarChart3 className="w-12 h-12 mx-auto mb-2" />
-        <p>予算対実績チャート</p>
-        <p className="text-xs">実装予定</p>
+    <div className="h-48 p-4">
+      <div className="h-full flex items-end justify-between space-x-4">
+        {sortedProjects.map(([projectName, projectData]) => {
+          const budgetHeight = (projectData.budget / maxValue) * 140;
+          const actualHeight = (projectData.actual / maxValue) * 140;
+          const variance = ((projectData.actual - projectData.budget) / projectData.budget) * 100;
+          const isOverBudget = variance > 10;
+          const isUnderBudget = variance < -10;
+          
+          return (
+            <div key={projectName} className="flex flex-col items-center flex-1 min-w-0">
+              {/* バーチャート */}
+              <div className="flex items-end space-x-1 mb-2 h-36">
+                {/* 予算バー */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className="w-6 bg-blue-200 border border-blue-300 rounded-t"
+                    style={{ height: `${budgetHeight}px` }}
+                    title={`予算: ¥${projectData.budget.toLocaleString()} (${projectData.budgetHours}h)`}
+                  />
+                  <span className="text-xs text-blue-600 mt-1">予算</span>
+                </div>
+                
+                {/* 実績バー */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-6 rounded-t border ${
+                      isOverBudget ? 'bg-red-400 border-red-500' :
+                      isUnderBudget ? 'bg-green-400 border-green-500' :
+                      'bg-blue-400 border-blue-500'
+                    }`}
+                    style={{ height: `${actualHeight}px` }}
+                    title={`実績: ¥${projectData.actual.toLocaleString()} (${projectData.actualHours}h)`}
+                  />
+                  <span className={`text-xs mt-1 ${
+                    isOverBudget ? 'text-red-600' :
+                    isUnderBudget ? 'text-green-600' :
+                    'text-blue-600'
+                  }`}>実績</span>
+                </div>
+              </div>
+              
+              {/* プロジェクト名 */}
+              <div className="text-center">
+                <div className="text-xs text-gray-700 truncate max-w-20" title={projectName}>
+                  {projectName.length > 8 ? projectName.substring(0, 8) + '...' : projectName}
+                </div>
+                
+                {/* 差異表示 */}
+                <div className={`text-xs font-medium mt-1 ${
+                  isOverBudget ? 'text-red-600' :
+                  isUnderBudget ? 'text-green-600' :
+                  'text-gray-600'
+                }`}>
+                  {variance >= 0 ? '+' : ''}{variance.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Y軸ラベル */}
+      <div className="absolute left-0 top-4 h-36 flex flex-col justify-between text-xs text-gray-400">
+        <span>¥{Math.round(maxValue / 1000)}K</span>
+        <span>¥{Math.round(maxValue / 2000)}K</span>
+        <span>¥0</span>
+      </div>
+      
+      {/* 凡例 */}
+      <div className="flex justify-center mt-4 space-x-4 text-xs">
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 bg-blue-200 border border-blue-300" />
+          <span>予算</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 bg-blue-400 border border-blue-500" />
+          <span>実績(適正)</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 bg-red-400 border border-red-500" />
+          <span>予算超過</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 bg-green-400 border border-green-500" />
+          <span>予算内</span>
+        </div>
       </div>
     </div>
   );

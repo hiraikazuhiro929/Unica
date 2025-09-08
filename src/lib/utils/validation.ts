@@ -1,7 +1,26 @@
-// バリデーションユーティリティ
+// バリデーションユーティリティ - 強化版
+import { 
+  OrderItem, 
+  Process, 
+  WorkHours, 
+  DailyReportEntry, 
+  AppUser,
+  ProcessStatus,
+  Priority,
+  UserRole 
+} from '@/types';
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  code: string;
+}
+
 export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
+  errors: ValidationError[];
+  // 後方互換性のため
+  errors_legacy?: string[];
 }
 
 // 基本的な数値バリデーション
@@ -39,23 +58,71 @@ export const validateDateRange = (startDate: string, endDate: string, startLabel
   return null;
 };
 
-// 受注データのバリデーション
+// 強化されたバリデーション関数
+export const validateEmail = (email: string): ValidationError | null => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return {
+      field: 'email',
+      message: '有効なメールアドレス形式で入力してください',
+      code: 'INVALID_EMAIL'
+    };
+  }
+  return null;
+};
+
+export const validateManagementNumber = (managementNumber: string): ValidationError | null => {
+  const pattern = /^[A-Z]{2,4}-\d{4}-\d{3}$/;
+  if (!pattern.test(managementNumber)) {
+    return {
+      field: 'managementNumber',
+      message: '管理番号は「ORD-2024-001」形式で入力してください',
+      code: 'INVALID_MANAGEMENT_NUMBER'
+    };
+  }
+  return null;
+};
+
+// 受注データのバリデーション（強化版）
 export const validateOrderData = (data: any): ValidationResult => {
-  const errors: string[] = [];
+  const errors: ValidationError[] = [];
+  const legacyErrors: string[] = [];
   
-  // 最低限のバリデーション
-  const requiredError = validateRequired(data.client, '取引先');
-  if (requiredError) errors.push(requiredError);
+  // 必須フィールド
+  if (!data.client?.trim()) {
+    const error = { field: 'client', message: '取引先は必須です', code: 'REQUIRED' };
+    errors.push(error);
+    legacyErrors.push(error.message);
+  }
   
+  if (data.managementNumber && data.managementNumber.trim()) {
+    const managementError = validateManagementNumber(data.managementNumber);
+    if (managementError) {
+      errors.push(managementError);
+      legacyErrors.push(managementError.message);
+    }
+  }
+  
+  // 数量チェック（既存のロジック維持）
   const quantityError = validatePositiveNumber(data.quantity, '数量');
-  if (quantityError) errors.push(quantityError);
+  if (quantityError) {
+    const error = { field: 'quantity', message: quantityError, code: 'INVALID_NUMBER' };
+    errors.push(error);
+    legacyErrors.push(quantityError);
+  }
   
+  // 日付チェック（既存のロジック維持）
   const dateError = validateDateRange(data.orderDate, data.deliveryDate, '受注日', '納期');
-  if (dateError) errors.push(dateError);
+  if (dateError) {
+    const error = { field: 'deliveryDate', message: dateError, code: 'INVALID_DATE_RANGE' };
+    errors.push(error);
+    legacyErrors.push(dateError);
+  }
   
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    errors_legacy: legacyErrors
   };
 };
 

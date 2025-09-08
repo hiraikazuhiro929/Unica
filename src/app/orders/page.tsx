@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ChevronDown,
   Filter,
+  Download,
 } from "lucide-react";
 import { 
   Select,
@@ -41,6 +42,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   createOrder, 
   updateOrder, 
@@ -51,6 +58,7 @@ import {
   generateManagementNumber,
   type OrderItem
 } from "@/lib/firebase/orders";
+import { exportOrders } from "@/lib/utils/exportUtils";
 
 const OrderManagement = () => {
   const { trackAction } = useActivityTracking();
@@ -430,6 +438,50 @@ const OrderManagement = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* エクスポートボタン */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-2"
+                  disabled={filteredOrders.length === 0}
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">エクスポート</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-600">
+                  <div className="font-medium mb-1">エクスポート対象</div>
+                  <div className="space-y-1 text-xs">
+                    <div>ステータス: {filterStatus === 'all' ? 'すべて' : filterStatus === 'planning' ? '計画中' : filterStatus === 'data-work' ? 'データ作業中' : filterStatus === 'processing' ? '進行中' : '完了'}</div>
+                    <div>顧客: {filterClient === 'all' ? 'すべて' : filterClient}</div>
+                    {searchQuery && <div>検索: "{searchQuery}"</div>}
+                    <div className="font-medium text-blue-600 dark:text-blue-400">
+                      {filteredOrders.length}件の受注案件
+                    </div>
+                  </div>
+                </div>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    exportOrders(filteredOrders, 'csv');
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV形式でダウンロード
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    exportOrders(filteredOrders, 'excel');
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Excel形式でダウンロード
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <div className="flex items-center gap-2">
               <Button

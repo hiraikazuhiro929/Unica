@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +27,20 @@ import {
   Building2,
   User,
   Calendar,
+  Download,
+  ChevronDown,
+  FileText,
+  RefreshCcw,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportDefectReports } from "@/lib/utils/exportUtils";
+import { useDefectReports } from './hooks/useDefectReports';
 
 // 型定義
 interface DefectReport {
@@ -53,14 +66,32 @@ interface DefectReport {
 }
 
 const DefectReportsPage = () => {
+  const {
+    defectReports,
+    statistics,
+    loading,
+    error,
+    createReport,
+    updateReport,
+    deleteReport,
+    refreshData,
+  } = useDefectReports();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSeverity, setFilterSeverity] = useState<"all" | DefectReport["severity"]>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | DefectReport["status"]>("all");
   const [filterCategory, setFilterCategory] = useState<"all" | DefectReport["category"]>("all");
   const [showNewReportModal, setShowNewReportModal] = useState(false);
 
-  // サンプル不具合報告データ
-  const [defectReports, setDefectReports] = useState<DefectReport[]>([
+  // エラー表示
+  useEffect(() => {
+    if (error) {
+      console.error('DefectReports error:', error);
+    }
+  }, [error]);
+
+  // 旧サンプルデータ削除
+  /* const [defectReports, setDefectReports] = useState<DefectReport[]>([
     {
       id: "1",
       reportNumber: "DEF-2025-001",
@@ -127,7 +158,7 @@ const DefectReportsPage = () => {
       dateReported: new Date(Date.now() - 3600000),
       estimatedCost: 50000,
     },
-  ]);
+  ]); */
 
   // アイコン取得
   const getSeverityIcon = (severity: DefectReport["severity"]) => {
@@ -209,10 +240,9 @@ const DefectReportsPage = () => {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">不具合報告管理</h1>
                 <p className="text-sm text-gray-600 dark:text-slate-300">
-                  総報告数: <span className="font-bold text-blue-600 dark:text-blue-400">{defectReports.length}</span>件 /
-                  未解決: <span className="font-bold text-red-600 dark:text-red-400">
-                    {defectReports.filter(r => !["resolved", "closed"].includes(r.status)).length}
-                  </span>件
+                  総報告数: <span className="font-bold text-blue-600 dark:text-blue-400">{statistics.totalReports}</span>件 /
+                  未解決: <span className="font-bold text-red-600 dark:text-red-400">{statistics.openReports}</span>件 /
+                  緊急: <span className="font-bold text-red-600 dark:text-red-400">{statistics.criticalReports}</span>件
                 </p>
               </div>
             </div>
@@ -264,6 +294,47 @@ const DefectReportsPage = () => {
                 </SelectContent>
               </Select>
 
+              {/* エクスポートボタン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
+                    disabled={filteredReports.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    エクスポート
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
+                    エクスポート対象
+                  </div>
+                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
+                    <div>• フィルター適用後の不具合報告: {filteredReports.length}件</div>
+                    <div>• 重要度: {filterSeverity === 'all' ? 'すべて' : severityLabels[filterSeverity as keyof typeof severityLabels]}</div>
+                    <div>• 状態: {filterStatus === 'all' ? 'すべて' : statusLabels[filterStatus as keyof typeof statusLabels]}</div>
+                    <div>• 分類: {filterCategory === 'all' ? 'すべて' : categoryLabels[filterCategory as keyof typeof categoryLabels]}</div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => exportDefectReports(filteredReports, 'csv', filterStatus, filterSeverity)}
+                    disabled={filteredReports.length === 0}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    CSV形式でエクスポート
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => exportDefectReports(filteredReports, 'excel', filterStatus, filterSeverity)}
+                    disabled={filteredReports.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Excel形式でエクスポート
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
             </div>
           </div>
         </div>
@@ -283,7 +354,22 @@ const DefectReportsPage = () => {
             </div>
           </div>
           <div className="divide-y divide-gray-200 dark:divide-slate-600">
-            {filteredReports.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-16">
+                <RefreshCcw className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4 animate-spin" />
+                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">データを読み込み中...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16">
+                <AlertCircle className="w-16 h-16 text-red-300 mx-auto mb-4" />
+                <p className="text-xl text-red-500 mb-2">データの読み込みに失敗しました</p>
+                <p className="text-gray-400 dark:text-slate-500 mb-4">{error}</p>
+                <Button onClick={refreshData} variant="outline">
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  再試行
+                </Button>
+              </div>
+            ) : filteredReports.length === 0 ? (
               <div className="text-center py-16">
                 <AlertTriangle className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
                 <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する不具合報告がありません</p>

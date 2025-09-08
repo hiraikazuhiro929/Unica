@@ -33,7 +33,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { exportPartners } from "@/lib/utils/exportUtils";
+import { usePartners } from './hooks/usePartners';
 import {
   Users,
   Plus,
@@ -165,7 +168,17 @@ type PartnerType = "customer" | "supplier" | "both";
 type PartnerCategory = "automotive" | "electronics" | "machinery" | "medical" | "aerospace" | "other";
 
 const PartnersPage = () => {
-  const [partners, setPartners] = useState<Partner[]>([]);
+  const {
+    partners,
+    statistics,
+    loading,
+    error,
+    createPartner,
+    updatePartner,
+    deletePartner,
+    refreshData,
+  } = usePartners();
+
   const [filteredPartners, setFilteredPartners] = useState<Partner[]>([]);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -187,8 +200,15 @@ const PartnersPage = () => {
     { id: "other", name: "その他", icon: Building2 },
   ];
 
-  // サンプルデータ
-  const samplePartners: Partner[] = [
+  // エラー表示
+  useEffect(() => {
+    if (error) {
+      console.error('Partners error:', error);
+    }
+  }, [error]);
+
+  // 旧サンプルデータ削除
+  /* const samplePartners: Partner[] = [
     {
       id: "1",
       name: "株式会社テクノサプライ",
@@ -511,13 +531,7 @@ const PartnersPage = () => {
       lastContactDate: new Date(2025, 1, 5),
       nextFollowUpDate: new Date(2025, 1, 15),
     },
-  ];
-
-  // 初期データの設定
-  useEffect(() => {
-    setPartners(samplePartners);
-    setFilteredPartners(samplePartners);
-  }, []);
+  ]; */
 
   // フィルタリング処理
   useEffect(() => {
@@ -662,11 +676,17 @@ const PartnersPage = () => {
   };
 
   // スター切り替え
-  const toggleStar = (id: string, e: React.MouseEvent) => {
+  const toggleStar = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPartners(prev => prev.map(partner => 
-      partner.id === id ? { ...partner, isStarred: !partner.isStarred } : partner
-    ));
+    const partner = partners.find(p => p.id === id);
+    if (partner) {
+      try {
+        await updatePartner(id, { isStarred: !partner.isStarred });
+        await refreshData();
+      } catch (error) {
+        console.error('Failed to toggle star:', error);
+      }
+    }
   };
 
   // カラムでソート
@@ -680,10 +700,16 @@ const PartnersPage = () => {
   };
 
   // パートナー削除
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("この取引先を削除してもよろしいですか？")) {
-      setPartners(prev => prev.filter(partner => partner.id !== id));
+      try {
+        await deletePartner(id);
+        await refreshData();
+      } catch (error) {
+        console.error('Failed to delete partner:', error);
+        alert('削除に失敗しました: ' + (error as Error).message);
+      }
     }
   };
 
@@ -762,6 +788,54 @@ const PartnersPage = () => {
             </div>
             
             <div className="flex items-center space-x-3">
+              {/* エクスポートボタン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
+                    disabled={filteredPartners.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    エクスポート
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
+                    エクスポート対象
+                  </div>
+                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
+                    <div>• フィルター適用後の取引先データ: {filteredPartners.length}件</div>
+                    <div>• タイプ: {filterType === 'all' ? 'すべて' : 
+                      filterType === 'customer' ? '顧客' :
+                      filterType === 'supplier' ? '仕入先' :
+                      filterType === 'both' ? '顧客・仕入先' : filterType}</div>
+                    <div>• ステータス: {filterStatus === 'all' ? 'すべて' : 
+                      filterStatus === 'active' ? 'アクティブ' :
+                      filterStatus === 'potential' ? '見込み' :
+                      filterStatus === 'inactive' ? '非アクティブ' :
+                      filterStatus === 'suspended' ? '停止中' : filterStatus}</div>
+                    <div>• 業界: {filterCategory === 'all' ? 'すべて' : categories.find(c => c.id === filterCategory)?.name || filterCategory}</div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => exportPartners(filteredPartners, 'csv', filterType)}
+                    disabled={filteredPartners.length === 0}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    CSV形式でエクスポート
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => exportPartners(filteredPartners, 'excel', filterType)}
+                    disabled={filteredPartners.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Excel形式でエクスポート
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 onClick={() => setShowCreateDialog(true)}
                 className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium px-4"
@@ -779,7 +853,30 @@ const PartnersPage = () => {
         <div className="flex-1 flex flex-col">
           {/* メインテーブル */}
           <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
-            {filteredPartners.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center h-full p-12">
+                <div className="text-center">
+                  <RefreshCcw className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600 animate-spin" />
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                    データを読み込み中...
+                  </h3>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full p-12">
+                <div className="text-center">
+                  <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-300" />
+                  <h3 className="text-lg font-semibold text-red-700 mb-2">
+                    データの読み込みに失敗しました
+                  </h3>
+                  <p className="text-gray-500 dark:text-slate-400 mb-4">{error}</p>
+                  <Button onClick={refreshData} variant="outline">
+                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    再試行
+                  </Button>
+                </div>
+              </div>
+            ) : filteredPartners.length === 0 ? (
               <div className="flex items-center justify-center h-full p-12">
                 <div className="text-center">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />

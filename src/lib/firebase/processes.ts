@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 import type { Process, Company } from '@/app/tasks/types';
+import { managementNumberManager } from '../utils/managementNumber';
 
 // =============================================================================
 // FIREBASE COLLECTIONS
@@ -38,24 +39,56 @@ export const COLLECTIONS = {
 // =============================================================================
 
 /**
- * 新しい工程を作成
+ * 新しい工程を作成（工数管理自動連携付き）
  */
 export const createProcess = async (
   processData: Omit<Process, 'id'>
-): Promise<{ id: string | null; error: string | null }> => {
+): Promise<{ id: string | null; workHoursId?: string; error: string | null }> => {
   try {
+    // 1. 工程データを保存
     const docRef = await addDoc(collection(db, COLLECTIONS.PROCESSES), {
       ...processData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
 
-    // Update company's process list if company exists
+    // 2. 会社の工程リストを更新
     if (processData.orderClient) {
       await updateCompanyProcessList(processData.orderClient, docRef.id, 'add');
     }
 
-    return { id: docRef.id, error: null };
+    // 3. 製番管理に工程IDを関連付け
+    if (processData.managementNumber) {
+      await managementNumberManager.linkRelatedId(
+        processData.managementNumber,
+        'processId',
+        docRef.id
+      );
+    }
+
+    // 4. 工数管理データを自動作成
+    let workHoursId: string | undefined;
+    try {
+      // workHours.tsから関数をimport
+      const { createWorkHoursFromProcess } = await import('./workHours');
+      const workHoursResult = await createWorkHoursFromProcess(docRef.id, processData);
+      if (workHoursResult.id) {
+        workHoursId = workHoursResult.id;
+        console.log('✅ Auto-created work hours:', workHoursId);
+        
+        // 製番管理に工数IDを関連付け
+        await managementNumberManager.linkRelatedId(managementNumber, 'workHoursId', workHoursResult.id);
+      }
+    } catch (workHoursError) {
+      console.warn('⚠️ Failed to auto-create work hours:', workHoursError);
+      // 工程作成は成功させるが、工数作成失敗は警告のみ
+    }
+
+    return { 
+      id: docRef.id, 
+      workHoursId,
+      error: null 
+    };
   } catch (error: any) {
     console.error('Error creating process:', error);
     return { id: null, error: error.message };
@@ -107,41 +140,58 @@ export const getProcessesList = async (filters?: {
   try {
     let q = collection(db, COLLECTIONS.PROCESSES);
     const constraints: QueryConstraint[] = [];
-
-    // 複合インデックスを避けるため、フィルタを優先順位で制限
     let appliedFilters = 0;
-    const maxFilters = 1; // 複合インデックス問題を避けるため一度に1つのフィルタのみ
 
-    // 優先順位：orderClient > status > orderId > priority > assignee
-    if (filters?.orderClient && appliedFilters < maxFilters) {
+    // 複合インデックス対応済み - 複数フィルターの組み合わせが可能
+    
+    // 複合インデックスパターン1: orderClient + status + orderDate
+    if (filters?.orderClient && filters?.status) {
       constraints.push(where('orderClient', '==', filters.orderClient));
-      appliedFilters++;
-    } else if (filters?.status && appliedFilters < maxFilters) {
       constraints.push(where('status', '==', filters.status));
-      appliedFilters++;
-    } else if (filters?.orderId && appliedFilters < maxFilters) {
-      constraints.push(where('orderId', '==', filters.orderId));
-      appliedFilters++;
-    } else if (filters?.priority && appliedFilters < maxFilters) {
-      constraints.push(where('priority', '==', filters.priority));
-      appliedFilters++;
-    } else if (filters?.assignee && appliedFilters < maxFilters) {
+      constraints.push(orderBy('orderDate', 'desc'));
+      appliedFilters = 2;
+    }
+    // 複合インデックスパターン2: assignee + status + orderDate  
+    else if (filters?.assignee && filters?.status) {
       constraints.push(where('assignee', '==', filters.assignee));
-      appliedFilters++;
+      constraints.push(where('status', '==', filters.status));
+      constraints.push(orderBy('orderDate', 'desc'));
+      appliedFilters = 2;
     }
-    
-    // 日付範囲クエリは複合インデックスが必要なので、他のフィルタがない場合のみ適用
-    if (filters?.dateRange && appliedFilters === 0) {
-      constraints.push(where('orderDate', '>=', filters.dateRange.start));
-      constraints.push(where('orderDate', '<=', filters.dateRange.end));
-    }
+    // 単一フィルター処理
+    else {
+      // 単一フィールドフィルター
+      if (filters?.orderClient) {
+        constraints.push(where('orderClient', '==', filters.orderClient));
+        appliedFilters++;
+      }
+      if (filters?.status) {
+        constraints.push(where('status', '==', filters.status));
+        appliedFilters++;
+      }
+      if (filters?.orderId) {
+        constraints.push(where('orderId', '==', filters.orderId));
+        appliedFilters++;
+      }
+      if (filters?.priority) {
+        constraints.push(where('priority', '==', filters.priority));
+        appliedFilters++;
+      }
+      if (filters?.assignee) {
+        constraints.push(where('assignee', '==', filters.assignee));
+        appliedFilters++;
+      }
+      
+      // 日付範囲クエリ
+      if (filters?.dateRange) {
+        constraints.push(where('orderDate', '>=', filters.dateRange.start));
+        constraints.push(where('orderDate', '<=', filters.dateRange.end));
+        appliedFilters++;
+      }
 
-    // orderByは他のフィルタがない場合、または適用されたフィルタが同じフィールドの場合のみ
-    const orderField = filters?.orderByField || 'updatedAt';
-    const orderDirection = filters?.orderDirection || 'desc';
-    
-    // 単一フィールドのクエリの場合のみorderByを適用
-    if (appliedFilters === 0) {
+      // 並び順
+      const orderField = filters?.orderByField || 'orderDate';
+      const orderDirection = filters?.orderDirection || 'desc';
       constraints.push(orderBy(orderField, orderDirection));
     }
 

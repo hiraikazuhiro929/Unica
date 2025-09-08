@@ -19,7 +19,8 @@
       "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\lib\\firebase/**)",
       "Bash(npm run type-check:*)",
       "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica\\src\\app\\daily-reports\\components/**)",
-      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica/**)"
+      "Read(/C:\\Users\\N2312-1\\本番開発.Unica(仮)\\unica/**)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

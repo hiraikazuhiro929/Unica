@@ -183,36 +183,43 @@ export const getWorkHoursList = async (filters?: {
     let q = collection(db, WORK_HOURS_COLLECTIONS.WORK_HOURS);
     const constraints = [];
 
-    // 複合インデックスが必要なクエリを避けるため、単一フィールドクエリのみ使用
-    const priorityOrder = ['processId', 'orderId', 'status', 'client'];
-    let appliedFilter = false;
-
-    for (const filterType of priorityOrder) {
-      if (appliedFilter) break;
-      
-      if (filterType === 'processId' && filters?.processId) {
+    // 複合インデックス対応済み - 複数フィルターが利用可能
+    
+    // 複合インデックスパターン1: processId + status + createdAt
+    if (filters?.processId && filters?.status) {
+      constraints.push(where('processId', '==', filters.processId));
+      constraints.push(where('status', '==', filters.status));
+      constraints.push(orderBy('createdAt', 'desc'));
+    }
+    // 複合インデックスパターン2: managementNumber + status
+    else if (filters?.client && filters?.status) {
+      // clientベースの検索は製番管理で重要
+      constraints.push(where('client', '==', filters.client));
+      constraints.push(where('status', '==', filters.status));
+      constraints.push(orderBy('createdAt', 'desc'));
+    }
+    // 単一フィルター処理
+    else {
+      if (filters?.processId) {
         constraints.push(where('processId', '==', filters.processId));
-        appliedFilter = true;
-      } else if (filterType === 'orderId' && filters?.orderId) {
-        constraints.push(where('orderId', '==', filters.orderId));
-        appliedFilter = true;
-      } else if (filterType === 'status' && filters?.status) {
-        constraints.push(where('status', '==', filters.status));
-        appliedFilter = true;
-      } else if (filterType === 'client' && filters?.client) {
-        constraints.push(where('client', '==', filters.client));
-        appliedFilter = true;
       }
-    }
+      if (filters?.orderId) {
+        constraints.push(where('orderId', '==', filters.orderId));
+      }
+      if (filters?.status) {
+        constraints.push(where('status', '==', filters.status));
+      }
+      if (filters?.client) {
+        constraints.push(where('client', '==', filters.client));
+      }
+      
+      // 日付範囲フィルタ
+      if (filters?.dateRange) {
+        constraints.push(where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateRange.start))));
+        constraints.push(where('createdAt', '<=', Timestamp.fromDate(new Date(filters.dateRange.end))));
+      }
 
-    // 日付範囲フィルタは複合インデックスが必要なので、フィルタが適用されていない場合のみ使用
-    if (!appliedFilter && filters?.dateRange) {
-      constraints.push(where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateRange.start))));
-      constraints.push(where('createdAt', '<=', Timestamp.fromDate(new Date(filters.dateRange.end))));
-    }
-
-    // createdAtでの並び替えは、他のwhereクエリがない場合のみ
-    if (!appliedFilter) {
+      // 並び順
       constraints.push(orderBy('createdAt', 'desc'));
     }
 
@@ -390,14 +397,28 @@ export const syncWorkHoursFromDailyReport = async (
     // 各製番の工数を更新
     for (const [productionNumber, entries] of Object.entries(workTimeByProductionNumber)) {
       try {
-        // 製番に対応する工数レコードを検索
-        const { data: workHoursList } = await getWorkHoursList({
-          // 製番をmanagementNumberで検索（実際の実装では適切なフィールドを使用）
-        });
-
-        const matchingWorkHours = workHoursList.find(wh => 
-          wh.managementNumber.includes(productionNumber) || wh.processId === productionNumber
-        );
+        // 製番管理システムを使用して正確に検索
+        const { managementNumberManager } = await import('../utils/managementNumber');
+        
+        // 1. 製番でレコードを直接検索
+        const managementRecord = await managementNumberManager.findByManagementNumber(productionNumber);
+        
+        let matchingWorkHours = null;
+        
+        if (managementRecord?.relatedIds?.workHoursId) {
+          // 製番管理から工数IDを取得
+          const { data: workHours } = await getWorkHours(managementRecord.relatedIds.workHoursId);
+          matchingWorkHours = workHours;
+        } else {
+          // フォールバック: managementNumberで直接検索
+          const { data: workHoursList } = await getWorkHoursList({
+            limit: 50
+          });
+          
+          matchingWorkHours = workHoursList.find(wh => 
+            wh.managementNumber === productionNumber
+          );
+        }
 
         if (!matchingWorkHours) {
           result.warnings.push({
@@ -411,10 +432,35 @@ export const syncWorkHoursFromDailyReport = async (
         // 実績時間を計算
         const actualHours = calculateActualHoursFromEntries(entries);
 
-        // 工数レコードを更新
+        // 同期状態をチェック（重複同期を避ける）
+        const alreadySynced = matchingWorkHours.integrations?.dailyReportIds?.includes(dailyReport.id);
+        
+        if (alreadySynced) {
+          result.warnings.push({
+            type: 'already_synced',
+            message: `日報 ${dailyReport.id} は既に製番 ${productionNumber} の工数と同期済み`,
+            data: { productionNumber, dailyReportId: dailyReport.id }
+          });
+          continue;
+        }
+
+        // 実績時間を既存値に加算（累積）
+        const currentActual = matchingWorkHours.actualHours || { setup: 0, machining: 0, finishing: 0, total: 0 };
+        const updatedActualHours = {
+          setup: Math.round((currentActual.setup + actualHours.setup) * 100) / 100,
+          machining: Math.round((currentActual.machining + actualHours.machining) * 100) / 100,
+          finishing: Math.round((currentActual.finishing + actualHours.finishing) * 100) / 100,
+          total: Math.round((currentActual.total + actualHours.total) * 100) / 100
+        };
+
+        // 工数レコードを更新（統合情報も同時に更新）
         const updateResult = await updateWorkHours(
           matchingWorkHours.id,
-          { actualHours },
+          { 
+            actualHours: updatedActualHours,
+            lastSyncedAt: new Date().toISOString(),
+            syncSource: 'daily-report'
+          } as Partial<EnhancedWorkHours>,
           {
             triggeredBy: dailyReport.workerId,
             source: 'daily-report',
@@ -431,26 +477,15 @@ export const syncWorkHoursFromDailyReport = async (
         } else {
           result.syncedEntries++;
           result.updatedWorkHours.push(matchingWorkHours.id);
-
-          // 統合情報を更新
-          await updateWorkHours(
-            matchingWorkHours.id,
-            {
-              integrations: {
-                ...matchingWorkHours.integrations,
-                dailyReportIds: [
-                  ...matchingWorkHours.integrations.dailyReportIds,
-                  dailyReport.id
-                ]
-              },
-              lastSyncedAt: new Date().toISOString(),
-              syncSource: 'daily-report'
-            } as Partial<EnhancedWorkHours>,
-            {
-              triggeredBy: 'system',
-              source: 'system'
-            }
-          );
+          
+          // 製番管理に日報IDを関連付け
+          if (managementRecord) {
+            await managementNumberManager.linkRelatedId(
+              productionNumber, 
+              'dailyReportIds', 
+              dailyReport.id
+            );
+          }
         }
       } catch (error: any) {
         result.errors.push({
@@ -709,6 +744,139 @@ export const bulkUpdateWorkHours = async (
       errors: updates.map(u => ({ id: u.id, error: error.message }))
     };
   }
+};
+
+// =============================================================================
+// PROCESS INTEGRATION - 工程からの自動工数生成
+// =============================================================================
+
+/**
+ * 工程データから工数管理レコードを自動作成
+ */
+export const createWorkHoursFromProcess = async (
+  processId: string,
+  processData: any
+): Promise<{ id: string | null; error: string | null; workHoursData?: EnhancedWorkHours }> => {
+  try {
+    // 工程データから工数の初期値を計算
+    const estimatedHours = calculateEstimatedHoursFromProcess(processData);
+    
+    // 工数管理用のデータを構築
+    const workHoursData: Omit<WorkHours, 'id' | 'createdAt' | 'updatedAt'> = {
+      processId,
+      orderId: processData.orderId || '',
+      managementNumber: processData.managementNumber || '',
+      client: processData.orderClient || '',
+      projectName: processData.processName || '',
+      unit: processData.unit || 'pcs',
+      
+      // 予定工数を工程から算出
+      estimatedHours,
+      
+      // 実績は未入力で初期化
+      actualHours: {
+        setup: 0,
+        machining: 0,
+        finishing: 0,
+        total: 0
+      },
+      
+      // ステータスは計画中で開始
+      status: 'planning',
+      
+      // 工程の担当者を引き継ぎ
+      assignee: processData.assignee || '',
+      
+      // 納期情報を引き継ぎ
+      deliveryDate: processData.deliveryDate || '',
+      
+      // 予算情報（工程から推定）
+      budgetInfo: {
+        estimatedCost: calculateEstimatedCostFromProcess(processData),
+        actualCost: 0,
+        laborCost: 0,
+        materialCost: 0,
+        overheadCost: 0,
+        budgetStatus: 'within-budget'
+      }
+    };
+
+    // 工数レコードを作成
+    const result = await createWorkHours(workHoursData);
+    
+    if (result.id) {
+      console.log(`✅ Auto-created work hours: ${result.id} for process: ${processId}`);
+      
+      // 作成されたデータを取得して返す
+      const { data: createdWorkHours } = await getWorkHours(result.id);
+      
+      return {
+        id: result.id,
+        error: null,
+        workHoursData: createdWorkHours || undefined
+      };
+    } else {
+      return {
+        id: null,
+        error: result.error || 'Failed to create work hours'
+      };
+    }
+    
+  } catch (error: any) {
+    console.error('Error creating work hours from process:', error);
+    return {
+      id: null,
+      error: error.message || '工程から工数自動生成に失敗しました'
+    };
+  }
+};
+
+/**
+ * 工程データから予定工数を計算
+ */
+const calculateEstimatedHoursFromProcess = (processData: any): ActualHours => {
+  // 基本的な工数推定ロジック
+  const baseSetupTime = 0.5; // 段取り基準時間（時間）
+  const baseMachiningTime = processData.quantity ? processData.quantity * 0.2 : 2; // 加工時間（数量×単価時間）
+  const baseFinishingTime = processData.quantity ? processData.quantity * 0.1 : 1; // 仕上げ時間
+  
+  // 優先度による係数調整
+  let priorityMultiplier = 1.0;
+  if (processData.priority === 'high') {
+    priorityMultiplier = 1.2; // 高優先度は20%増
+  } else if (processData.priority === 'low') {
+    priorityMultiplier = 0.8; // 低優先度は20%減
+  }
+  
+  const setup = Math.round(baseSetupTime * priorityMultiplier * 100) / 100;
+  const machining = Math.round(baseMachiningTime * priorityMultiplier * 100) / 100;
+  const finishing = Math.round(baseFinishingTime * priorityMultiplier * 100) / 100;
+  
+  return {
+    setup,
+    machining,
+    finishing,
+    total: Math.round((setup + machining + finishing) * 100) / 100
+  };
+};
+
+/**
+ * 工程データから予算を推定
+ */
+const calculateEstimatedCostFromProcess = (processData: any): number => {
+  // 基本的な単価設定
+  const setupCostPerHour = 3000; // 段取り時間単価
+  const machiningCostPerHour = 2500; // 加工時間単価
+  const finishingCostPerHour = 2000; // 仕上げ時間単価
+  
+  const estimatedHours = calculateEstimatedHoursFromProcess(processData);
+  
+  const totalCost = 
+    estimatedHours.setup * setupCostPerHour +
+    estimatedHours.machining * machiningCostPerHour +
+    estimatedHours.finishing * finishingCostPerHour;
+    
+  return Math.round(totalCost);
 };
 
 export {

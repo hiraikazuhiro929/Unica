@@ -50,7 +50,17 @@ import {
   Upload,
   FileText,
   QrCode,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportInventory } from "@/lib/utils/exportUtils";
+import { useInventory } from './hooks/useInventory';
 
 // 型定義
 interface InventoryItem {
@@ -76,6 +86,9 @@ interface InventoryItem {
   notes?: string;
   tags: string[];
   qrCode?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
 }
 
 interface InventoryCategory {
@@ -109,7 +122,18 @@ interface InventoryStatistics {
 }
 
 const InventoryManagement = () => {
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const {
+    items,
+    categories: firebaseCategories,
+    statistics,
+    loading,
+    error,
+    createItem,
+    updateItem,
+    deleteItem,
+    refreshData,
+  } = useInventory();
+
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -117,240 +141,80 @@ const InventoryManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // カテゴリ定義（製造業特化）
-  const categories: InventoryCategory[] = [
-    {
-      id: "cutting-tools",
-      name: "切削工具",
-      icon: Scissors,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100 border-blue-300",
-      description: "エンドミル、ドリル、バイトなど",
-    },
-    {
-      id: "measuring-tools",
-      name: "測定器具",
-      icon: Ruler,
-      color: "text-green-600",
-      bgColor: "bg-green-100 border-green-300",
-      description: "ノギス、マイクロメータ、ゲージなど",
-    },
-    {
-      id: "jigs-fixtures",
-      name: "治具・取付具",
-      icon: Wrench,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100 border-purple-300",
-      description: "バイス、治具、取付具など",
-    },
-    {
-      id: "hand-tools",
-      name: "作業工具",
-      icon: Wrench,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100 border-orange-300",
-      description: "レンチ、ドライバー、ハンマーなど",
-    },
-    {
-      id: "machines",
-      name: "機械・設備",
-      icon: Settings,
-      color: "text-red-600",
-      bgColor: "bg-red-100 border-red-300",
-      description: "工作機械、測定機器など",
-    },
-    {
-      id: "consumables",
-      name: "消耗品",
-      icon: Package,
-      color: "text-gray-600 dark:text-slate-400",
-      bgColor: "bg-gray-100 border-gray-300",
-      description: "研磨剤、潤滑油、安全用品など",
-    },
-  ];
+  // カテゴリのアイコンマッピング
+  const iconMapping: { [key: string]: any } = {
+    "Scissors": Scissors,
+    "Ruler": Ruler,
+    "Wrench": Wrench,
+    "Settings": Settings,
+    "Package": Package,
+  };
 
-  // サンプルデータ
-  const sampleItems: InventoryItem[] = [
-    {
-      id: "1",
-      name: "超硬エンドミル 10mm",
-      category: categories[0],
-      type: "エンドミル",
-      brand: "OSG",
-      model: "EX-EEDL",
-      serialNumber: "EM-001",
-      purchaseDate: "2023-03-15",
-      purchasePrice: 8500,
-      currentValue: 6800,
-      condition: "good",
-      status: "available",
-      location: "工具庫A-1-3",
-      usageHours: 120,
-      specifications: {
-        "径": "10mm",
-        "刃長": "30mm",
-        "全長": "100mm",
-        "材質": "超硬",
-        "コーティング": "TiAlN"
-      },
-      notes: "アルミ加工用",
-      tags: ["アルミ", "精密", "高速"],
-      maintenanceHistory: [
+  // カテゴリ定義（Firebaseデータとフォールバック）
+  const categories: InventoryCategory[] = firebaseCategories.length > 0 
+    ? firebaseCategories.map(cat => ({
+        ...cat,
+        icon: iconMapping[cat.iconName] || Package,
+      }))
+    : [
         {
-          id: "m1",
-          date: "2024-01-15",
-          type: "inspection",
-          description: "刃先点検・研磨",
-          cost: 1200,
-          technician: "田中技師",
-        }
-      ],
-      lastMaintenanceDate: "2024-01-15",
-      nextMaintenanceDate: "2024-07-15",
-    },
-    {
-      id: "2",
-      name: "デジタルノギス 150mm",
-      category: categories[1],
-      type: "ノギス",
-      brand: "Mitutoyo",
-      model: "CD-15CPX",
-      serialNumber: "NOG-001",
-      purchaseDate: "2022-08-10",
-      purchasePrice: 12000,
-      currentValue: 9600,
-      condition: "excellent",
-      status: "in-use",
-      location: "測定室",
-      assignedTo: "佐藤作業員",
-      specifications: {
-        "測定範囲": "0-150mm",
-        "精度": "±0.02mm",
-        "分解能": "0.01mm",
-        "電源": "SR44電池"
-      },
-      notes: "校正済み (2024/01/20)",
-      tags: ["精密", "校正済み"],
-      maintenanceHistory: [
+          id: "cutting-tools",
+          name: "切削工具",
+          icon: Scissors,
+          color: "text-blue-600",
+          bgColor: "bg-blue-100 border-blue-300",
+          description: "エンドミル、ドリル、バイトなど",
+        },
         {
-          id: "m2",
-          date: "2024-01-20",
-          type: "calibration",
-          description: "校正実施",
-          cost: 3000,
-          technician: "計測センター",
-          nextDueDate: "2025-01-20"
-        }
-      ],
-      lastMaintenanceDate: "2024-01-20",
-      nextMaintenanceDate: "2025-01-20",
-    },
-    {
-      id: "3",
-      name: "マシンバイス 100mm",
-      category: categories[2],
-      type: "バイス",
-      brand: "YUKIWA",
-      model: "MCV-100",
-      purchaseDate: "2021-05-20",
-      purchasePrice: 25000,
-      currentValue: 20000,
-      condition: "good",
-      status: "available",
-      location: "マシニングセンタ#1",
-      specifications: {
-        "口幅": "100mm",
-        "口開き": "125mm",
-        "高さ": "38mm",
-        "材質": "FC鋳鉄"
-      },
-      notes: "精密加工用",
-      tags: ["精密", "マシニング"],
-      maintenanceHistory: [
+          id: "measuring-tools",
+          name: "測定器具",
+          icon: Ruler,
+          color: "text-green-600",
+          bgColor: "bg-green-100 border-green-300",
+          description: "ノギス、マイクロメータ、ゲージなど",
+        },
         {
-          id: "m3",
-          date: "2023-12-10",
-          type: "inspection",
-          description: "可動部点検・グリス交換",
-          cost: 800,
-          technician: "山田技師",
-        }
-      ],
-      lastMaintenanceDate: "2023-12-10",
-      nextMaintenanceDate: "2024-06-10",
-    },
-    {
-      id: "4",
-      name: "NC旋盤 CNC-2000",
-      category: categories[4],
-      type: "NC旋盤",
-      brand: "TAKISAWA",
-      model: "TC-200L",
-      serialNumber: "TC001",
-      purchaseDate: "2020-04-01",
-      purchasePrice: 15000000,
-      currentValue: 12000000,
-      condition: "good",
-      status: "in-use",
-      location: "第1工場エリアB",
-      assignedTo: "鈴木課長",
-      usageHours: 4580,
-      specifications: {
-        "最大加工径": "φ320mm",
-        "最大加工長": "500mm",
-        "主軸回転数": "50-4000rpm",
-        "制御装置": "FANUC 0i-TD"
-      },
-      notes: "定期メンテナンス実施中",
-      tags: ["CNC", "高精度", "量産"],
-      maintenanceHistory: [
+          id: "jigs-fixtures",
+          name: "治具・取付具",
+          icon: Wrench,
+          color: "text-purple-600",
+          bgColor: "bg-purple-100 border-purple-300",
+          description: "バイス、治具、取付具など",
+        },
         {
-          id: "m4",
-          date: "2024-01-30",
-          type: "inspection",
-          description: "年次点検・オーバーホール",
-          cost: 180000,
-          technician: "メーカーサービス",
-          nextDueDate: "2025-01-30"
-        }
-      ],
-      lastMaintenanceDate: "2024-01-30",
-      nextMaintenanceDate: "2025-01-30",
-    },
-    {
-      id: "5",
-      name: "トルクレンチ 50Nm",
-      category: categories[3],
-      type: "トルクレンチ",
-      brand: "TONE",
-      model: "T3MN50",
-      purchaseDate: "2023-11-12",
-      purchasePrice: 15000,
-      currentValue: 13500,
-      condition: "excellent",
-      status: "available",
-      location: "工具庫B-2-1",
-      specifications: {
-        "トルク範囲": "10-50Nm",
-        "精度": "±4%",
-        "差し込み角": "3/8インチ",
-        "全長": "254mm"
-      },
-      notes: "校正証明書付き",
-      tags: ["校正済み", "精密"],
-      maintenanceHistory: [],
-      nextMaintenanceDate: "2024-11-12",
-    },
-  ];
+          id: "hand-tools",
+          name: "作業工具",
+          icon: Wrench,
+          color: "text-orange-600",
+          bgColor: "bg-orange-100 border-orange-300",
+          description: "レンチ、ドライバー、ハンマーなど",
+        },
+        {
+          id: "machines",
+          name: "機械・設備",
+          icon: Settings,
+          color: "text-red-600",
+          bgColor: "bg-red-100 border-red-300",
+          description: "工作機械、測定機器など",
+        },
+        {
+          id: "consumables",
+          name: "消耗品",
+          icon: Package,
+          color: "text-gray-600 dark:text-slate-400",
+          bgColor: "bg-gray-100 border-gray-300",
+          description: "研磨剤、潤滑油、安全用品など",
+        },
+      ];
 
-  // 初期化
+  // エラー表示
   useEffect(() => {
-    setItems(sampleItems);
-    setFilteredItems(sampleItems);
-  }, []);
+    if (error) {
+      console.error('Inventory error:', error);
+    }
+  }, [error]);
 
   // フィルタリング
   useEffect(() => {
@@ -371,43 +235,7 @@ const InventoryManagement = () => {
     setFilteredItems(filtered);
   }, [items, searchQuery, categoryFilter, statusFilter]);
 
-  // 統計計算
-  const calculateStatistics = (): InventoryStatistics => {
-    const totalItems = items.length;
-    const totalValue = items.reduce((sum, item) => sum + item.currentValue, 0);
-    const availableItems = items.filter(item => item.status === "available").length;
-    const inUseItems = items.filter(item => item.status === "in-use").length;
-    const maintenanceItems = items.filter(item => item.status === "maintenance").length;
-    const repairItems = items.filter(item => item.status === "repair").length;
-    
-    const avgAge = items.reduce((sum, item) => {
-      const purchaseDate = new Date(item.purchaseDate);
-      const now = new Date();
-      const ageInYears = (now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
-      return sum + ageInYears;
-    }, 0) / totalItems;
-
-    const now = new Date();
-    const maintenanceDueItems = items.filter(item => {
-      if (!item.nextMaintenanceDate) return false;
-      const dueDate = new Date(item.nextMaintenanceDate);
-      const daysUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      return daysUntilDue <= 30; // 30日以内にメンテナンス予定
-    }).length;
-
-    return {
-      totalItems,
-      totalValue,
-      availableItems,
-      inUseItems,
-      maintenanceItems,
-      repairItems,
-      averageAge,
-      maintenanceDueItems,
-    };
-  };
-
-  const statistics = calculateStatistics();
+  // 統計はFirebaseフックから取得するため削除
 
   // ステータス・コンディションのバッジ
   const getStatusBadge = (status: InventoryItem["status"]) => {
@@ -477,22 +305,38 @@ const InventoryManagement = () => {
   };
 
   // アイテム保存
-  const handleSaveItem = (itemData: InventoryItem) => {
-    if (selectedItem && selectedItem.id) {
-      // 更新
-      setItems(items.map(item => item.id === selectedItem.id ? itemData : item));
-    } else {
-      // 新規作成
-      setItems([...items, { ...itemData, id: Date.now().toString() }]);
+  const handleSaveItem = async (itemData: InventoryItem) => {
+    try {
+      if (selectedItem && selectedItem.id) {
+        // 更新
+        await updateItem(selectedItem.id, itemData);
+      } else {
+        // 新規作成 - IDとFirebase固有フィールドを除去
+        const { id, createdAt, updatedAt, createdBy, ...createData } = itemData;
+        await createItem({
+          ...createData,
+          categoryId: itemData.category.id,
+        } as any);
+      }
+      setShowAddModal(false);
+      setSelectedItem(null);
+      await refreshData();
+    } catch (error) {
+      console.error('Failed to save item:', error);
+      alert('保存に失敗しました: ' + (error as Error).message);
     }
-    setShowAddModal(false);
-    setSelectedItem(null);
   };
 
   // アイテム削除
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     if (confirm("この工具を削除しますか？")) {
-      setItems(items.filter(item => item.id !== id));
+      try {
+        await deleteItem(id);
+        await refreshData();
+      } catch (error) {
+        console.error('Failed to delete item:', error);
+        alert('削除に失敗しました: ' + (error as Error).message);
+      }
     }
   };
 
@@ -678,6 +522,51 @@ const InventoryManagement = () => {
 
             <div className="flex-1" />
             
+            {/* エクスポートボタン */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
+                  disabled={filteredItems.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  エクスポート
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
+                  エクスポート対象
+                </div>
+                <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
+                  <div>• フィルター適用後の工具データ: {filteredItems.length}件</div>
+                  <div>• カテゴリ: {categoryFilter === 'all' ? 'すべて' : categories.find(c => c.id === categoryFilter)?.name || categoryFilter}</div>
+                  <div>• ステータス: {statusFilter === 'all' ? 'すべて' : 
+                    statusFilter === 'available' ? '利用可能' :
+                    statusFilter === 'in-use' ? '使用中' :
+                    statusFilter === 'maintenance' ? 'メンテナンス' :
+                    statusFilter === 'repair' ? '修理中' :
+                    statusFilter === 'retired' ? '廃棄' : statusFilter}</div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => exportInventory(filteredItems, 'csv', categoryFilter, statusFilter)}
+                  disabled={filteredItems.length === 0}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV形式でエクスポート
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => exportInventory(filteredItems, 'excel', categoryFilter, statusFilter)}
+                  disabled={filteredItems.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel形式でエクスポート
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <div className="text-sm text-gray-600 dark:text-slate-300">
               {filteredItems.length} / {items.length} 件表示
             </div>
@@ -686,7 +575,22 @@ const InventoryManagement = () => {
 
         {/* メインコンテンツ */}
         <div className="flex-1 overflow-auto p-6">
-          {filteredItems.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16">
+              <RefreshCcw className="w-16 h-16 text-gray-300 mx-auto mb-4 animate-spin" />
+              <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">データを読み込み中...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-16">
+              <AlertCircle className="w-16 h-16 text-red-300 mx-auto mb-4" />
+              <p className="text-xl text-red-500 mb-2">データの読み込みに失敗しました</p>
+              <p className="text-gray-400 dark:text-slate-500 mb-4">{error}</p>
+              <Button onClick={refreshData} variant="outline">
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                再試行
+              </Button>
+            </div>
+          ) : filteredItems.length === 0 ? (
             <div className="text-center py-16">
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する工具が見つかりません</p>

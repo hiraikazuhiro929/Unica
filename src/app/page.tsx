@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import NotificationPanel, { type NotificationDisplay } from "./components/NotificationPanel";
 import { Button } from "@/components/ui/button";
 import EnhancedProcessCard from "./components/EnhancedProcessCard";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Firebase imports
 import { subscribeToProcessesList } from "@/lib/firebase/processes";
@@ -39,6 +40,7 @@ import {
 } from "lucide-react";
 
 const MainDashboard = () => {
+  const { user } = useAuth();
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -54,8 +56,8 @@ const MainDashboard = () => {
   const [showQuickNoteModal, setShowQuickNoteModal] = useState(false);
   const [quickNoteContent, setQuickNoteContent] = useState('');
 
-  // Current user ID (should be from authentication)
-  const currentUserId = "user-123"; // TODO: Get from auth context
+  // Current user ID from authentication
+  const currentUserId = user?.uid || "";
 
   // デバッグ用：サンプルデータをFirebaseに投入する関数（削除予定）
   const seedFirebaseData = async () => {
@@ -422,9 +424,11 @@ const MainDashboard = () => {
 
   // Firebase Data Subscriptions
   useEffect(() => {
+    if (!user?.uid) return; // ユーザー認証を待つ
+    
     const unsubscribes: (() => void)[] = [];
     
-    console.log('Firebase接続を開始します...');
+    console.log('Firebase接続を開始します...', 'User ID:', user.uid);
 
     // Subscribe to processes
     const processUnsubscribe = subscribeToProcessesList(
@@ -522,7 +526,7 @@ const MainDashboard = () => {
     return () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, [currentUserId]);
+  }, [user?.uid]);
 
   // デバッグ用：Windowオブジェクトに関数を追加（削除予定）
   useEffect(() => {

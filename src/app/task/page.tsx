@@ -59,6 +59,7 @@ import {
 // Firebase関数とタイプのインポート
 import { PersonalTask, CompanyTask } from "@/lib/firebase/tasks";
 import { useTasks } from "./hooks/useTasks";
+import { useAuth } from "@/contexts/AuthContext";
 
 // タスクカテゴリー設定
 const TASK_CATEGORIES = [
@@ -132,10 +133,11 @@ const TaskPage = () => {
     relatedProcessId: "",
   });
 
-  // モックユーザー（実際の実装では認証から取得）
+  // 認証されたユーザー情報を取得
+  const { user } = useAuth();
   const currentUser = {
-    id: "user-123",
-    name: "テストユーザー",
+    id: user?.uid || "",
+    name: user?.displayName || "ユーザー",
   };
 
   // カスタムフック使用

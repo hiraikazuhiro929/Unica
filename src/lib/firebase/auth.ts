@@ -28,6 +28,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { auth, db } from './config';
+import { AppUser } from '@/types';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -40,26 +41,7 @@ export interface UserProfile {
   updatedAt: Date;
 }
 
-export interface AppUser {
-  uid: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'manager' | 'leader' | 'worker';
-  department: string;
-  employeeId: string;
-  companyId?: string;
-  isActive: boolean;
-  avatar?: string;
-  lastLogin?: any;
-  createdAt: any;
-  updatedAt: any;
-  permissions?: {
-    canConfirmReports?: boolean;
-    canReplyToReports?: boolean;
-    canViewAllReports?: boolean;
-    canManageUsers?: boolean;
-  };
-}
+// AppUser型はsrc/types/index.tsに統一
 
 export const signUpWithEmail = async (email: string, password: string, displayName: string) => {
   try {

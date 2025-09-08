@@ -31,7 +31,15 @@ import {
   Building2,
   PanelLeftClose,
   PanelLeft,
+  Download,
+  FileText,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // 型とコンポーネントのインポート
 import { Process } from "@/app/tasks/types";
@@ -42,6 +50,7 @@ import { ProcessRow } from "@/app/tasks/components/ProcessRow";
 import { ProcessDetail } from "@/app/tasks/components/ProcessDetail";
 import { GanttChart } from "@/app/tasks/components/gantt/GanttChart";
 import { KanbanBoard } from "@/app/tasks/components/kanban/KanbanBoard";
+import { exportProcesses } from "@/lib/utils/exportUtils";
 
 const ProcessList = () => {
   const searchParams = useSearchParams();
@@ -120,10 +129,10 @@ const ProcessList = () => {
       processes: company.processes.filter((process) => {
         const matchesSearch =
           searchQuery === "" ||
-          process.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          process.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          process.fieldPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          process.orderClient.toLowerCase().includes(searchQuery.toLowerCase());
+          (process.projectName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (process.managementNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (process.fieldPerson || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (process.orderClient || '').toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus =
           filterStatus === "all" || process.status === filterStatus;
@@ -192,15 +201,82 @@ const ProcessList = () => {
             </div>
             
             {/* 検索バー */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
-              <Input
-                type="text"
-                placeholder="工程を検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-700 dark:text-white"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+                <Input
+                  type="text"
+                  placeholder="工程を検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-80 border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-400 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+
+              {/* エクスポートボタン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-2"
+                    disabled={companies.flatMap(c => c.processes).filter(p => {
+                      const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                          (p.companyName || '').toLowerCase().includes(searchQuery.toLowerCase());
+                      const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+                      return matchesSearch && matchesStatus;
+                    }).length === 0}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden lg:inline">エクスポート</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-600">
+                    <div className="font-medium mb-1">エクスポート対象</div>
+                    <div className="space-y-1 text-xs">
+                      <div>ステータス: {filterStatus === 'all' ? 'すべて' : filterStatus}</div>
+                      {searchQuery && <div>検索: "{searchQuery}"</div>}
+                      <div className="font-medium text-blue-600 dark:text-blue-400">
+                        {companies.flatMap(c => c.processes).filter(p => {
+                          const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                              (p.companyName || '').toLowerCase().includes(searchQuery.toLowerCase());
+                          const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+                          return matchesSearch && matchesStatus;
+                        }).length}件の工程
+                      </div>
+                    </div>
+                  </div>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const filteredProcesses = companies.flatMap(c => c.processes).filter(p => {
+                        const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (p.companyName || '').toLowerCase().includes(searchQuery.toLowerCase());
+                        const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+                        return matchesSearch && matchesStatus;
+                      });
+                      exportProcesses(filteredProcesses, 'csv');
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    CSV形式でダウンロード
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const filteredProcesses = companies.flatMap(c => c.processes).filter(p => {
+                        const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (p.companyName || '').toLowerCase().includes(searchQuery.toLowerCase());
+                        const matchesStatus = filterStatus === "all" || p.status === filterStatus;
+                        return matchesSearch && matchesStatus;
+                      });
+                      exportProcesses(filteredProcesses, 'excel');
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Excel形式でダウンロード
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

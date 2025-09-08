@@ -9,6 +9,12 @@ import {
   logOut 
 } from '@/lib/firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import { 
+  updateActivity, 
+  getSessionInfo, 
+  endSession,
+  logSecurityEvent 
+} from '@/lib/utils/securityUtils';
 
 // =============================================================================
 // TYPES
@@ -20,10 +26,13 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   error: string | null;
+  sessionExpired: boolean;
   
   // アクション
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  checkSession: () => boolean;
+  extendSession: () => void;
 }
 
 // =============================================================================
@@ -45,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     console.log('🔐 AuthProvider: Initializing auth state listener');
@@ -108,11 +118,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // セッション管理機能
+  const checkSession = (): boolean => {
+    const sessionInfo = getSessionInfo();
+    if (sessionInfo.isExpired) {
+      setSessionExpired(true);
+      logSecurityEvent('session_expired', { userId: user?.uid });
+      return false;
+    }
+    return true;
+  };
+
+  const extendSession = (): void => {
+    updateActivity();
+    setSessionExpired(false);
+  };
+
+  // セッションチェックのインターバル
+  useEffect(() => {
+    if (user) {
+      const interval = setInterval(() => {
+        if (!checkSession()) {
+          // セッション期限切れの場合は自動ログアウト
+          logout();
+        }
+      }, 60000); // 1分毎にチェック
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
   // ログアウト
   const logout = async () => {
     try {
       setError(null);
+      logSecurityEvent('logout', { userId: user?.uid });
       await logOut();
+      endSession();
     } catch (err: any) {
       console.error('Logout error:', err);
       setError('ログアウトに失敗しました');
@@ -124,8 +166,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     firebaseUser,
     loading,
     error,
+    sessionExpired,
     logout,
     refreshUser,
+    checkSession,
+    extendSession,
   };
 
   return (

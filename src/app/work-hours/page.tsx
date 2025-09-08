@@ -44,7 +44,14 @@ import {
   MinusCircle,
   ChevronsDown,
   ChevronsUp,
+  Download,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { 
   WorkHours, 
   EnhancedWorkHours,
@@ -79,6 +86,7 @@ import { getOrders } from "@/lib/firebase/orders";
 import { getProcessesList } from "@/lib/firebase/processes";
 import type { Order } from "@/app/tasks/types";
 import type { Process } from "@/app/tasks/types";
+import { exportWorkHours } from "@/lib/utils/exportUtils";
 
 const WorkHoursManagement = () => {
   const router = useRouter();
@@ -895,6 +903,49 @@ const WorkHoursManagement = () => {
                   <BarChart3 className="w-4 h-4 mr-1" />
                   分析
                 </Button>
+
+                {/* エクスポートボタン */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex items-center gap-2"
+                      disabled={filteredData.length === 0}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="hidden lg:inline">エクスポート</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-600">
+                      <div className="font-medium mb-1">エクスポート対象</div>
+                      <div className="space-y-1 text-xs">
+                        <div>ステータス: {filterStatus === 'all' ? 'すべて' : filterStatus === 'planning' ? '計画中' : filterStatus === 'in-progress' ? '進行中' : filterStatus === 'completed' ? '完了' : '遅延'}</div>
+                        {searchQuery && <div>検索: "{searchQuery}"</div>}
+                        <div className="font-medium text-blue-600 dark:text-blue-400">
+                          {filteredData.length}件の工数データ
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        exportWorkHours(filteredData, 'csv');
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      CSV形式でダウンロード
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        exportWorkHours(filteredData, 'excel');
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Excel形式でダウンロード
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 
                 <div className="relative">
                   <Button

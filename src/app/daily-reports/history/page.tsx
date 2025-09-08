@@ -13,6 +13,13 @@ import { getDailyReportsByWorker, confirmDailyReport } from "@/lib/firebase/dail
 import { getProcessesList } from "@/lib/firebase/processes";
 import { ReplySection } from "@/app/daily-reports/components/ReplySection";
 import { useRouter } from "next/navigation";
+import { exportDailyReports } from "@/lib/utils/exportUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ソートビューコンポーネント
 const DateSortView = ({ 
@@ -516,6 +523,29 @@ const mockDailyReports: DailyReportEntry[] = [
   },
 ];
 
+// 日付フィルターから日付範囲を取得
+const getDateRangeFromFilter = (filter: string): { start: Date; end: Date } | undefined => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  switch (filter) {
+    case 'today':
+      return { start: today, end: end };
+    case 'week':
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return { start: weekAgo, end: end };
+    case 'month':
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return { start: monthAgo, end: end };
+    default:
+      return undefined;
+  }
+};
+
 export default function DailyReportsHistoryPage() {
   const router = useRouter();
   const [reports, setReports] = useState<DailyReportEntry[]>([]);
@@ -767,9 +797,60 @@ export default function DailyReportsHistoryPage() {
                 </SelectContent>
               </Select>
 
-              {/* 結果件数 */}
-              <div className="flex items-center justify-center sm:justify-start text-sm text-gray-600 dark:text-slate-400">
-                {filteredReports.length}件の日報
+              {/* エクスポートボタン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2 border-gray-200 dark:border-slate-600"
+                    disabled={filteredReports.length === 0}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">エクスポート</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-600">
+                    <div className="font-medium mb-1">エクスポート対象</div>
+                    <div className="space-y-1 text-xs">
+                      <div>期間: {dateFilter === 'all' ? '全期間' : dateFilter === 'today' ? '今日' : dateFilter === 'week' ? '1週間以内' : '1ヶ月以内'}</div>
+                      <div>ステータス: {statusFilter === 'all' ? 'すべて' : statusFilter === 'submitted' ? '提出済み' : statusFilter === 'draft' ? '下書き' : '確認済み'}</div>
+                      <div className="font-medium text-blue-600 dark:text-blue-400">
+                        {filteredReports.length}件の日報
+                      </div>
+                    </div>
+                  </div>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const dateRange = getDateRangeFromFilter(dateFilter);
+                      exportDailyReports(filteredReports, 'csv', dateRange);
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    CSV形式でダウンロード
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const dateRange = getDateRangeFromFilter(dateFilter);
+                      exportDailyReports(filteredReports, 'excel', dateRange);
+                    }}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Excel形式でダウンロード
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* 結果件数とエクスポート情報 */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-slate-400">
+                <span>{filteredReports.length}件の日報</span>
+                {(dateFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+                  <span className="ml-2 text-xs">
+                    (フィルター適用中)
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>

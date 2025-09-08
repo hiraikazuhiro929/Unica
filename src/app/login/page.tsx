@@ -11,6 +11,8 @@ import { Loader2, Building2, AlertCircle } from "lucide-react";
 import { signInWithEmail } from "@/lib/firebase/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import { validateEmail, logSecurityEvent, startSession } from "@/lib/utils/securityUtils";
+import { showError, showSuccess } from "@/lib/utils/errorHandling";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +24,8 @@ export default function LoginPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   // ログイン画面では強制的にライトモードを適用
   useEffect(() => {
@@ -56,8 +60,23 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // ブロック状態チェック
+    if (isBlocked) {
+      setError("セキュリティのため一時的にログインがブロックされています");
+      return;
+    }
+    
+    // 基本バリデーション
     if (!formData.email || !formData.password) {
       setError("メールアドレスとパスワードを入力してください");
+      logSecurityEvent('login_validation_failed', { email: formData.email, reason: 'missing_fields' });
+      return;
+    }
+
+    // メールアドレス形式チェック
+    if (!validateEmail(formData.email)) {
+      setError("有効なメールアドレス形式で入力してください");
+      logSecurityEvent('login_validation_failed', { email: formData.email, reason: 'invalid_email_format' });
       return;
     }
 
@@ -65,19 +84,42 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      logSecurityEvent('login_attempt', { email: formData.email });
+      
       const result = await signInWithEmail(formData.email, formData.password);
       
       if (result.error) {
         setError(result.error);
+        setLoginAttempts(prev => prev + 1);
+        
+        logSecurityEvent('login_failed', { 
+          email: formData.email, 
+          attempts: loginAttempts + 1,
+          error: result.error 
+        });
+        
+        // 5回失敗でブロック
+        if (loginAttempts >= 4) {
+          setIsBlocked(true);
+          logSecurityEvent('login_blocked', { email: formData.email, attempts: loginAttempts + 1 });
+          setTimeout(() => {
+            setIsBlocked(false);
+            setLoginAttempts(0);
+          }, 15 * 60 * 1000); // 15分でブロック解除
+        }
         return;
       }
 
-      console.log("✅ Login successful");
-      // AuthContextが自動的にリダイレクトを処理
+      // 成功時
+      logSecurityEvent('login_success', { email: formData.email });
+      startSession();
+      showSuccess("ログインしました");
+      setLoginAttempts(0); // リセット
       
     } catch (err: any) {
       console.error("Login error:", err);
-      setError("ログインに失敗しました");
+      showError(err, "ログインに失敗しました");
+      logSecurityEvent('login_error', { email: formData.email, error: err.message });
     } finally {
       setLoading(false);
     }
@@ -172,7 +214,25 @@ export default function LoginPage() {
                 />
               </div>
 
-              {error && (
+              {isBlocked && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    セキュリティのため一時的にログインがブロックされています（15分後に解除）
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {loginAttempts > 0 && !isBlocked && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    ログイン失敗: {loginAttempts}/5回 ({5 - loginAttempts}回失敗で一時ブロック)
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {error && !isBlocked && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
@@ -182,7 +242,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading}
+                disabled={loading || isBlocked}
               >
                 {loading ? (
                   <>

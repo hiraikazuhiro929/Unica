@@ -17,6 +17,7 @@ import {
 import { db } from './config';
 import { safeFirebaseOperation, retryOperation } from '../utils/errorHandling';
 import { validateOrderData } from '../utils/validation';
+import { managementNumberManager } from '../utils/managementNumber';
 
 // 受注案件の型定義
 export interface OrderItem {
@@ -42,40 +43,66 @@ export interface OrderItem {
 const COLLECTION_NAME = 'orders';
 
 /**
- * 新しい受注案件を作成（バリデーション・エラーハンドリング付き）
+ * 新しい受注案件を作成（製番管理統合版）
  */
-export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt' | 'managementNumber'>) => {
   // バリデーション
   const validation = validateOrderData(orderData);
   if (!validation.isValid) {
     return {
       success: false,
-      error: validation.errors.join(', ')
+      error: validation.errors_legacy?.join(', ') || 'バリデーションエラー'
     };
   }
   
-  const now = new Date().toISOString();
-  const newOrder: Omit<OrderItem, 'id'> = {
-    ...orderData,
-    status: orderData.status || 'planning',
-    priority: orderData.priority || 'medium',
-    progress: orderData.progress || 0,
-    createdAt: now,
-    updatedAt: now,
-  };
+  try {
+    // 1. 製番を生成
+    const { managementNumber, recordId } = await managementNumberManager.generateManagementNumber('order', {
+      projectName: orderData.projectName,
+      client: orderData.client,
+      assignee: orderData.assignedTo,
+      quantity: orderData.quantity,
+      priority: orderData.priority
+    });
 
-  // リトライ機能付きで実行
-  return await safeFirebaseOperation(
-    async () => {
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), newOrder);
-      return {
-        success: true,
-        id: docRef.id,
-        data: { id: docRef.id, ...newOrder }
-      };
-    },
-    `order_draft_${orderData.managementNumber}` // ローカルストレージキー
-  );
+    const now = new Date().toISOString();
+    const newOrder: Omit<OrderItem, 'id'> = {
+      ...orderData,
+      managementNumber,
+      status: orderData.status || 'planning',
+      priority: orderData.priority || 'medium',
+      progress: orderData.progress || 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // 2. 受注データを保存
+    const result = await safeFirebaseOperation(
+      async () => {
+        const docRef = await addDoc(collection(db, COLLECTION_NAME), newOrder);
+        
+        // 3. 製番管理に受注IDを関連付け
+        await managementNumberManager.linkRelatedId(managementNumber, 'orderId', docRef.id);
+        
+        return {
+          success: true,
+          id: docRef.id,
+          managementNumber,
+          data: { id: docRef.id, ...newOrder }
+        };
+      },
+      `order_draft_${managementNumber}`
+    );
+
+    return result;
+    
+  } catch (error: any) {
+    console.error('Order creation failed:', error);
+    return {
+      success: false,
+      error: error.message || '受注作成に失敗しました'
+    };
+  }
 };
 
 /**

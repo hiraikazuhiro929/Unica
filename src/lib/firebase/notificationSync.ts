@@ -185,8 +185,8 @@ export class NotificationSynchronizationService {
    */
   private static async getAllActiveUsers(): Promise<string[]> {
     // In a real implementation, this would query the users collection
-    // For now, return mock user IDs
-    return ['user-123', 'user-456', 'user-789'];
+    // For now, return mock user IDs (temporary implementation)
+    return ['mock-user-1', 'mock-user-2', 'mock-user-3'];
   }
 
   /**
@@ -194,8 +194,8 @@ export class NotificationSynchronizationService {
    */
   private static async getUsersByDepartments(departments: string[]): Promise<string[]> {
     // In a real implementation, this would query users by department
-    // For now, return mock user IDs based on department
-    return ['user-123', 'user-456'];
+    // For now, return mock user IDs based on department (temporary implementation)
+    return ['mock-user-1', 'mock-user-2'];
   }
 
   /**

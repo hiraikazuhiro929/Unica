@@ -13,6 +13,7 @@ import {
   Settings,
   RefreshCw,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Firebase imports
 import { 
@@ -71,6 +72,7 @@ const isFirebaseNotification = (notification: DisplayNotification): notification
 };
 
 const NotificationManagement = () => {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [activeTab, setActiveTab] = useState<"inbox" | "mentions" | "alerts" | "system">("inbox");
@@ -85,11 +87,13 @@ const NotificationManagement = () => {
     normal: boolean;
   }>({ urgent: true, high: true, normal: true });
   
-  // デフォルトユーザーID（実際のアプリでは認証から取得）
-  const currentUserId = 'user-123'; // TODO: Get from auth context
+  // Current user ID from authentication
+  const currentUserId = user?.uid || "";
 
   // Firebaseからリアルタイム通知を取得
   useEffect(() => {
+    if (!user?.uid) return; // ユーザー認証を待つ
+    
     const unsubscribe = subscribeToNotifications(
       { recipientId: currentUserId, limit: 100 },
       (data) => {
