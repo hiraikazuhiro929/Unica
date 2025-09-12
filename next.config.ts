@@ -16,12 +16,9 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer, dev }) => {
     // 開発環境では高速化重視
     if (dev) {
-      // ファイルシステムキャッシュを有効化
+      // メモリキャッシュを使用（ファイルシステムキャッシュの問題を回避）
       config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename]
-        }
+        type: 'memory'
       };
       
       // 最適化を無効化（開発時の高速化）

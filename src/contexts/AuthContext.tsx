@@ -13,6 +13,7 @@ import {
   updateActivity, 
   getSessionInfo, 
   endSession,
+  startSession,
   logSecurityEvent 
 } from '@/lib/utils/securityUtils';
 
@@ -73,6 +74,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // Firebase User も設定
           setFirebaseUser(auth.currentUser);
+          
+          // セッションを開始
+          startSession();
           
           // アクティブユーザーかチェック
           if (appUser.isActive === false) {
@@ -137,14 +141,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // セッションチェックのインターバル
   useEffect(() => {
     if (user) {
+      // ユーザー操作のアクティビティを更新
+      const handleActivity = () => {
+        updateActivity();
+      };
+      
+      // イベントリスナーを追加
+      window.addEventListener('click', handleActivity);
+      window.addEventListener('keypress', handleActivity);
+      window.addEventListener('scroll', handleActivity);
+      window.addEventListener('mousemove', handleActivity);
+      
+      // セッションチェックのインターバル
       const interval = setInterval(() => {
         if (!checkSession()) {
           // セッション期限切れの場合は自動ログアウト
+          console.warn('⚠️ Session expired, logging out...');
           logout();
         }
-      }, 60000); // 1分毎にチェック
+      }, 300000); // 5分毎にチェック（频度を減らす）
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('click', handleActivity);
+        window.removeEventListener('keypress', handleActivity);
+        window.removeEventListener('scroll', handleActivity);
+        window.removeEventListener('mousemove', handleActivity);
+      };
     }
   }, [user]);
 

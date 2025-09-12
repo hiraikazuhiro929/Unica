@@ -107,7 +107,7 @@ export interface SessionInfo {
   isExpired: boolean;
 }
 
-export const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8時間
+export const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24時間
 
 export const getSessionInfo = (): SessionInfo => {
   const lastActivity = parseInt(localStorage.getItem('lastActivity') || '0');
@@ -124,13 +124,23 @@ export const getSessionInfo = (): SessionInfo => {
 };
 
 export const updateActivity = (): void => {
-  localStorage.setItem('lastActivity', Date.now().toString());
+  const now = Date.now().toString();
+  localStorage.setItem('lastActivity', now);
+  // セッションが保存されたことを確認
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const saved = localStorage.getItem('lastActivity');
+    if (saved === now) {
+      console.log('✅ Activity updated successfully');
+    }
+  }
 };
 
 export const startSession = (): void => {
   const now = Date.now().toString();
   localStorage.setItem('loginTime', now);
   localStorage.setItem('lastActivity', now);
+  // セッション開始をログ
+  console.log('🔐 Session started at:', new Date().toISOString());
 };
 
 export const endSession = (): void => {

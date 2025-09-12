@@ -49,7 +49,6 @@ import {
   SortAsc,
   SortDesc,
 } from "lucide-react";
-import EnhancedNotionTable from './components/EnhancedNotionTable';
 
 // 型定義
 interface TableColumn {
@@ -166,19 +165,6 @@ const FileManagementSystem = () => {
     nodeId?: string;
     type: 'file' | 'folder' | 'background';
   } | null>(null);
-  // 統一されたコンテキストメニュー
-  const [unifiedContextMenu, setUnifiedContextMenu] = useState<{
-    x: number;
-    y: number;
-    type: 'file' | 'folder' | 'background' | 'row' | 'column' | 'cell';
-    nodeId?: string;
-    rowId?: string;
-    rowIndex?: number;
-    columnName?: string;
-  } | null>(null);
-  
-  const [editingColumnName, setEditingColumnName] = useState<string | null>(null);
-  const [tempColumnName, setTempColumnName] = useState("");
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -210,8 +196,9 @@ const FileManagementSystem = () => {
   const [tableSortOrder, setTableSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({});
-  const [isResizing, setIsResizing] = useState<{columnName: string, startX: number, startWidth: number} | null>(null);
+  const [isResizing, setIsResizing] = useState<string | null>(null);
   const [newColumnMaxRating, setNewColumnMaxRating] = useState(5);
+  const [columnContextMenu, setColumnContextMenu] = useState<{x: number, y: number, columnName: string} | null>(null);
   const [cellContextMenu, setCellContextMenu] = useState<{x: number, y: number, rowId: string, columnName: string} | null>(null);
   const [copiedCell, setCopiedCell] = useState<{value: any, type: string} | null>(null);
   const [isDraggingColumn, setIsDraggingColumn] = useState<string | null>(null);
@@ -1295,57 +1282,6 @@ const FileManagementSystem = () => {
   };
 
   // カスタムテーブル用の操作関数
-  // セル値更新関数
-  const updateCellValue = (rowId: string, columnName: string, value: any) => {
-    setEditingTableData(prevData => 
-      prevData.map(row => 
-        row.id === rowId 
-          ? { ...row, data: { ...row.data, [columnName]: value } }
-          : row
-      )
-    );
-    // 自動保存
-    setTimeout(() => saveTableData(), 100);
-  };
-
-  // 数式計算関数（簡易版）
-  const calculateFormula = (formula: string, rowData: any): string => {
-    try {
-      // 基本的な数式をサポート
-      let result = formula;
-      
-      // 数値の合計（例: SUM(A,B,C)）
-      if (formula.startsWith('SUM(') && formula.endsWith(')')) {
-        const fields = formula.slice(4, -1).split(',').map(f => f.trim());
-        const sum = fields.reduce((acc, field) => {
-          const value = Number(rowData[field]) || 0;
-          return acc + value;
-        }, 0);
-        return sum.toString();
-      }
-      
-      // 平均（例: AVERAGE(A,B,C)）
-      if (formula.startsWith('AVERAGE(') && formula.endsWith(')')) {
-        const fields = formula.slice(8, -1).split(',').map(f => f.trim());
-        const sum = fields.reduce((acc, field) => {
-          const value = Number(rowData[field]) || 0;
-          return acc + value;
-        }, 0);
-        return (sum / fields.length).toString();
-      }
-      
-      // 文字列結合（例: CONCAT(A,B)）
-      if (formula.startsWith('CONCAT(') && formula.endsWith(')')) {
-        const fields = formula.slice(7, -1).split(',').map(f => f.trim());
-        return fields.map(field => rowData[field] || '').join('');
-      }
-      
-      return formula;
-    } catch (error) {
-      return '#ERROR';
-    }
-  };
-
   const addNewRow = () => {
     if (!editingTable || !editingTable.tableColumns) return;
     
@@ -1719,7 +1655,7 @@ const FileManagementSystem = () => {
     return filtered;
   };
 
-  // カスタムテーブル表示 (EnhancedNotionTable使用)
+  // カスタムテーブル表示 (Notionライク)
   const renderCustomTable = () => {
     if (!editingTable || !editingTable.tableColumns) return null;
 
@@ -2195,331 +2131,6 @@ const FileManagementSystem = () => {
     );
   };
 
-  // 自然なテーブル表示 (Excel機能付き)
-  const renderCustomTableNew = () => {
-    if (!editingTable || !editingTable.tableColumns) return null;
-
-    const filteredData = getFilteredAndSortedTableData();
-
-    return (
-      <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-800">
-        {/* フルスクリーンテーブル */}
-        <div className="flex-1 overflow-auto">
-          {editingTableData.length === 0 ? (
-            <div 
-              className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700"
-              onClick={addNewRow}
-            >
-              <Database className="w-16 h-16 mb-4 opacity-20" />
-              <h3 className="text-lg font-medium mb-2">空のテーブル</h3>
-              <p className="text-sm">クリックして最初の行を追加</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
-                <tr className="border-b border-gray-200 dark:border-slate-600">
-                  {editingTable.tableColumns.map(column => (
-                    <th 
-                      key={column.name} 
-                      className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-slate-600 min-w-[120px] relative group"
-                      style={{width: columnWidths[column.name] || 150}}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setUnifiedContextMenu({
-                          x: e.clientX, 
-                          y: e.clientY, 
-                          type: 'column',
-                          columnName: column.name
-                        });
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        {editingColumnName === column.name ? (
-                          <Input
-                            value={tempColumnName}
-                            onChange={(e) => setTempColumnName(e.target.value)}
-                            onBlur={() => {
-                              if (tempColumnName.trim() && tempColumnName !== column.name) {
-                                const updatedColumns = editingTable.tableColumns.map(col => 
-                                  col.name === column.name 
-                                    ? { ...col, name: tempColumnName.trim() }
-                                    : col
-                                );
-                                setEditingTable({
-                                  ...editingTable,
-                                  tableColumns: updatedColumns
-                                });
-                                // データも更新
-                                setEditingTableData(editingTableData.map(row => {
-                                  const newData = { ...row.data };
-                                  if (column.name in newData) {
-                                    newData[tempColumnName.trim()] = newData[column.name];
-                                    delete newData[column.name];
-                                  }
-                                  return { ...row, data: newData };
-                                }));
-                                saveTableData();
-                              }
-                              setEditingColumnName(null);
-                              setTempColumnName("");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              } else if (e.key === 'Escape') {
-                                setEditingColumnName(null);
-                                setTempColumnName("");
-                              }
-                            }}
-                            className="h-6 text-sm font-medium"
-                            autoFocus
-                          />
-                        ) : (
-                          <span 
-                            onDoubleClick={() => {
-                              setEditingColumnName(column.name);
-                              setTempColumnName(column.name);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            {column.name}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => {
-                              if (tableSortBy === column.name) {
-                                setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc');
-                              } else {
-                                setTableSortBy(column.name);
-                                setTableSortOrder('asc');
-                              }
-                            }}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-600"
-                          >
-                            {tableSortBy === column.name && (
-                              tableSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      {/* リサイズハンドル */}
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-300 opacity-0 group-hover:opacity-50"
-                        onMouseDown={(e) => startColumnResize(e, column.name)}
-                      />
-                    </th>
-                  ))}
-                  {/* 列追加ボタン */}
-                  <th className="w-12 py-3 px-2 border-r border-gray-200 dark:border-slate-600">
-                    <button
-                      onClick={() => {
-                        // 直接新しい列を追加
-                        const columnCount = editingTable.tableColumns.length;
-                        const newColumn: TableColumn = {
-                          name: `列${columnCount + 1}`,
-                          type: 'text'
-                        };
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: [...editingTable.tableColumns, newColumn]
-                        });
-                        saveTableData();
-                        // 即座に編集モードに入る
-                        setTimeout(() => {
-                          setEditingColumnName(newColumn.name);
-                          setTempColumnName(newColumn.name);
-                        }, 100);
-                      }}
-                      className="w-8 h-8 rounded hover:bg-gray-100 dark:hover:bg-slate-600 flex items-center justify-center text-gray-500"
-                      title="列を追加"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((row, rowIndex) => {
-                  return (
-                    <tr 
-                      key={row.id} 
-                      className="border-b border-gray-100 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700"
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setUnifiedContextMenu({
-                          x: e.clientX, 
-                          y: e.clientY, 
-                          type: 'row',
-                          rowId: row.id,
-                          rowIndex
-                        });
-                      }}
-                    >
-                      {editingTable.tableColumns.map(column => (
-                        <td key={column.name} className="py-2 px-4 text-sm border-r border-gray-100 dark:border-slate-600">
-                          {column.type === 'select' && (
-                            <Select
-                              value={row.data[column.name] || ''}
-                              onValueChange={(value) => updateCellValue(row.id, column.name, value)}
-                            >
-                              <SelectTrigger className="w-full h-8 text-sm">
-                                <SelectValue placeholder="選択..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {column.options?.map(option => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {column.type === 'multi-select' && (
-                            <div className="flex flex-wrap gap-1">
-                              {(row.data[column.name] || []).map((value: string) => (
-                                <Badge key={value} variant="secondary" className="text-xs">
-                                  {value}
-                                  <button
-                                    onClick={() => {
-                                      const current = row.data[column.name] || [];
-                                      const updated = current.filter((v: string) => v !== value);
-                                      updateCellValue(row.id, column.name, updated);
-                                    }}
-                                    className="ml-1 text-gray-500 hover:text-gray-700"
-                                  >
-                                    ×
-                                  </button>
-                                </Badge>
-                              ))}
-                              <Select
-                                value=""
-                                onValueChange={(value) => {
-                                  if (value) {
-                                    const current = row.data[column.name] || [];
-                                    const updated = current.includes(value)
-                                      ? current.filter((v: string) => v !== value)
-                                      : [...current, value];
-                                    updateCellValue(row.id, column.name, updated);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="w-20 h-6 text-xs">
-                                  <SelectValue placeholder="+" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {column.options?.map(option => (
-                                    <SelectItem key={option} value={option}>
-                                      {option}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          {column.type === 'checkbox' && (
-                            <input
-                              type="checkbox"
-                              checked={row.data[column.name] || false}
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.checked)}
-                              className="w-4 h-4 rounded border-gray-300"
-                            />
-                          )}
-                          {column.type === 'date' && (
-                            <Input
-                              type="date"
-                              value={row.data[column.name] || ''}
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.value)}
-                              className="w-full h-8 text-sm border-0 focus:ring-1 focus:ring-blue-500"
-                            />
-                          )}
-                          {(column.type === 'text' || column.type === 'number' || column.type === 'url' || column.type === 'formula') && (
-                            <Input
-                              type={column.type === 'number' ? 'number' : 'text'}
-                              value={column.type === 'formula' ? 
-                                calculateFormula(column.formula || '', row.data) : 
-                                row.data[column.name] || ''
-                              }
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.value)}
-                              disabled={column.type === 'formula'}
-                              className={`w-full h-8 text-sm border-0 focus:ring-1 focus:ring-blue-500 ${column.type === 'formula' ? 'bg-gray-50 dark:bg-slate-700' : ''}`}
-                            />
-                          )}
-                        </td>
-                      ))}
-                      {/* 空のセル（列追加ボタンの下） */}
-                      <td className="py-2 px-4 text-sm border-r border-gray-100 dark:border-slate-600"></td>
-                    </tr>
-                  );
-                })}
-                {/* 新しい行を追加するための行 */}
-                <tr 
-                  className="border-b border-gray-100 dark:border-slate-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer"
-                  onClick={addNewRow}
-                >
-                  {editingTable.tableColumns.map((column, index) => (
-                    <td 
-                      key={column.name} 
-                      className="py-3 px-4 text-sm border-r border-gray-100 dark:border-slate-600 text-gray-400 dark:text-gray-500"
-                    >
-                      {index === 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Plus className="w-4 h-4" />
-                          <span>新しい行を追加</span>
-                        </div>
-                      ) : (
-                        ""
-                      )}
-                    </td>
-                  ))}
-                  {/* 空のセル（列追加ボタンの下） */}
-                  <td className="py-3 px-4 text-sm border-r border-gray-100 dark:border-slate-600"></td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* 旧行の右クリックメニュー - 完全削除済み */}
-      </div>
-    );
-  };
-
-  // 列リサイズ機能
-  const startColumnResize = (e: React.MouseEvent, columnName: string) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = columnWidths[columnName] || 150;
-    setIsResizing({columnName, startX, startWidth});
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing) {
-        const diff = e.clientX - isResizing.startX;
-        const newWidth = Math.max(80, isResizing.startWidth + diff);
-        setColumnWidths(prev => ({
-          ...prev,
-          [isResizing.columnName]: newWidth
-        }));
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(null);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
-
   // 既存の工具テーブル表示
   const renderToolsTable = () => (
     <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
@@ -2849,7 +2460,7 @@ const FileManagementSystem = () => {
               }
             }}
           >
-            {editingTable ? renderCustomTableNew() : showToolsTable ? renderToolsTable() : renderFileList()}
+            {editingTable ? renderCustomTable() : showToolsTable ? renderToolsTable() : renderFileList()}
             
             {/* ドラッグオーバー時のオーバーレイ */}
             {isDragOver && !showToolsTable && (
@@ -2864,201 +2475,31 @@ const FileManagementSystem = () => {
         </div>
 
         {/* カラムヘッダー右クリックメニュー */}
-        {unifiedContextMenu && (
+        {columnContextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setUnifiedContextMenu(null)}
+              onClick={() => setColumnContextMenu(null)}
             />
             <div
               className="fixed z-50 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg py-1 min-w-[200px]"
-              style={{ left: unifiedContextMenu.x, top: unifiedContextMenu.y }}
+              style={{ left: columnContextMenu.x, top: columnContextMenu.y }}
             >
-              {/* 列の操作メニュー */}
-              {unifiedContextMenu.type === 'column' && unifiedContextMenu.columnName && (
-                <>
-                  {/* 列タイプ選択サブメニュー */}
-                  <div className="px-3 py-1.5">
-                    <div className="text-xs text-gray-500 mb-1">列タイプを選択:</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      {(['text', 'number', 'date', 'select', 'checkbox', 'multi-select', 'url', 'formula'] as TableColumn['type'][]).map(type => {
-                        const currentColumn = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
-                        const isActive = currentColumn?.type === type;
-                        
-                        return (
-                          <button
-                            key={type}
-                            className={`px-2 py-1 text-xs rounded text-left hover:bg-gray-100 dark:hover:bg-slate-600 ${
-                              isActive 
-                                ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                                : 'text-gray-700 dark:text-gray-300'
-                            }`}
-                            onClick={() => {
-                              if (!isActive) {
-                                const updatedColumns = editingTable.tableColumns.map(col => 
-                                  col.name === unifiedContextMenu.columnName 
-                                    ? { ...col, type }
-                                    : col
-                                );
-                                setEditingTable({
-                                  ...editingTable,
-                                  tableColumns: updatedColumns
-                                });
-                                saveTableData();
-                              }
-                              setUnifiedContextMenu(null);
-                            }}
-                          >
-                            {type}
-                            {isActive && ' ✓'}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // インライン編集モードに入る
-                      setEditingColumnName(unifiedContextMenu.columnName);
-                      setTempColumnName(unifiedContextMenu.columnName);
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Edit className="w-3 h-3 mr-2" />
-                    列名を変更
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // カラムを複製
-                      const column = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
-                      if (column) {
-                        const newColumn: TableColumn = {
-                          ...column,
-                          name: `${column.name} (コピー)`
-                        };
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: [...editingTable.tableColumns, newColumn]
-                        });
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Copy className="w-3 h-3 mr-2" />
-                    列を複製
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center text-red-600"
-                    onClick={() => {
-                      if (confirm('この列を削除してもよろしいですか？')) {
-                        const updatedColumns = editingTable.tableColumns.filter(col => col.name !== unifiedContextMenu.columnName);
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: updatedColumns
-                        });
-                        // データからも削除
-                        setEditingTableData(editingTableData.map(row => {
-                          const newData = { ...row.data };
-                          delete newData[unifiedContextMenu.columnName!];
-                          return { ...row, data: newData };
-                        }));
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    列を削除
-                  </button>
-                </>
-              )}
-
-              {/* 行の操作メニュー */}
-              {unifiedContextMenu.type === 'row' && unifiedContextMenu.rowId && (
-                <>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 上に行を挿入
-                      const newRow: TableRow = {
-                        id: crypto.randomUUID(),
-                        data: {}
-                      };
-                      const newData = [...editingTableData];
-                      newData.splice(unifiedContextMenu.rowIndex!, 0, newRow);
-                      setEditingTableData(newData);
-                      saveTableData();
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Plus className="w-3 h-3 mr-2" />
-                    上に行を挿入
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 下に行を挿入
-                      const newRow: TableRow = {
-                        id: crypto.randomUUID(),
-                        data: {}
-                      };
-                      const newData = [...editingTableData];
-                      newData.splice(unifiedContextMenu.rowIndex! + 1, 0, newRow);
-                      setEditingTableData(newData);
-                      saveTableData();
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Plus className="w-3 h-3 mr-2" />
-                    下に行を挿入
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 行を複製
-                      const targetRow = editingTableData.find(r => r.id === unifiedContextMenu.rowId);
-                      if (targetRow) {
-                        const newRow: TableRow = {
-                          id: crypto.randomUUID(),
-                          data: { ...targetRow.data }
-                        };
-                        const newData = [...editingTableData];
-                        newData.splice(unifiedContextMenu.rowIndex! + 1, 0, newRow);
-                        setEditingTableData(newData);
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Copy className="w-3 h-3 mr-2" />
-                    行を複製
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center text-red-600"
-                    onClick={() => {
-                      if (confirm('この行を削除してもよろしいですか？')) {
-                        setEditingTableData(editingTableData.filter(row => row.id !== unifiedContextMenu.rowId));
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    行を削除
-                  </button>
-                </>
-              )}
+              <button
+                className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
+                onClick={() => {
+                  // TODO: カラムタイプ変更
+                  setColumnContextMenu(null);
+                }}
+              >
+                <Edit className="w-3 h-3 mr-2" />
+                カラムタイプを変更
+              </button>
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                 onClick={() => {
                   // カラムを複製
-                  const column = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
+                  const column = editingTable?.tableColumns?.find(c => c.name === columnContextMenu.columnName);
                   if (column) {
                     const newColumn: TableColumn = {
                       ...column,
@@ -3071,7 +2512,7 @@ const FileManagementSystem = () => {
                     setEditingTable(updatedTable);
                     saveTableData();
                   }
-                  setUnifiedContextMenu(null);
+                  setColumnContextMenu(null);
                 }}
               >
                 <Copy className="w-3 h-3 mr-2" />
@@ -3081,24 +2522,24 @@ const FileManagementSystem = () => {
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                 onClick={() => {
-                  if (tableSortBy === unifiedContextMenu.columnName) {
+                  if (tableSortBy === columnContextMenu.columnName) {
                     setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc');
                   } else {
-                    setTableSortBy(unifiedContextMenu.columnName!);
+                    setTableSortBy(columnContextMenu.columnName);
                     setTableSortOrder('asc');
                   }
-                  setUnifiedContextMenu(null);
+                  setColumnContextMenu(null);
                 }}
               >
                 <SortAsc className="w-3 h-3 mr-2" />
-                {tableSortBy === unifiedContextMenu.columnName && tableSortOrder === 'asc' ? '降順で並び替え' : '昇順で並び替え'}
+                {tableSortBy === columnContextMenu.columnName && tableSortOrder === 'asc' ? '降順で並び替え' : '昇順で並び替え'}
               </button>
               <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center text-red-600"
                 onClick={() => {
-                  removeColumn(unifiedContextMenu.columnName!);
-                  setUnifiedContextMenu(null);
+                  removeColumn(columnContextMenu.columnName);
+                  setColumnContextMenu(null);
                 }}
               >
                 <Trash2 className="w-3 h-3 mr-2" />
@@ -3109,7 +2550,7 @@ const FileManagementSystem = () => {
         )}
 
         {/* セル右クリックメニュー */}
-        {false && (
+        {cellContextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
@@ -3172,7 +2613,7 @@ const FileManagementSystem = () => {
         )}
 
         {/* 行右クリックメニュー */}
-        {false && (
+        {contextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
