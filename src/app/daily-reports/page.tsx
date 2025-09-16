@@ -11,16 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DailyReportEntry, WorkTimeEntry, WorkContentType } from "@/app/tasks/types";
 import IntegratedWorkTimeTable from "./components/IntegratedWorkTimeTable";
 import DailyReviewSection from "./components/DailyReviewSection";
-import { 
-  createDailyReport, 
-  updateDailyReport, 
+import {
+  createDailyReport,
+  updateDailyReport,
   getDailyReportsByWorker,
   getDailyReportDraft,
   saveDailyReportDraft,
-  migrateDraftFromLocalStorage 
+  migrateDraftFromLocalStorage
 } from "@/lib/firebase/dailyReports";
 import { syncWorkHoursFromDailyReport } from "@/lib/firebase/workHours";
 import { getWorkContentTypes, subscribeToWorkContentTypes, cleanupDuplicateWorkContentTypes } from "@/lib/firebase/workContentSettings";
+import { getProcessTypes, subscribeToProcessTypes, ProcessType } from "@/lib/firebase/processTypes";
 import { useAutoSave } from "@/lib/utils/autoSave";
 import { validateDailyReportData } from "@/lib/utils/validation";
 import { showError, showSuccess } from "@/lib/utils/errorHandling";
@@ -46,6 +47,7 @@ export default function DailyReportPage() {
 
   // Firebase state
   const [workContentTypes, setWorkContentTypes] = useState<WorkContentType[]>([]);
+  const [processTypes, setProcessTypes] = useState<ProcessType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasDraft, setHasDraft] = useState(false);
@@ -53,7 +55,7 @@ export default function DailyReportPage() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [reportId, setReportId] = useState<string | null>(null);
 
-  // 自動保存機能
+  // 自動保存機能（保存のみ）
   const { manualSave, getBackups, restoreBackup, clearAll } = useAutoSave(
     `daily-report-${reportData.date}`,
     reportData,
@@ -61,12 +63,44 @@ export default function DailyReportPage() {
       interval: 3000, // 3秒ごとに自動保存
       maxBackups: 3,
       onSave: () => console.log('日報を自動保存しました'),
-      onRestore: (data) => {
-        setReportData(data);
-        showSuccess('前回の内容を復元しました');
-      }
+      // onRestoreは使わず、下記で手動復元
     }
   );
+
+  // 初回マウント時のみ復元実行（React StrictMode対応）
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const autoSaveKey = `daily-report-${today}`;
+    const restoredFlagKey = `${autoSaveKey}-restored`;
+
+    // すでに復元済みかチェック
+    if (sessionStorage.getItem(restoredFlagKey)) {
+      return; // 既に復元済みなのでスキップ
+    }
+
+    try {
+      const savedData = localStorage.getItem(autoSaveKey);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (parsed.data && parsed.timestamp) {
+          // 5分以内の保存データのみ復元（古すぎるデータは無視）
+          const savedTime = new Date(parsed.timestamp).getTime();
+          const now = new Date().getTime();
+          const fiveMinutes = 5 * 60 * 1000;
+
+          if (now - savedTime < fiveMinutes) {
+            setReportData(parsed.data);
+            showSuccess('前回の内容を復元しました');
+
+            // 復元済みフラグをセット（セッション中のみ有効）
+            sessionStorage.setItem(restoredFlagKey, 'true');
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('自動保存データの復元に失敗:', error);
+    }
+  }, []); // 空の依存配列で初回のみ実行
 
   // Firebase初期化とデータ読み込み
   useEffect(() => {
@@ -85,6 +119,15 @@ export default function DailyReportPage() {
         setError('作業内容の読み込みに失敗しました');
       } else {
         setWorkContentTypes(contentTypes);
+      }
+
+      // 工程タイプを読み込み（工数管理マスタと連携）
+      const { data: processTypesData, error: processError } = await getProcessTypes();
+      if (processError) {
+        console.error('Failed to load process types:', processError);
+        setError('工程マスタの読み込みに失敗しました');
+      } else {
+        setProcessTypes(processTypesData);
       }
 
       // 日報の下書きを読み込み
@@ -145,14 +188,27 @@ export default function DailyReportPage() {
 
   // 作業内容タイプの変更をリアルタイムで監視
   useEffect(() => {
-    const unsubscribe = subscribeToWorkContentTypes(
+    const unsubscribeContentTypes = subscribeToWorkContentTypes(
       (data) => {
         setWorkContentTypes(data);
       },
       true // アクティブのみ
     );
 
-    return unsubscribe;
+    // 工程タイプの変更をリアルタイムで監視
+    const unsubscribeProcessTypes = subscribeToProcessTypes(
+      (data) => {
+        setProcessTypes(data);
+      },
+      (error) => {
+        console.error('Process types subscription error:', error);
+      }
+    );
+
+    return () => {
+      unsubscribeContentTypes();
+      unsubscribeProcessTypes();
+    };
   }, []);
 
   // データが変更されたら自動で下書き保存（Firebase）
@@ -235,6 +291,7 @@ export default function DailyReportPage() {
       [field]: value,
     }));
   };
+
 
   // 作業内容データ更新（一時的）
   const handleUpdateWorkContent = async () => {
@@ -664,6 +721,7 @@ export default function DailyReportPage() {
                 <IntegratedWorkTimeTable
                   entries={reportData.workTimeEntries || []}
                   workContentTypes={workContentTypes}
+                  processTypes={processTypes}
                   onEntriesChange={handleWorkTimeEntriesChange}
                   onProcessProgressUpdate={handleProcessProgressUpdate}
                   disabled={reportData.isSubmitted}

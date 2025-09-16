@@ -289,10 +289,21 @@ export default function CompanyMembersPage() {
   const confirmRoleChange = async () => {
     console.log('✅ confirmRoleChange called');
     if (!roleChangeConfirm) return;
-    
+
+    // 最後の管理者を削除しようとしていないかチェック
+    const currentAdminCount = members.filter(m => m.role === 'admin').length;
+    const isRemovingLastAdmin = roleChangeConfirm.member.role === 'admin' &&
+                                roleChangeConfirm.newRole !== 'admin' &&
+                                currentAdminCount === 1;
+
+    if (isRemovingLastAdmin) {
+      alert('⚠️ エラー: 最後の管理者の権限を削除することはできません。\n\n他のメンバーを管理者に昇格させてから実行してください。');
+      return;
+    }
+
     try {
       await updateAppUser(roleChangeConfirm.member.uid, { role: roleChangeConfirm.newRole as 'admin' | 'manager' | 'leader' | 'worker' });
-      
+
       // 操作ログを記録（理由付き）
       await addDoc(collection(db, 'activityLogs'), {
         type: 'role_change',
@@ -306,7 +317,7 @@ export default function CompanyMembersPage() {
         timestamp: serverTimestamp(),
         companyId: currentCompany?.id
       });
-      
+
       await loadMembers();
       alert(`${roleChangeConfirm.member.name}の役職を${ROLE_STYLES[roleChangeConfirm.newRole].label}に変更しました`);
       console.log('✅ Role change completed, closing dialog');
@@ -835,7 +846,7 @@ export default function CompanyMembersPage() {
               <AlertTriangle className="w-5 h-5 text-amber-500" />
               権限変更の確認
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <div className="text-sm text-muted-foreground">
               {roleChangeConfirm && (
                 <div className="space-y-4">
                   <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
@@ -877,13 +888,27 @@ export default function CompanyMembersPage() {
                   )}
                   
                   {roleChangeConfirm.member.role === 'admin' && roleChangeConfirm.newRole !== 'admin' && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className={`${
+                      members.filter(m => m.role === 'admin').length === 1
+                        ? 'bg-red-100 border-red-300'
+                        : 'bg-red-50 border-red-200'
+                    } border rounded-lg p-3`}>
                       <p className="text-sm text-red-800 font-medium mb-2">
-                        ⚠️ 管理者権限の削除
+                        {members.filter(m => m.role === 'admin').length === 1 ? '🚫 実行不可' : '⚠️ 管理者権限の削除'}
                       </p>
                       <p className="text-sm text-red-700">
-                        このユーザーはシステム管理機能にアクセスできなくなります。
-                        現在管理者が{members.filter(m => m.role === 'admin').length}名います。
+                        {members.filter(m => m.role === 'admin').length === 1 ? (
+                          <>
+                            <strong>この操作は実行できません。</strong><br />
+                            最後の管理者の権限を削除することはできません。<br />
+                            先に他のメンバーを管理者に昇格させてください。
+                          </>
+                        ) : (
+                          <>
+                            このユーザーはシステム管理機能にアクセスできなくなります。
+                            現在管理者が{members.filter(m => m.role === 'admin').length}名います。
+                          </>
+                        )}
                       </p>
                     </div>
                   )}
@@ -909,7 +934,7 @@ export default function CompanyMembersPage() {
                   </p>
                 </div>
               )}
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
@@ -920,9 +945,25 @@ export default function CompanyMembersPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmRoleChange}
-              className="bg-red-600 hover:bg-red-700"
+              disabled={
+                roleChangeConfirm?.member.role === 'admin' &&
+                roleChangeConfirm?.newRole !== 'admin' &&
+                members.filter(m => m.role === 'admin').length === 1
+              }
+              className={`${
+                roleChangeConfirm?.member.role === 'admin' &&
+                roleChangeConfirm?.newRole !== 'admin' &&
+                members.filter(m => m.role === 'admin').length === 1
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
-              変更を実行
+              {roleChangeConfirm?.member.role === 'admin' &&
+               roleChangeConfirm?.newRole !== 'admin' &&
+               members.filter(m => m.role === 'admin').length === 1
+                ? '実行不可'
+                : '変更を実行'
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

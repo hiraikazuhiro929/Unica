@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WorkTimeEntry, WorkContentType } from "@/app/tasks/types";
+import { ProcessType } from "@/lib/firebase/processTypes";
 import TimelineWorkTable from "./TimelineWorkTable";
 
 interface IntegratedWorkTimeTableProps {
   entries: WorkTimeEntry[];
   workContentTypes: WorkContentType[];
+  processTypes: ProcessType[];
   onEntriesChange: (entries: WorkTimeEntry[]) => void;
   onProcessProgressUpdate?: (processId: string, newProgress: number) => void;
   disabled?: boolean;
@@ -35,12 +37,13 @@ interface Machine {
   hourlyRate?: number;
 }
 
-export default function IntegratedWorkTimeTable({ 
-  entries, 
-  workContentTypes, 
-  onEntriesChange, 
+export default function IntegratedWorkTimeTable({
+  entries,
+  workContentTypes,
+  processTypes,
+  onEntriesChange,
   onProcessProgressUpdate,
-  disabled = false 
+  disabled = false
 }: IntegratedWorkTimeTableProps) {
   const [workFrames, setWorkFrames] = useState<any[]>([]);
   const [availableProcesses, setAvailableProcesses] = useState<AvailableProcess[]>([]);
@@ -53,6 +56,8 @@ export default function IntegratedWorkTimeTable({
     endTime: "",
     workContentId: "",
     workContentName: "",
+    processTypeId: "",
+    processTypeName: "",
     durationMinutes: 0,
     machineId: "",
     machineName: "",
@@ -293,6 +298,8 @@ export default function IntegratedWorkTimeTable({
       endTime: "",
       workContentId: "",
       workContentName: "",
+      processTypeId: "",
+      processTypeName: "",
       durationMinutes: 0,
       machineId: "",
       machineName: "",
@@ -425,6 +432,7 @@ export default function IntegratedWorkTimeTable({
         <TimelineWorkTable
           entries={entries}
           workContentTypes={workContentTypes}
+          processTypes={processTypes}
           availableProcesses={availableProcesses}
           availableMachines={availableMachines}
           onEntriesChange={onEntriesChange}

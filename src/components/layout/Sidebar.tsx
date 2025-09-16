@@ -120,8 +120,8 @@ export default function ModernSidebar() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // チャットの未読数を取得
-  const chatHook = user ? useChat(user) : null;
+  // チャットの未読数を取得（userが存在する場合のみ）
+  const chatHook = useChat(user || undefined);
   useEffect(() => {
     if (chatHook && user) {
       const updateUnreadCount = () => {

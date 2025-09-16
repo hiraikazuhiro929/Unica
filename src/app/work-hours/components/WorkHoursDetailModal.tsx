@@ -32,6 +32,7 @@ import {
 import type { EnhancedWorkHours } from '@/app/tasks/types';
 import type { Worker } from '@/lib/firebase/workers';
 import type { Machine } from '@/lib/firebase/machines';
+import { ProcessType, getProcessTypes } from '@/lib/firebase/processTypes';
 import { calculateTotalCharge } from "@/lib/utils/chargeCalculation";
 
 interface WorkHoursDetailModalProps {
@@ -104,21 +105,23 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
 
   const baseWorkerCharge = 1500; // 基本作業者チャージ
-
-  // 工程マスタ（よく使われる工程名）
-  const processTemplates = [
-    '検査',
-    '梱包',
-    '組立',
-    '溶接',
-    '塗装',
-    '乾燥',
-    '調整',
-    '品質チェック',
-    '清掃',
-    '運搬',
-    'その他'
-  ];
+  const [processTypes, setProcessTypes] = useState<ProcessType[]>([]);
+  
+  // 工程マスタを取得
+  useEffect(() => {
+    const loadProcessTypes = async () => {
+      const { data, error } = await getProcessTypes();
+      if (!error && data) {
+        setProcessTypes(data.filter(pt => pt.isActive));
+      }
+    };
+    loadProcessTypes();
+  }, []);
+  
+  // 工程テンプレートをprocessTypesから生成
+  const processTemplates = processTypes.length > 0 
+    ? processTypes.map(pt => pt.nameJapanese)
+    : ['検査', '梱包', '組立', '溶接', '塗装', '乾燥', '調整', '品質チェック', '清掃', '運搬', 'その他'];
 
   // 時間入力をパースする関数
   const parseTimeInput = (input: string): number => {

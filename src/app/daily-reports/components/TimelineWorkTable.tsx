@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WorkTimeEntry, WorkContentType } from "@/app/tasks/types";
+import { ProcessType } from "@/lib/firebase/processTypes";
 
 interface TimelineWorkTableProps {
   entries: WorkTimeEntry[];
   workContentTypes: WorkContentType[];
+  processTypes: ProcessType[];
   availableProcesses: any[];
   availableMachines: any[];
   onEntriesChange: (entries: WorkTimeEntry[]) => void;
@@ -20,6 +22,7 @@ interface TimelineWorkTableProps {
 export default function TimelineWorkTable({
   entries,
   workContentTypes,
+  processTypes,
   availableProcesses,
   availableMachines,
   onEntriesChange,
@@ -71,6 +74,8 @@ export default function TimelineWorkTable({
       productionNumber: '',
       workContentId: '',
       workContentName: '',
+      processTypeId: '',
+      processTypeName: '',
       durationMinutes: 0,
       machineId: 'none',
       machineName: 'なし',
@@ -96,6 +101,8 @@ export default function TimelineWorkTable({
       productionNumber: existingProcess.productionNumber,
       workContentId: '',
       workContentName: '',
+      processTypeId: '',
+      processTypeName: '',
       durationMinutes: 0,
       machineId: 'none',
       machineName: 'なし',
@@ -352,26 +359,53 @@ export default function TimelineWorkTable({
                       />
                     </div>
 
-                    {/* 作業内容 */}
+                    {/* 作業内容（工程マスタ統合版） */}
                     <div className="col-span-3">
+                      {(() => {
+                        console.log('🔍 Entry Debug:', {
+                          entryId: entry.id,
+                          processTypeId: entry.processTypeId,
+                          workContentId: entry.workContentId,
+                          processTypeName: entry.processTypeName,
+                          workContentName: entry.workContentName,
+                          selectValue: entry.processTypeId || entry.workContentId || undefined
+                        });
+                        return null;
+                      })()}
                       <Select
-                        value={entry.workContentId}
+                        value={entry.processTypeId || entry.workContentId || undefined}
                         onValueChange={(value) => {
-                          const content = workContentTypes.find(w => w.id === value);
-                          updateEntry(entry.id, {
-                            workContentId: value,
-                            workContentName: content?.nameJapanese || ''
-                          });
+                          console.log('🎯 onValueChange:', value);
+                          // 工程タイプから検索
+                          const processType = processTypes.find(p => p.id === value);
+                          console.log('🔍 Found processType:', processType);
+                          if (processType) {
+                            console.log('✅ Updating entry with processType');
+                            updateEntry(entry.id, {
+                              processTypeId: value,
+                              processTypeName: processType.nameJapanese,
+                              workContentId: '',
+                              workContentName: processType.nameJapanese
+                            });
+                          }
                         }}
                         disabled={disabled}
                       >
                         <SelectTrigger className="text-sm">
-                          <SelectValue placeholder="作業内容" />
+                          <SelectValue placeholder="作業を選択" />
                         </SelectTrigger>
                         <SelectContent>
-                          {workContentTypes.map((content) => (
-                            <SelectItem key={content.id} value={content.id}>
-                              {content.nameJapanese}
+                          {(() => {
+                            console.log('📋 ProcessTypes in dropdown:', processTypes.filter(pt => pt.isActive).map(pt => ({ id: pt.id, name: pt.nameJapanese })));
+                            return null;
+                          })()}
+                          {/* 工程マスタのみ */}
+                          {processTypes.filter(pt => pt.isActive).map((processType) => (
+                            <SelectItem key={`process-${processType.id}`} value={processType.id!}>
+                              <div className="flex items-center gap-2">
+                                <Wrench className="w-3 h-3 text-blue-500" />
+                                {processType.nameJapanese}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -499,7 +533,7 @@ export default function TimelineWorkTable({
                   />
                 </div>
 
-                {/* 作業内容入力 */}
+                {/* 作業内容入力（自由入力のみ） */}
                 <div className="col-span-9">
                   <Input
                     type="text"

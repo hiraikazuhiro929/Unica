@@ -82,11 +82,13 @@ import {
 import { WorkHoursDetailModal } from '@/app/work-hours/components/WorkHoursDetailModal';
 import { WorkerModal } from '@/app/work-hours/components/WorkerModal';
 import { MachineModal } from '@/app/work-hours/components/MachineModal';
+import { ProcessTypeModal } from '@/app/work-hours/components/ProcessTypeModal';
 import { getOrders } from "@/lib/firebase/orders";
 import { getProcessesList } from "@/lib/firebase/processes";
 import type { Order } from "@/app/tasks/types";
 import type { Process } from "@/app/tasks/types";
 import { exportWorkHours } from "@/lib/utils/exportUtils";
+import { ProcessType, getProcessTypes, subscribeToProcessTypes, createProcessType, updateProcessType, deleteProcessType } from "@/lib/firebase/processTypes";
 
 const WorkHoursManagement = () => {
   const router = useRouter();
@@ -112,11 +114,15 @@ const WorkHoursManagement = () => {
   const [showOrderSelectionModal, setShowOrderSelectionModal] = useState(false);
   const [showProcessSelectionModal, setShowProcessSelectionModal] = useState(false);
 
-  // マスタデータ - 作業者・機械
+  // マスタデータ - 作業者・機械・工程
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [processTypes, setProcessTypes] = useState<ProcessType[]>([]);
   const [isWorkerLoading, setIsWorkerLoading] = useState(true);
   const [isMachineLoading, setIsMachineLoading] = useState(true);
+  const [isProcessTypeLoading, setIsProcessTypeLoading] = useState(true);
+  const [showProcessTypeModal, setShowProcessTypeModal] = useState(false);
+  const [selectedProcessType, setSelectedProcessType] = useState<ProcessType | null>(null);
 
   // 外側クリックで選択オプションを閉じる
   useEffect(() => {
@@ -193,6 +199,7 @@ const WorkHoursManagement = () => {
     loadWorkHoursData();
     loadWorkersData();
     loadMachinesData();
+    loadProcessTypesData();
     loadAvailableData();
     
     // Subscribe to real-time updates
@@ -213,11 +220,22 @@ const WorkHoursManagement = () => {
       setMachines(data);
       setIsMachineLoading(false);
     });
+    
+    const unsubscribeProcessTypes = subscribeToProcessTypes(
+      (data) => {
+        setProcessTypes(data);
+        setIsProcessTypeLoading(false);
+      },
+      (error) => {
+        console.error('Error in process types subscription:', error);
+      }
+    );
 
     return () => {
       unsubscribeWorkHours();
       unsubscribeWorkers();
       unsubscribeMachines();
+      unsubscribeProcessTypes();
     };
   }, []);
 
@@ -290,6 +308,19 @@ const WorkHoursManagement = () => {
       console.error('Error loading machines:', error);
     } finally {
       setIsMachineLoading(false);
+    }
+  };
+  
+  const loadProcessTypesData = async () => {
+    try {
+      const { data, error } = await getProcessTypes();
+      if (!error && data) {
+        setProcessTypes(data);
+      }
+    } catch (error) {
+      console.error('Error loading process types:', error);
+    } finally {
+      setIsProcessTypeLoading(false);
     }
   };
 
@@ -567,6 +598,39 @@ const WorkHoursManagement = () => {
     const { success, error } = await deleteMachine(machineId);
     if (!success) {
       alert(`機械の削除に失敗しました: ${error}`);
+    }
+  };
+  
+  // 工程タイプ操作関数
+  const handleAddProcessType = () => {
+    setSelectedProcessType(null);
+    setShowProcessTypeModal(true);
+  };
+  
+  const handleSaveProcessType = async (processTypeData: Omit<ProcessType, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const result = selectedProcessType 
+      ? await updateProcessType(selectedProcessType.id!, processTypeData)
+      : await createProcessType(processTypeData);
+    
+    if (!result.error) {
+      setShowProcessTypeModal(false);
+      setSelectedProcessType(null);
+    } else {
+      alert(`工程タイプの保存に失敗しました: ${result.error}`);
+    }
+  };
+  
+  const handleEditProcessType = (processType: ProcessType) => {
+    setSelectedProcessType(processType);
+    setShowProcessTypeModal(true);
+  };
+  
+  const handleDeleteProcessType = async (processTypeId: string) => {
+    if (!confirm('この工程タイプを削除しますか？')) return;
+    
+    const { error } = await deleteProcessType(processTypeId);
+    if (error) {
+      alert(`工程タイプの削除に失敗しました: ${error}`);
     }
   };
   
@@ -1370,12 +1434,33 @@ const WorkHoursManagement = () => {
             </div>
             
             <Tabs defaultValue="workers" className="flex-1">
-              <TabsList className="grid w-full grid-cols-2 m-4 mb-0">
-                <TabsTrigger value="workers" className="text-xs">作業者</TabsTrigger>
-                <TabsTrigger value="machines" className="text-xs">機械</TabsTrigger>
-              </TabsList>
+              <div className="px-4 pt-4 pb-2 overflow-x-auto">
+                <TabsList className="inline-flex h-10 items-center justify-start bg-gray-100 dark:bg-slate-700 p-1 rounded-md border min-w-max">
+                  <TabsTrigger
+                    value="workers"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-white text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    作業者
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="machines"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-white text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    <Wrench className="w-4 h-4 mr-2" />
+                    機械
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="processTypes"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-900 dark:data-[state=active]:text-white text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    作業工程
+                  </TabsTrigger>
+                </TabsList>
+              </div>
               
-              <TabsContent value="workers" className="flex-1 p-4 overflow-auto">
+              <TabsContent value="workers" className="flex-1 px-4 pb-4 overflow-auto">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">作業者一覧</h4>
@@ -1442,7 +1527,7 @@ const WorkHoursManagement = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="machines" className="flex-1 p-4 overflow-auto">
+              <TabsContent value="machines" className="flex-1 px-4 pb-4 overflow-auto">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">機械一覧</h4>
@@ -1510,6 +1595,73 @@ const WorkHoursManagement = () => {
                   </div>
                 </div>
               </TabsContent>
+              
+              <TabsContent value="processTypes" className="flex-1 px-4 pb-4 overflow-auto">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">工程一覧</h4>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-7 text-xs"
+                      onClick={handleAddProcessType}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      追加
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {processTypes.map((processType) => (
+                      <div key={processType.id} className="p-3 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{processType.nameJapanese}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {processType.name} • {
+                                processType.category === 'setup' ? '段取り' :
+                                processType.category === 'machining' ? '加工' :
+                                processType.category === 'finishing' ? '仕上げ' :
+                                processType.category === 'inspection' ? '検査' :
+                                'その他'
+                              }
+                              {processType.hourlyRate && ` • ¥${processType.hourlyRate.toLocaleString()}/h`}
+                            </div>
+                            {processType.description && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {processType.description}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant={processType.isActive ? "default" : "secondary"} className="text-xs">
+                                {processType.isActive ? '有効' : '無効'}
+                              </Badge>
+                              <span className="text-xs text-gray-500">表示順: {processType.order}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 px-2 text-xs"
+                                onClick={() => handleEditProcessType(processType)}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                                onClick={() => processType.id && handleDeleteProcessType(processType.id)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -1555,6 +1707,19 @@ const WorkHoursManagement = () => {
           }}
           onSave={handleSaveMachine}
           isLoading={isSaving}
+        />
+      )}
+      
+      {/* Process Type Modal */}
+      {showProcessTypeModal && (
+        <ProcessTypeModal
+          processType={selectedProcessType}
+          isOpen={showProcessTypeModal}
+          onClose={() => {
+            setShowProcessTypeModal(false);
+            setSelectedProcessType(null);
+          }}
+          onSave={handleSaveProcessType}
         />
       )}
 

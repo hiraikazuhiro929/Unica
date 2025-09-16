@@ -105,10 +105,57 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     enableRealtime = true,
   } = options;
 
-  // パラメータの検証 - エラーを投げる代わりに安全なデフォルト値を使用
+  // パラメータの検証 - userIdが無効な場合は早期リターン
   const isValidUserId = userId && typeof userId === 'string' && userId.trim() !== '';
+
   if (!isValidUserId) {
-    console.warn('Invalid userId provided to useChat:', userId);
+    // userIdが無効な場合は、何もしないダミーオブジェクトを返す
+    return {
+      categories: [],
+      channels: [],
+      messages: [],
+      users: [],
+      unreadCounts: [],
+      notifications: [],
+      typingUsers: [],
+      threadMessages: [],
+      collapsedCategories: new Set<string>(),
+      selectedCategoryId: '',
+      selectedChannelId: '',
+      selectedThread: null,
+      isLoading: false,
+      error: null,
+      newChannelName: '',
+      newChannelDescription: '',
+      newChannelCategory: '',
+      getUnreadCount: () => 0,
+      refreshData: async () => {},
+      createCategory: async () => ({ success: false, error: 'Invalid userId' }),
+      updateCategory: async () => ({ success: false, error: 'Invalid userId' }),
+      deleteCategory: async () => ({ success: false, error: 'Invalid userId' }),
+      toggleCategoryCollapse: () => {},
+      setSelectedCategory: () => {},
+      createChannel: async () => ({ success: false, error: 'Invalid userId' }),
+      updateChannel: async () => ({ success: false, error: 'Invalid userId' }),
+      deleteChannel: async () => ({ success: false, error: 'Invalid userId' }),
+      setSelectedChannel: () => {},
+      setNewChannelName: () => {},
+      setNewChannelDescription: () => {},
+      setNewChannelCategory: () => {},
+      addMessage: async () => ({ success: false, error: 'Invalid userId' }),
+      updateMessage: async () => ({ success: false, error: 'Invalid userId' }),
+      deleteMessage: async () => ({ success: false, error: 'Invalid userId' }),
+      addReaction: async () => ({ success: false, error: 'Invalid userId' }),
+      removeReaction: async () => ({ success: false, error: 'Invalid userId' }),
+      startThread: async () => ({ success: false, error: 'Invalid userId' }),
+      addThreadMessage: async () => ({ success: false, error: 'Invalid userId' }),
+      clearThread: () => {},
+      markAsRead: async () => ({ success: false, error: 'Invalid userId' }),
+      markAllAsRead: async () => ({ success: false, error: 'Invalid userId' }),
+      clearAllNotifications: async () => ({ success: false, error: 'Invalid userId' }),
+      startTyping: () => {},
+      stopTyping: () => {},
+    };
   }
 
   // State

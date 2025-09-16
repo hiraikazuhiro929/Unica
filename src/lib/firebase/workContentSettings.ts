@@ -51,8 +51,8 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
     return { data: [
       {
         id: "1",
-        name: "data",
-        nameJapanese: "データ",
+        name: "setup",
+        nameJapanese: "段取り",
         isActive: true,
         order: 1,
         createdAt: new Date().toISOString(),
@@ -78,10 +78,19 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
       },
       {
         id: "4",
+        name: "data",
+        nameJapanese: "データ作業",
+        isActive: true,
+        order: 4,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "5",
         name: "chamfering",
         nameJapanese: "面取",
         isActive: true,
-        order: 4,
+        order: 5,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -95,8 +104,8 @@ export const getWorkContentTypes = async (): Promise<{ data: WorkContentType[]; 
 const createDefaultWorkContentTypes = async () => {
   const defaultTypes = [
     {
-      name: "data",
-      nameJapanese: "データ",
+      name: "setup",
+      nameJapanese: "段取り",
       isActive: true,
       order: 1,
     },
@@ -113,10 +122,16 @@ const createDefaultWorkContentTypes = async () => {
       order: 3,
     },
     {
+      name: "data",
+      nameJapanese: "データ作業",
+      isActive: true,
+      order: 4,
+    },
+    {
       name: "chamfering",
       nameJapanese: "面取",
       isActive: true,
-      order: 4,
+      order: 5,
     },
   ];
 

@@ -158,6 +158,9 @@ export class AutoSave {
   }
 }
 
+// グローバルな復元済みキーセット（React StrictMode対策）
+const globalRestoredKeys = new Set<string>();
+
 // React Hook用のユーティリティ
 export const useAutoSave = (
   key: string,
@@ -165,23 +168,26 @@ export const useAutoSave = (
   options?: Partial<AutoSaveConfig>
 ) => {
   const autoSaveRef = React.useRef<AutoSave | null>(null);
-  
+
   React.useEffect(() => {
     autoSaveRef.current = new AutoSave({
       key,
       ...options
     });
-    
-    // 初回マウント時に復元を試みる
-    const restored = autoSaveRef.current.restore();
-    if (restored && options?.onRestore) {
-      options.onRestore(restored);
+
+    // グローバルセットでこのキーが復元済みでない場合のみ復元を試みる
+    if (!globalRestoredKeys.has(key)) {
+      const restored = autoSaveRef.current.restore();
+      if (restored && options?.onRestore) {
+        options.onRestore(restored);
+        globalRestoredKeys.add(key);
+      }
     }
-    
+
     return () => {
       autoSaveRef.current?.destroy();
     };
-  }, [key]);
+  }, [key]); // keyが変わった時に再実行
   
   React.useEffect(() => {
     if (autoSaveRef.current && data) {

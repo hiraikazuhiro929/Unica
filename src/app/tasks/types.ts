@@ -171,11 +171,15 @@ export interface WorkTimeEntry {
   workContentId: string; // 作業内容ID（WorkContentTypeから参照）
   workContentName: string; // 作業内容名（表示用）
   durationMinutes: number; // 自動計算される時間（分）
-  
+
   // 機械関連
   machineId?: string; // 使用機械ID（'none'で機械なし）
   machineName?: string; // 使用機械名
-  
+
+  // 工程タイプ連携（工数管理マスタとの連携）
+  processTypeId?: string; // 工程タイプID（ProcessTypeから参照）
+  processTypeName?: string; // 工程タイプ名（表示用）
+
   // 工程連携のための新フィールド
   processId?: string; // 関連する工程ID
   processName?: string; // 工程名（表示用）
