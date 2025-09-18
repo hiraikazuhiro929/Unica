@@ -3,6 +3,12 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { uploadFile, getFileSystem, deleteFile, createFolder, renameItem, moveItem } from "@/lib/firebase/fileManagement";
+import * as XLSX from 'xlsx';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+// PDF.js workerを設定
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 import {
   Select,
   SelectContent,
@@ -83,6 +89,23 @@ interface FileSystemNode {
   // データベース用
   tableColumns?: TableColumn[];
   tableData?: TableRow[];
+  // ファイル内容
+  content?: string;
+  dataUrl?: string;
+  // Excel専用データ
+  excelData?: {
+    sheets: { [key: string]: any[][] };
+    sheetNames: string[];
+    styles?: any;
+    metadata?: any;
+    rawSheets?: { [key: string]: any }; // 生のワークシートデータ
+    columnWidths?: { [key: string]: { [key: string]: number } }; // シート別列幅
+  };
+  // PDF専用データ
+  pdfData?: {
+    numPages: number;
+    dataUrl: string;
+  };
 }
 
 // ソート設定
@@ -166,6 +189,7 @@ const FileManagementSystem = () => {
     nodeId?: string;
     type: 'file' | 'folder' | 'background';
   } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   // 統一されたコンテキストメニュー
   const [unifiedContextMenu, setUnifiedContextMenu] = useState<{
     x: number;
@@ -219,6 +243,14 @@ const FileManagementSystem = () => {
   const [viewType, setViewType] = useState<'table' | 'kanban' | 'gallery'>('table');
   const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
   const [showEmptyState, setShowEmptyState] = useState(false);
+  const [filePreview, setFilePreview] = useState<{
+    show: boolean;
+    file: FileSystemNode | null;
+  }>({ show: false, file: null });
+  const [activeExcelSheet, setActiveExcelSheet] = useState<string>('');
+  const [currentPdfPage, setCurrentPdfPage] = useState<number>(1);
+  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
+  const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
 
   // データの初期化・読み込み
   const [fileSystem, setFileSystem] = useState<FileSystemNode[]>(() => {
@@ -592,9 +624,9 @@ const FileManagementSystem = () => {
       }
     } else {
       // ファイルを開く
-      console.log('ファイルを開く:', node);
+      handleFileOpen(node);
     }
-    
+
     setSelectedNode(node);
     setSelectedItems(new Set([node.id]));
   };
@@ -602,7 +634,9 @@ const FileManagementSystem = () => {
   const handleDoubleClick = (node: FileSystemNode) => {
     if (node.type === 'folder') {
       toggleFolder(node.id);
-      navigateToPath([...selectedPath, node.name]);
+      // ノードのパスから正しい階層を取得（handleNodeClickと同様）
+      const pathParts = node.path.split('/').filter(part => part !== '');
+      navigateToPath(pathParts);
     } else if (node.type === 'database') {
       if (node.name === '工具管理.db') {
         setShowToolsTable(true);
@@ -615,7 +649,7 @@ const FileManagementSystem = () => {
       }
     } else {
       // ファイルを開く
-      console.log('ファイルを開く:', node);
+      handleFileOpen(node);
     }
   };
 
@@ -654,13 +688,116 @@ const FileManagementSystem = () => {
   const generateUniqueName = (baseName: string, parentNodes: FileSystemNode[]): string => {
     let name = baseName;
     let counter = 1;
-    
+
     while (checkNameDuplicate(name, parentNodes)) {
       name = `${baseName} (${counter})`;
       counter++;
     }
-    
+
     return name;
+  };
+
+  // ファイルを開く関数
+  // Excelセルスタイルを CSS に変換する関数
+  const getCellStyle = (cellData: any, styles: any[]): React.CSSProperties => {
+    if (!cellData || !cellData.style || !styles) return {};
+
+    const style: React.CSSProperties = {};
+    const cellStyle = styles[cellData.style] || {};
+
+    // フォント設定
+    if (cellStyle.font) {
+      if (cellStyle.font.bold) style.fontWeight = 'bold';
+      if (cellStyle.font.italic) style.fontStyle = 'italic';
+      if (cellStyle.font.underline) style.textDecoration = 'underline';
+      if (cellStyle.font.sz) style.fontSize = `${cellStyle.font.sz}px`;
+      if (cellStyle.font.name) style.fontFamily = cellStyle.font.name;
+
+      // フォント色
+      if (cellStyle.font.color) {
+        if (cellStyle.font.color.rgb) {
+          style.color = `#${cellStyle.font.color.rgb}`;
+        } else if (cellStyle.font.color.theme !== undefined) {
+          // テーマカラーの基本的な対応
+          const themeColors = ['#000000', '#FFFFFF', '#1F497D', '#4F81BD', '#C0504D', '#9BBB59'];
+          if (themeColors[cellStyle.font.color.theme]) {
+            style.color = themeColors[cellStyle.font.color.theme];
+          }
+        }
+      }
+    }
+
+    // 背景色
+    if (cellStyle.fill && cellStyle.fill.bgColor) {
+      if (cellStyle.fill.bgColor.rgb) {
+        style.backgroundColor = `#${cellStyle.fill.bgColor.rgb}`;
+      }
+    }
+
+    // 文字揃え
+    if (cellStyle.alignment) {
+      if (cellStyle.alignment.horizontal) {
+        switch (cellStyle.alignment.horizontal) {
+          case 'center': style.textAlign = 'center'; break;
+          case 'right': style.textAlign = 'right'; break;
+          case 'left': style.textAlign = 'left'; break;
+        }
+      }
+      if (cellStyle.alignment.vertical) {
+        switch (cellStyle.alignment.vertical) {
+          case 'center': style.verticalAlign = 'middle'; break;
+          case 'top': style.verticalAlign = 'top'; break;
+          case 'bottom': style.verticalAlign = 'bottom'; break;
+        }
+      }
+    }
+
+    // 境界線
+    if (cellStyle.border) {
+      const borderStyle = '1px solid #ccc';
+      if (cellStyle.border.top) style.borderTop = borderStyle;
+      if (cellStyle.border.bottom) style.borderBottom = borderStyle;
+      if (cellStyle.border.left) style.borderLeft = borderStyle;
+      if (cellStyle.border.right) style.borderRight = borderStyle;
+    }
+
+    return style;
+  };
+
+  // 列幅を取得する関数
+  const getColumnWidth = (sheetName: string, colIndex: number): number => {
+    if (!filePreview.file?.excelData?.columnWidths?.[sheetName]) return 120;
+
+    const colLetter = XLSX.utils.encode_col(colIndex);
+    return filePreview.file.excelData.columnWidths[sheetName][colLetter] || 120;
+  };
+
+  const handleFileOpen = (node: FileSystemNode) => {
+    console.log('ファイルを開く:', node);
+
+    if (node.type !== 'file') return;
+
+    // ファイルの内容があるかチェック
+    if (!node.dataUrl && !node.content) {
+      alert('ファイルの内容が保存されていません。');
+      return;
+    }
+
+    // ファイルプレビューを表示
+    setFilePreview({ show: true, file: node });
+
+    // Excelファイルの場合、最初のシートを選択
+    if (node.excelData && node.excelData.sheetNames.length > 0) {
+      setActiveExcelSheet(node.excelData.sheetNames[0]);
+    } else {
+      setActiveExcelSheet('');
+    }
+
+    // PDFファイルの場合、最初のページを選択
+    if (node.pdfData) {
+      setCurrentPdfPage(1);
+      setPdfNumPages(node.pdfData.numPages);
+    }
   };
 
   // ファイル操作
@@ -801,55 +938,282 @@ const FileManagementSystem = () => {
     ]);
   };
 
-  const handleUpload = (files: FileList) => {
+  const handleUpload = async (files: FileList) => {
+    console.log('handleUpload called with', files.length, 'files');
     const currentFolder = getCurrentFolder();
-    const parentNodes = currentFolder?.children || fileSystem;
-    
-    Array.from(files).forEach(file => {
-      const uniqueName = generateUniqueName(file.name, parentNodes);
-      
-      const newFile: FileSystemNode = {
-        id: `file-${Date.now()}-${Math.random()}`,
-        name: uniqueName,
-        type: 'file',
-        parentId: currentFolder?.id || null,
-        path: selectedPath.length > 0 
-          ? `/${selectedPath.join('/')}/${uniqueName}`
-          : `/${uniqueName}`,
-        size: file.size,
-        fileType: file.name.split('.').pop() || 'unknown',
-        created: new Date().toISOString(),
-        modifiedDate: new Date().toISOString(),
-        modifiedBy: "現在のユーザー"
-      };
-      
-      const updateFileSystem = (nodes: FileSystemNode[]): FileSystemNode[] => {
-        if (selectedPath.length === 0) {
-          return [...nodes, newFile];
-        }
-        
-        return nodes.map(node => {
-          if (node.name === selectedPath[0] && node.type === 'folder') {
-            if (selectedPath.length === 1) {
-              return {
-                ...node,
-                children: [...(node.children || []), newFile]
-              };
-            } else if (node.children) {
-              return {
-                ...node,
-                children: updateFileSystem(node.children)
-              };
-            }
+    console.log('Current folder:', currentFolder);
+    console.log('Current selectedPath:', selectedPath);
+
+    // parentNodesを正しく取得
+    let parentNodes: FileSystemNode[];
+    if (currentFolder && currentFolder.children) {
+      parentNodes = currentFolder.children;
+    } else if (selectedPath.length === 0) {
+      parentNodes = fileSystem;
+    } else {
+      // フォルダが見つからない場合は、ルートを使用
+      parentNodes = fileSystem;
+      console.warn('Could not find parent folder, using root');
+    }
+
+    console.log('Parent nodes:', parentNodes);
+
+    setIsUploading(true);
+
+    try {
+      for (const file of Array.from(files)) {
+        console.log('Processing file:', file.name, file.size, file.type);
+        const uniqueName = generateUniqueName(file.name, parentNodes);
+
+        // ファイル内容を読み込む
+        let dataUrl: string | undefined;
+        let content: string | undefined;
+        let excelData: { sheets: { [key: string]: any[][] }; sheetNames: string[]; styles?: any; metadata?: any } | undefined;
+        let pdfData: { numPages: number; dataUrl: string } | undefined;
+
+        // PDFファイルの場合
+        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+          try {
+            dataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+
+            // PDFの基本情報を取得
+            pdfData = {
+              numPages: 0, // 実際のページ数は表示時に取得
+              dataUrl: dataUrl
+            };
+
+            console.log('PDF file processed');
+          } catch (error) {
+            console.error('PDF processing error:', error);
           }
-          return node;
-        });
-      };
-      
-      const updatedFileSystem = updateFileSystem(fileSystem);
-      setFileSystem(updatedFileSystem);
-      localStorage.setItem('unica-file-system', JSON.stringify(updatedFileSystem));
-    });
+        }
+        // Excelファイルの場合は構造化データとして保存
+        else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ||
+            file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+            file.type === 'application/vnd.ms-excel') {
+          try {
+            const buffer = await new Promise<ArrayBuffer>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
+              reader.readAsArrayBuffer(file);
+            });
+
+            const workbook = XLSX.read(buffer, {
+              type: 'array',
+              cellStyles: true,
+              cellNF: true,
+              cellHTML: false,
+              cellText: false,
+              sheetStubs: true
+            });
+
+            const sheets: { [key: string]: any[][] } = {};
+            const rawSheets: { [key: string]: any } = {};
+            const columnWidths: { [key: string]: { [key: string]: number } } = {};
+
+            workbook.SheetNames.forEach(sheetName => {
+              const worksheet = workbook.Sheets[sheetName];
+              rawSheets[sheetName] = worksheet;
+
+              // セル範囲を取得
+              const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+
+              // 列幅情報を取得
+              const colWidths: { [key: string]: number } = {};
+              if (worksheet['!cols']) {
+                worksheet['!cols'].forEach((col: any, index: number) => {
+                  if (col && col.width) {
+                    const colLetter = XLSX.utils.encode_col(index);
+                    colWidths[colLetter] = col.width * 7; // Excelの幅をピクセルに変換
+                  }
+                });
+              }
+              columnWidths[sheetName] = colWidths;
+
+              // セルデータを書式情報付きで取得
+              const sheetData: any[][] = [];
+              for (let R = range.s.r; R <= range.e.r; ++R) {
+                const row: any[] = [];
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                  const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                  const cell = worksheet[cellAddress];
+
+                  if (cell) {
+                    // セル値と書式情報を保持
+                    row.push({
+                      value: cell.w || cell.v || '', // 表示値または生値
+                      style: cell.s || {},           // スタイル情報
+                      type: cell.t || 's',           // セルタイプ
+                      format: cell.z || 'General'    // 書式
+                    });
+                  } else {
+                    row.push({
+                      value: '',
+                      style: {},
+                      type: 's',
+                      format: 'General'
+                    });
+                  }
+                }
+                sheetData.push(row);
+              }
+              sheets[sheetName] = sheetData;
+            });
+
+            excelData = {
+              sheets,
+              sheetNames: workbook.SheetNames,
+              styles: workbook.Styles || [],
+              rawSheets,
+              columnWidths,
+              metadata: {
+                creator: workbook.Props?.Creator,
+                created: workbook.Props?.CreatedDate,
+                modified: workbook.Props?.ModifiedDate
+              }
+            };
+
+            // フォールバック用にDataURLも保存
+            dataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+
+            console.log('Excel data parsed:', excelData);
+          } catch (error) {
+            console.error('Excel parsing error:', error);
+            // エラー時はDataURLのみ保存
+            dataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+          }
+        }
+        // 画像ファイルの場合はDataURLとして保存
+        else if (file.type.startsWith('image/')) {
+          dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          });
+        }
+        // テキストファイルの場合は内容を保存
+        else if (file.type.startsWith('text/') ||
+                 file.name.endsWith('.txt') ||
+                 file.name.endsWith('.md') ||
+                 file.name.endsWith('.json') ||
+                 file.name.endsWith('.csv')) {
+          content = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsText(file);
+          });
+        }
+        // PDFやその他のファイルもDataURLとして保存
+        else {
+          dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          });
+        }
+
+        const newFile: FileSystemNode = {
+          id: `file-${Date.now()}-${Math.random()}`,
+          name: uniqueName,
+          type: 'file',
+          parentId: currentFolder?.id || null,
+          path: selectedPath.length > 0
+            ? `/${selectedPath.join('/')}/${uniqueName}`
+            : `/${uniqueName}`,
+          size: file.size,
+          fileType: file.name.split('.').pop() || 'unknown',
+          created: new Date().toISOString(),
+          modifiedDate: new Date().toISOString(),
+          modifiedBy: "現在のユーザー",
+          content,
+          dataUrl,
+          excelData,
+          pdfData
+        };
+
+        // Firebaseにアップロード
+        try {
+          await uploadFile(file, selectedPath.join('/'), {
+            id: newFile.id,
+            name: newFile.name,
+            type: 'file',
+            parentId: newFile.parentId,
+            path: newFile.path,
+            size: newFile.size,
+            fileType: newFile.fileType,
+            createdBy: "現在のユーザー",
+            modifiedBy: "現在のユーザー"
+          });
+          console.log('Firebase upload successful');
+        } catch (uploadError) {
+          console.warn('Firebase upload failed, saving locally only:', uploadError);
+        }
+
+        // ローカルのファイルシステムを更新
+        const updateFileSystem = (nodes: FileSystemNode[], pathIndex: number = 0): FileSystemNode[] => {
+          if (selectedPath.length === 0) {
+            // ルートディレクトリに追加
+            console.log('Adding file to root:', newFile.name);
+            return [...nodes, newFile];
+          }
+
+          return nodes.map(node => {
+            if (node.name === selectedPath[pathIndex] && node.type === 'folder') {
+              if (pathIndex === selectedPath.length - 1) {
+                // 最終階層に到達、ここにファイルを追加
+                console.log(`Adding file to folder: ${node.name}`, newFile.name);
+                return {
+                  ...node,
+                  children: [...(node.children || []), newFile]
+                };
+              } else if (node.children) {
+                // さらに深い階層を探索
+                return {
+                  ...node,
+                  children: updateFileSystem(node.children, pathIndex + 1)
+                };
+              }
+            }
+            return node;
+          });
+        };
+
+        const updatedFileSystem = updateFileSystem(fileSystem);
+        console.log('Updated file system:', updatedFileSystem);
+        setFileSystem(updatedFileSystem);
+        localStorage.setItem('unica-file-system', JSON.stringify(updatedFileSystem));
+
+        // 次のファイルのために、parentNodesを更新
+        if (currentFolder && currentFolder.children) {
+          const updatedFolder = findNodeById(currentFolder.id);
+          if (updatedFolder && updatedFolder.children) {
+            parentNodes = updatedFolder.children;
+          }
+        } else {
+          parentNodes = updatedFileSystem;
+        }
+      }
+
+      console.log(`${files.length}個のファイルをアップロードしました`);
+      alert(`${files.length}個のファイルをアップロードしました`);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert("ファイルのアップロードに失敗しました");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleRename = (nodeId: string) => {
@@ -2830,6 +3194,7 @@ const FileManagementSystem = () => {
             onContextMenu={(e) => !showToolsTable && handleRightClick(e)}
             onDragEnter={(e) => {
               e.preventDefault();
+              console.log('Drag enter detected');
               setIsDragOver(true);
             }}
             onDragLeave={(e) => {
@@ -2840,11 +3205,19 @@ const FileManagementSystem = () => {
             }}
             onDragOver={(e) => {
               e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
             }}
             onDrop={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               setIsDragOver(false);
-              if (e.dataTransfer.files && !showToolsTable) {
+              console.log('Drop event fired', {
+                filesLength: e.dataTransfer.files?.length,
+                files: e.dataTransfer.files,
+                showToolsTable
+              });
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && !showToolsTable) {
+                console.log('Calling handleUpload with files:', e.dataTransfer.files);
                 handleUpload(e.dataTransfer.files);
               }
             }}
@@ -2857,6 +3230,7 @@ const FileManagementSystem = () => {
                 <div className="text-center">
                   <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
                   <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">ファイルをドロップしてアップロード</p>
+                  {isUploading && <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">アップロード中...</p>}
                 </div>
               </div>
             )}
@@ -3172,7 +3546,7 @@ const FileManagementSystem = () => {
         )}
 
         {/* 行右クリックメニュー */}
-        {false && (
+        {contextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
@@ -3304,7 +3678,7 @@ const FileManagementSystem = () => {
                     className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                     onClick={() => {
                       const node = findNodeById(contextMenu.nodeId!);
-                      if (node) console.log('ファイルを開く:', node);
+                      if (node) handleFileOpen(node);
                       setContextMenu(null);
                     }}
                   >
@@ -3607,6 +3981,271 @@ const FileManagementSystem = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ファイルプレビューモーダル */}
+      {filePreview.show && filePreview.file && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 rounded-lg max-w-4xl max-h-[90vh] w-full mx-4 overflow-hidden">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-600">
+              <h3 className="text-lg font-semibold">{filePreview.file.name}</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilePreview({ show: false, file: null })}
+              >
+                ✕
+              </Button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-4 overflow-auto max-h-[70vh]">
+              {filePreview.file.pdfData ? (
+                // PDF表示
+                <div>
+                  {/* PDFページナビゲーション */}
+                  <div className="flex items-center justify-between mb-4 bg-gray-100 dark:bg-slate-700 p-2 rounded">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPdfPage(Math.max(1, currentPdfPage - 1))}
+                      disabled={currentPdfPage <= 1}
+                    >
+                      前のページ
+                    </Button>
+                    <span className="text-sm">
+                      {currentPdfPage} / {pdfNumPages} ページ
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPdfPage(Math.min(pdfNumPages, currentPdfPage + 1))}
+                      disabled={currentPdfPage >= pdfNumPages}
+                    >
+                      次のページ
+                    </Button>
+                  </div>
+
+                  {/* PDF表示 */}
+                  <div className="text-center">
+                    <Document
+                      file={filePreview.file.pdfData.dataUrl}
+                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                      loading={<div>PDFを読み込み中...</div>}
+                      error={<div>PDFの読み込みに失敗しました</div>}
+                    >
+                      <Page
+                        pageNumber={currentPdfPage}
+                        width={600}
+                        loading={<div>ページを読み込み中...</div>}
+                        error={<div>ページの読み込みに失敗しました</div>}
+                      />
+                    </Document>
+                  </div>
+                </div>
+              ) : filePreview.file.excelData ? (
+                // Excel表示（強化版）
+                <div>
+                  {/* シートタブとメタデータ */}
+                  <div className="mb-4">
+                    {filePreview.file.excelData.sheetNames.length > 1 && (
+                      <div className="flex gap-2 mb-2 border-b">
+                        {filePreview.file.excelData.sheetNames.map(sheetName => (
+                          <button
+                            key={sheetName}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                              activeExcelSheet === sheetName
+                                ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                            onClick={() => setActiveExcelSheet(sheetName)}
+                          >
+                            {sheetName}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* メタデータ表示 */}
+                    {filePreview.file.excelData.metadata && (
+                      <div className="text-xs text-gray-500 mb-2">
+                        {filePreview.file.excelData.metadata.creator && (
+                          <span className="mr-4">作成者: {filePreview.file.excelData.metadata.creator}</span>
+                        )}
+                        {filePreview.file.excelData.metadata.created && (
+                          <span>作成日: {new Date(filePreview.file.excelData.metadata.created).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* シンプルで実用的なExcelテーブル */}
+                  {activeExcelSheet && filePreview.file.excelData.sheets[activeExcelSheet] && (
+                    <div className="w-full">
+                      {/* スクロール可能なテーブルコンテナ */}
+                      <div className="border border-gray-300 rounded-lg bg-white overflow-hidden">
+                        <div className="text-xs text-gray-500 p-2 border-b bg-gray-50">
+                          Excel表示 (最初の500行まで表示) - 横縦スクロール可能
+                        </div>
+                        <div className="overflow-auto max-h-[500px] max-w-full">
+                          <table className="border-collapse text-sm" style={{minWidth: 'max-content'}}>
+                            {/* 列ヘッダー */}
+                            <thead className="sticky top-0 bg-gray-100 z-10">
+                              <tr>
+                                <th className="border border-gray-400 bg-gray-200 p-1 text-center font-bold text-gray-700 w-12 min-w-[48px]">
+                                  #
+                                </th>
+                                {filePreview.file.excelData.sheets[activeExcelSheet][0]?.map((_, colIndex) => (
+                                  <th
+                                    key={colIndex}
+                                    className="border border-gray-400 bg-gray-100 p-1 text-center font-bold text-gray-700"
+                                    style={{minWidth: '120px', maxWidth: '200px'}}
+                                  >
+                                    {XLSX.utils.encode_col(colIndex)}
+                                  </th>
+                                ))}
+                            </tr>
+                          </thead>
+
+                          {/* データ行 */}
+                          <tbody>
+                            {filePreview.file.excelData.sheets[activeExcelSheet]
+                              .slice(0, 500)
+                              .map((row, rowIndex) => (
+                              <tr
+                                key={rowIndex}
+                                className={`hover:bg-blue-50 ${
+                                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                } ${rowIndex === 0 ? 'bg-blue-100 font-semibold' : ''}`}
+                              >
+                                {/* 行番号 */}
+                                <td className="border border-gray-400 bg-gray-100 p-1 text-center font-bold text-gray-700 w-12 min-w-[48px]">
+                                  {rowIndex + 1}
+                                </td>
+
+                                {/* データセル */}
+                                {Array.from({ length: Math.max(...filePreview.file.excelData.sheets[activeExcelSheet].map(r => r.length)) }, (_, colIndex) => {
+                                  const cellData = row[colIndex];
+                                  const isString = typeof cellData === 'string';
+                                  const displayValue = isString ? cellData : (cellData?.value || '');
+
+                                  return (
+                                    <td
+                                      key={colIndex}
+                                      className="border border-gray-300 p-1 overflow-hidden"
+                                      style={{minWidth: '120px', maxWidth: '200px'}}
+                                      title={String(displayValue)}
+                                    >
+                                      <div className="truncate text-gray-900 text-xs">
+                                        {String(displayValue)}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* 表示件数情報 */}
+                      <div className="mt-2 text-sm text-gray-600">
+                        表示: {Math.min(500, filePreview.file.excelData.sheets[activeExcelSheet].length)}行 /
+                        全{filePreview.file.excelData.sheets[activeExcelSheet].length}行
+                        {filePreview.file.excelData.sheets[activeExcelSheet].length > 500 && (
+                          <span className="ml-2 text-orange-600">
+                            ※ 最初の500行のみ表示
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                filePreview.file.fileType &&
+                ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(
+                  filePreview.file.fileType.toLowerCase()
+                ) && filePreview.file.dataUrl
+              ) ? (
+                {/* 画像表示 */}
+                <div className="text-center">
+                  <img
+                    src={filePreview.file.dataUrl}
+                    alt={filePreview.file.name}
+                    className="max-w-full max-h-[60vh] object-contain"
+                  />
+                </div>
+              ) : filePreview.file.content ? (
+                {/* テキスト表示 */}
+                <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 dark:bg-slate-700 p-4 rounded">
+                  {filePreview.file.content}
+                </pre>
+              ) : filePreview.file.dataUrl ? (
+                {/* その他のファイル（PDF等） */}
+                <div className="text-center">
+                  <p className="mb-4">このファイルタイプのプレビューはサポートされていません。</p>
+                  <Button
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = filePreview.file.dataUrl!;
+                      link.download = filePreview.file.name;
+                      link.click();
+                    }}
+                  >
+                    ダウンロード
+                  </Button>
+                </div>
+              ) : (
+                <p>ファイルの内容が読み込めませんでした。</p>
+              )}
+            </div>
+
+            {/* フッター */}
+            <div className="p-4 border-t border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700">
+              <div className="text-sm text-gray-600 dark:text-gray-400 grid grid-cols-2 gap-4">
+                <div>
+                  <p>📄 サイズ: {formatFileSize(filePreview.file.size)}</p>
+                  <p>📅 更新日: {formatDate(filePreview.file.modifiedDate)}</p>
+                  <p>👤 更新者: {filePreview.file.modifiedBy}</p>
+                </div>
+                <div>
+                  {filePreview.file.excelData && (
+                    <>
+                      <p>📊 シート数: {filePreview.file.excelData.sheetNames.length}個</p>
+                      {activeExcelSheet && (
+                        <p>📈 行数: {filePreview.file.excelData.sheets[activeExcelSheet]?.length || 0}行</p>
+                      )}
+                    </>
+                  )}
+                  {filePreview.file.pdfData && (
+                    <p>📑 ページ数: {pdfNumPages}ページ</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = filePreview.file.dataUrl!;
+                    link.download = filePreview.file.name;
+                    link.click();
+                  }}
+                >
+                  📥 ダウンロード
+                </Button>
+                {(filePreview.file.excelData || filePreview.file.pdfData) && (
+                  <Badge variant="secondary" className="text-xs">
+                    プレビュー対応
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
