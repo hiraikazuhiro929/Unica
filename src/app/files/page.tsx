@@ -3,12 +3,6 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { uploadFile, getFileSystem, deleteFile, createFolder, renameItem, moveItem } from "@/lib/firebase/fileManagement";
-import * as XLSX from 'xlsx';
-import { Document, Page, pdfjs } from 'react-pdf';
-
-// PDF.js workerを設定
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 import {
   Select,
   SelectContent,
@@ -55,7 +49,8 @@ import {
   SortAsc,
   SortDesc,
 } from "lucide-react";
-import EnhancedNotionTable from './components/EnhancedNotionTable';
+import AdvancedExcelTable from './components/AdvancedExcelTable';
+import FilePreview from './components/FilePreview';
 
 // 型定義
 interface TableColumn {
@@ -89,23 +84,6 @@ interface FileSystemNode {
   // データベース用
   tableColumns?: TableColumn[];
   tableData?: TableRow[];
-  // ファイル内容
-  content?: string;
-  dataUrl?: string;
-  // Excel専用データ
-  excelData?: {
-    sheets: { [key: string]: any[][] };
-    sheetNames: string[];
-    styles?: any;
-    metadata?: any;
-    rawSheets?: { [key: string]: any }; // 生のワークシートデータ
-    columnWidths?: { [key: string]: { [key: string]: number } }; // シート別列幅
-  };
-  // PDF専用データ
-  pdfData?: {
-    numPages: number;
-    dataUrl: string;
-  };
 }
 
 // ソート設定
@@ -179,6 +157,7 @@ const FileManagementSystem = () => {
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['documents', 'drawings', 'deliveries']));
   const [selectedNode, setSelectedNode] = useState<FileSystemNode | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileSystemNode | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -189,20 +168,6 @@ const FileManagementSystem = () => {
     nodeId?: string;
     type: 'file' | 'folder' | 'background';
   } | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  // 統一されたコンテキストメニュー
-  const [unifiedContextMenu, setUnifiedContextMenu] = useState<{
-    x: number;
-    y: number;
-    type: 'file' | 'folder' | 'background' | 'row' | 'column' | 'cell';
-    nodeId?: string;
-    rowId?: string;
-    rowIndex?: number;
-    columnName?: string;
-  } | null>(null);
-  
-  const [editingColumnName, setEditingColumnName] = useState<string | null>(null);
-  const [tempColumnName, setTempColumnName] = useState("");
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -234,8 +199,9 @@ const FileManagementSystem = () => {
   const [tableSortOrder, setTableSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({});
-  const [isResizing, setIsResizing] = useState<{columnName: string, startX: number, startWidth: number} | null>(null);
+  const [isResizing, setIsResizing] = useState<string | null>(null);
   const [newColumnMaxRating, setNewColumnMaxRating] = useState(5);
+  const [columnContextMenu, setColumnContextMenu] = useState<{x: number, y: number, columnName: string} | null>(null);
   const [cellContextMenu, setCellContextMenu] = useState<{x: number, y: number, rowId: string, columnName: string} | null>(null);
   const [copiedCell, setCopiedCell] = useState<{value: any, type: string} | null>(null);
   const [isDraggingColumn, setIsDraggingColumn] = useState<string | null>(null);
@@ -243,21 +209,12 @@ const FileManagementSystem = () => {
   const [viewType, setViewType] = useState<'table' | 'kanban' | 'gallery'>('table');
   const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
   const [showEmptyState, setShowEmptyState] = useState(false);
-  const [filePreview, setFilePreview] = useState<{
-    show: boolean;
-    file: FileSystemNode | null;
-  }>({ show: false, file: null });
-  const [activeExcelSheet, setActiveExcelSheet] = useState<string>('');
-  const [currentPdfPage, setCurrentPdfPage] = useState<number>(1);
-  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
-  const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
 
   // データの初期化・読み込み
   const [fileSystem, setFileSystem] = useState<FileSystemNode[]>(() => {
     try {
       const saved = localStorage.getItem('unica-file-system');
       if (saved) {
-        console.log('📁 保存データを読み込みました');
         return JSON.parse(saved);
       }
     } catch (error) {
@@ -568,11 +525,6 @@ const FileManagementSystem = () => {
   };
 
   const navigateToPath = (path: string[]) => {
-    console.log('🧭 navigateToPath called', { 
-      path, 
-      currentPath: selectedPath,
-      timestamp: Date.now()
-    });
     setSelectedPath(path);
     setShowToolsTable(false);
     setEditingTable(null);
@@ -588,12 +540,6 @@ const FileManagementSystem = () => {
 
   // ノード操作
   const handleNodeClick = (node: FileSystemNode, event?: React.MouseEvent) => {
-    console.log('🖱️ handleNodeClick called', { 
-      nodeName: node.name, 
-      nodeType: node.type,
-      currentPath: selectedPath,
-      timestamp: Date.now()
-    });
     
     if (event?.ctrlKey || event?.metaKey) {
       // Ctrl+Click で複数選択
@@ -610,7 +556,6 @@ const FileManagementSystem = () => {
     if (node.type === 'folder') {
       // ノードのパスから正しい階層を取得
       const pathParts = node.path.split('/').filter(part => part !== '');
-      console.log('📁 Folder clicked, navigating to:', pathParts);
       navigateToPath(pathParts);
     } else if (node.type === 'database') {
       if (node.name === '工具管理.db') {
@@ -624,7 +569,7 @@ const FileManagementSystem = () => {
       }
     } else {
       // ファイルを開く
-      handleFileOpen(node);
+      setSelectedFile(node);
     }
 
     setSelectedNode(node);
@@ -634,9 +579,7 @@ const FileManagementSystem = () => {
   const handleDoubleClick = (node: FileSystemNode) => {
     if (node.type === 'folder') {
       toggleFolder(node.id);
-      // ノードのパスから正しい階層を取得（handleNodeClickと同様）
-      const pathParts = node.path.split('/').filter(part => part !== '');
-      navigateToPath(pathParts);
+      navigateToPath([...selectedPath, node.name]);
     } else if (node.type === 'database') {
       if (node.name === '工具管理.db') {
         setShowToolsTable(true);
@@ -649,7 +592,7 @@ const FileManagementSystem = () => {
       }
     } else {
       // ファイルを開く
-      handleFileOpen(node);
+      setSelectedFile(node);
     }
   };
 
@@ -688,133 +631,22 @@ const FileManagementSystem = () => {
   const generateUniqueName = (baseName: string, parentNodes: FileSystemNode[]): string => {
     let name = baseName;
     let counter = 1;
-
+    
     while (checkNameDuplicate(name, parentNodes)) {
       name = `${baseName} (${counter})`;
       counter++;
     }
-
+    
     return name;
-  };
-
-  // ファイルを開く関数
-  // Excelセルスタイルを CSS に変換する関数
-  const getCellStyle = (cellData: any, styles: any[]): React.CSSProperties => {
-    if (!cellData || !cellData.style || !styles) return {};
-
-    const style: React.CSSProperties = {};
-    const cellStyle = styles[cellData.style] || {};
-
-    // フォント設定
-    if (cellStyle.font) {
-      if (cellStyle.font.bold) style.fontWeight = 'bold';
-      if (cellStyle.font.italic) style.fontStyle = 'italic';
-      if (cellStyle.font.underline) style.textDecoration = 'underline';
-      if (cellStyle.font.sz) style.fontSize = `${cellStyle.font.sz}px`;
-      if (cellStyle.font.name) style.fontFamily = cellStyle.font.name;
-
-      // フォント色
-      if (cellStyle.font.color) {
-        if (cellStyle.font.color.rgb) {
-          style.color = `#${cellStyle.font.color.rgb}`;
-        } else if (cellStyle.font.color.theme !== undefined) {
-          // テーマカラーの基本的な対応
-          const themeColors = ['#000000', '#FFFFFF', '#1F497D', '#4F81BD', '#C0504D', '#9BBB59'];
-          if (themeColors[cellStyle.font.color.theme]) {
-            style.color = themeColors[cellStyle.font.color.theme];
-          }
-        }
-      }
-    }
-
-    // 背景色
-    if (cellStyle.fill && cellStyle.fill.bgColor) {
-      if (cellStyle.fill.bgColor.rgb) {
-        style.backgroundColor = `#${cellStyle.fill.bgColor.rgb}`;
-      }
-    }
-
-    // 文字揃え
-    if (cellStyle.alignment) {
-      if (cellStyle.alignment.horizontal) {
-        switch (cellStyle.alignment.horizontal) {
-          case 'center': style.textAlign = 'center'; break;
-          case 'right': style.textAlign = 'right'; break;
-          case 'left': style.textAlign = 'left'; break;
-        }
-      }
-      if (cellStyle.alignment.vertical) {
-        switch (cellStyle.alignment.vertical) {
-          case 'center': style.verticalAlign = 'middle'; break;
-          case 'top': style.verticalAlign = 'top'; break;
-          case 'bottom': style.verticalAlign = 'bottom'; break;
-        }
-      }
-    }
-
-    // 境界線
-    if (cellStyle.border) {
-      const borderStyle = '1px solid #ccc';
-      if (cellStyle.border.top) style.borderTop = borderStyle;
-      if (cellStyle.border.bottom) style.borderBottom = borderStyle;
-      if (cellStyle.border.left) style.borderLeft = borderStyle;
-      if (cellStyle.border.right) style.borderRight = borderStyle;
-    }
-
-    return style;
-  };
-
-  // 列幅を取得する関数
-  const getColumnWidth = (sheetName: string, colIndex: number): number => {
-    if (!filePreview.file?.excelData?.columnWidths?.[sheetName]) return 120;
-
-    const colLetter = XLSX.utils.encode_col(colIndex);
-    return filePreview.file.excelData.columnWidths[sheetName][colLetter] || 120;
-  };
-
-  const handleFileOpen = (node: FileSystemNode) => {
-    console.log('ファイルを開く:', node);
-
-    if (node.type !== 'file') return;
-
-    // ファイルの内容があるかチェック
-    if (!node.dataUrl && !node.content) {
-      alert('ファイルの内容が保存されていません。');
-      return;
-    }
-
-    // ファイルプレビューを表示
-    setFilePreview({ show: true, file: node });
-
-    // Excelファイルの場合、最初のシートを選択
-    if (node.excelData && node.excelData.sheetNames.length > 0) {
-      setActiveExcelSheet(node.excelData.sheetNames[0]);
-    } else {
-      setActiveExcelSheet('');
-    }
-
-    // PDFファイルの場合、最初のページを選択
-    if (node.pdfData) {
-      setCurrentPdfPage(1);
-      setPdfNumPages(node.pdfData.numPages);
-    }
   };
 
   // ファイル操作
   const handleCreateFolder = (targetFolderId?: string) => {
-    console.log('🔥 handleCreateFolder called', { 
-      isCreatingFolder, 
-      editingNodeId, 
-      targetFolderId,
-      timestamp: Date.now()
-    });
     
     if (isCreatingFolder || editingNodeId) {
-      console.log('❌ Blocked by flag', { isCreatingFolder, editingNodeId });
       return;
     }
     
-    console.log('✅ Proceeding with folder creation');
     setIsCreatingFolder(true);
     
     try {
@@ -870,7 +702,6 @@ const FileManagementSystem = () => {
       
       // 500ms後にフラグをリセット（デバウンス強化）
       setTimeout(() => {
-        console.log('⏰ Resetting isCreatingFolder flag');
         setIsCreatingFolder(false);
       }, 500);
       
@@ -938,192 +769,16 @@ const FileManagementSystem = () => {
     ]);
   };
 
-  const handleUpload = async (files: FileList) => {
-    console.log('handleUpload called with', files.length, 'files');
+  const handleUpload = (files: FileList) => {
     const currentFolder = getCurrentFolder();
-    console.log('Current folder:', currentFolder);
-    console.log('Current selectedPath:', selectedPath);
+    const parentNodes = currentFolder?.children || fileSystem;
 
-    // parentNodesを正しく取得
-    let parentNodes: FileSystemNode[];
-    if (currentFolder && currentFolder.children) {
-      parentNodes = currentFolder.children;
-    } else if (selectedPath.length === 0) {
-      parentNodes = fileSystem;
-    } else {
-      // フォルダが見つからない場合は、ルートを使用
-      parentNodes = fileSystem;
-      console.warn('Could not find parent folder, using root');
-    }
+    Array.from(files).forEach(async file => {
+      const uniqueName = generateUniqueName(file.name, parentNodes);
 
-    console.log('Parent nodes:', parentNodes);
-
-    setIsUploading(true);
-
-    try {
-      for (const file of Array.from(files)) {
-        console.log('Processing file:', file.name, file.size, file.type);
-        const uniqueName = generateUniqueName(file.name, parentNodes);
-
-        // ファイル内容を読み込む
-        let dataUrl: string | undefined;
-        let content: string | undefined;
-        let excelData: { sheets: { [key: string]: any[][] }; sheetNames: string[]; styles?: any; metadata?: any } | undefined;
-        let pdfData: { numPages: number; dataUrl: string } | undefined;
-
-        // PDFファイルの場合
-        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-          try {
-            dataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(file);
-            });
-
-            // PDFの基本情報を取得
-            pdfData = {
-              numPages: 0, // 実際のページ数は表示時に取得
-              dataUrl: dataUrl
-            };
-
-            console.log('PDF file processed');
-          } catch (error) {
-            console.error('PDF processing error:', error);
-          }
-        }
-        // Excelファイルの場合は構造化データとして保存
-        else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ||
-            file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-            file.type === 'application/vnd.ms-excel') {
-          try {
-            const buffer = await new Promise<ArrayBuffer>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
-              reader.readAsArrayBuffer(file);
-            });
-
-            const workbook = XLSX.read(buffer, {
-              type: 'array',
-              cellStyles: true,
-              cellNF: true,
-              cellHTML: false,
-              cellText: false,
-              sheetStubs: true
-            });
-
-            const sheets: { [key: string]: any[][] } = {};
-            const rawSheets: { [key: string]: any } = {};
-            const columnWidths: { [key: string]: { [key: string]: number } } = {};
-
-            workbook.SheetNames.forEach(sheetName => {
-              const worksheet = workbook.Sheets[sheetName];
-              rawSheets[sheetName] = worksheet;
-
-              // セル範囲を取得
-              const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-
-              // 列幅情報を取得
-              const colWidths: { [key: string]: number } = {};
-              if (worksheet['!cols']) {
-                worksheet['!cols'].forEach((col: any, index: number) => {
-                  if (col && col.width) {
-                    const colLetter = XLSX.utils.encode_col(index);
-                    colWidths[colLetter] = col.width * 7; // Excelの幅をピクセルに変換
-                  }
-                });
-              }
-              columnWidths[sheetName] = colWidths;
-
-              // セルデータを書式情報付きで取得
-              const sheetData: any[][] = [];
-              for (let R = range.s.r; R <= range.e.r; ++R) {
-                const row: any[] = [];
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                  const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-                  const cell = worksheet[cellAddress];
-
-                  if (cell) {
-                    // セル値と書式情報を保持
-                    row.push({
-                      value: cell.w || cell.v || '', // 表示値または生値
-                      style: cell.s || {},           // スタイル情報
-                      type: cell.t || 's',           // セルタイプ
-                      format: cell.z || 'General'    // 書式
-                    });
-                  } else {
-                    row.push({
-                      value: '',
-                      style: {},
-                      type: 's',
-                      format: 'General'
-                    });
-                  }
-                }
-                sheetData.push(row);
-              }
-              sheets[sheetName] = sheetData;
-            });
-
-            excelData = {
-              sheets,
-              sheetNames: workbook.SheetNames,
-              styles: workbook.Styles || [],
-              rawSheets,
-              columnWidths,
-              metadata: {
-                creator: workbook.Props?.Creator,
-                created: workbook.Props?.CreatedDate,
-                modified: workbook.Props?.ModifiedDate
-              }
-            };
-
-            // フォールバック用にDataURLも保存
-            dataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(file);
-            });
-
-            console.log('Excel data parsed:', excelData);
-          } catch (error) {
-            console.error('Excel parsing error:', error);
-            // エラー時はDataURLのみ保存
-            dataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(file);
-            });
-          }
-        }
-        // 画像ファイルの場合はDataURLとして保存
-        else if (file.type.startsWith('image/')) {
-          dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          });
-        }
-        // テキストファイルの場合は内容を保存
-        else if (file.type.startsWith('text/') ||
-                 file.name.endsWith('.txt') ||
-                 file.name.endsWith('.md') ||
-                 file.name.endsWith('.json') ||
-                 file.name.endsWith('.csv')) {
-          content = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsText(file);
-          });
-        }
-        // PDFやその他のファイルもDataURLとして保存
-        else {
-          dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          });
-        }
-
+      // ファイル内容を読み込み
+      const reader = new FileReader();
+      reader.onload = () => {
         const newFile: FileSystemNode = {
           id: `file-${Date.now()}-${Math.random()}`,
           name: uniqueName,
@@ -1137,52 +792,25 @@ const FileManagementSystem = () => {
           created: new Date().toISOString(),
           modifiedDate: new Date().toISOString(),
           modifiedBy: "現在のユーザー",
-          content,
-          dataUrl,
-          excelData,
-          pdfData
+          dataUrl: reader.result as string
         };
 
-        // Firebaseにアップロード
-        try {
-          await uploadFile(file, selectedPath.join('/'), {
-            id: newFile.id,
-            name: newFile.name,
-            type: 'file',
-            parentId: newFile.parentId,
-            path: newFile.path,
-            size: newFile.size,
-            fileType: newFile.fileType,
-            createdBy: "現在のユーザー",
-            modifiedBy: "現在のユーザー"
-          });
-          console.log('Firebase upload successful');
-        } catch (uploadError) {
-          console.warn('Firebase upload failed, saving locally only:', uploadError);
-        }
-
-        // ローカルのファイルシステムを更新
-        const updateFileSystem = (nodes: FileSystemNode[], pathIndex: number = 0): FileSystemNode[] => {
+        const updateFileSystem = (nodes: FileSystemNode[]): FileSystemNode[] => {
           if (selectedPath.length === 0) {
-            // ルートディレクトリに追加
-            console.log('Adding file to root:', newFile.name);
             return [...nodes, newFile];
           }
 
           return nodes.map(node => {
-            if (node.name === selectedPath[pathIndex] && node.type === 'folder') {
-              if (pathIndex === selectedPath.length - 1) {
-                // 最終階層に到達、ここにファイルを追加
-                console.log(`Adding file to folder: ${node.name}`, newFile.name);
+            if (node.name === selectedPath[0] && node.type === 'folder') {
+              if (selectedPath.length === 1) {
                 return {
                   ...node,
                   children: [...(node.children || []), newFile]
                 };
               } else if (node.children) {
-                // さらに深い階層を探索
                 return {
                   ...node,
-                  children: updateFileSystem(node.children, pathIndex + 1)
+                  children: updateFileSystem(node.children)
                 };
               }
             }
@@ -1191,29 +819,12 @@ const FileManagementSystem = () => {
         };
 
         const updatedFileSystem = updateFileSystem(fileSystem);
-        console.log('Updated file system:', updatedFileSystem);
         setFileSystem(updatedFileSystem);
         localStorage.setItem('unica-file-system', JSON.stringify(updatedFileSystem));
+      };
 
-        // 次のファイルのために、parentNodesを更新
-        if (currentFolder && currentFolder.children) {
-          const updatedFolder = findNodeById(currentFolder.id);
-          if (updatedFolder && updatedFolder.children) {
-            parentNodes = updatedFolder.children;
-          }
-        } else {
-          parentNodes = updatedFileSystem;
-        }
-      }
-
-      console.log(`${files.length}個のファイルをアップロードしました`);
-      alert(`${files.length}個のファイルをアップロードしました`);
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert("ファイルのアップロードに失敗しました");
-    } finally {
-      setIsUploading(false);
-    }
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleRename = (nodeId: string) => {
@@ -1476,7 +1087,6 @@ const FileManagementSystem = () => {
 
         // 既にターゲットフォルダの直接の子である場合はスキップ
         if (draggedNode.parentId === targetNode.id) {
-          console.log('既に同じフォルダに存在します');
           setDraggedNode(null);
           setDropTarget(null);
           setDragOverPosition(null);
@@ -1659,57 +1269,6 @@ const FileManagementSystem = () => {
   };
 
   // カスタムテーブル用の操作関数
-  // セル値更新関数
-  const updateCellValue = (rowId: string, columnName: string, value: any) => {
-    setEditingTableData(prevData => 
-      prevData.map(row => 
-        row.id === rowId 
-          ? { ...row, data: { ...row.data, [columnName]: value } }
-          : row
-      )
-    );
-    // 自動保存
-    setTimeout(() => saveTableData(), 100);
-  };
-
-  // 数式計算関数（簡易版）
-  const calculateFormula = (formula: string, rowData: any): string => {
-    try {
-      // 基本的な数式をサポート
-      let result = formula;
-      
-      // 数値の合計（例: SUM(A,B,C)）
-      if (formula.startsWith('SUM(') && formula.endsWith(')')) {
-        const fields = formula.slice(4, -1).split(',').map(f => f.trim());
-        const sum = fields.reduce((acc, field) => {
-          const value = Number(rowData[field]) || 0;
-          return acc + value;
-        }, 0);
-        return sum.toString();
-      }
-      
-      // 平均（例: AVERAGE(A,B,C)）
-      if (formula.startsWith('AVERAGE(') && formula.endsWith(')')) {
-        const fields = formula.slice(8, -1).split(',').map(f => f.trim());
-        const sum = fields.reduce((acc, field) => {
-          const value = Number(rowData[field]) || 0;
-          return acc + value;
-        }, 0);
-        return (sum / fields.length).toString();
-      }
-      
-      // 文字列結合（例: CONCAT(A,B)）
-      if (formula.startsWith('CONCAT(') && formula.endsWith(')')) {
-        const fields = formula.slice(7, -1).split(',').map(f => f.trim());
-        return fields.map(field => rowData[field] || '').join('');
-      }
-      
-      return formula;
-    } catch (error) {
-      return '#ERROR';
-    }
-  };
-
   const addNewRow = () => {
     if (!editingTable || !editingTable.tableColumns) return;
     
@@ -1776,7 +1335,6 @@ const FileManagementSystem = () => {
     // データをローカルストレージに保存
     try {
       localStorage.setItem('unica-file-system', JSON.stringify(updatedFileSystem));
-      console.log('✅ データが保存されました');
     } catch (error) {
       console.error('❌ データ保存エラー:', error);
     }
@@ -2083,7 +1641,7 @@ const FileManagementSystem = () => {
     return filtered;
   };
 
-  // カスタムテーブル表示 (EnhancedNotionTable使用)
+  // カスタムテーブル表示 (Notionライク)
   const renderCustomTable = () => {
     if (!editingTable || !editingTable.tableColumns) return null;
 
@@ -2559,331 +2117,6 @@ const FileManagementSystem = () => {
     );
   };
 
-  // 自然なテーブル表示 (Excel機能付き)
-  const renderCustomTableNew = () => {
-    if (!editingTable || !editingTable.tableColumns) return null;
-
-    const filteredData = getFilteredAndSortedTableData();
-
-    return (
-      <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-800">
-        {/* フルスクリーンテーブル */}
-        <div className="flex-1 overflow-auto">
-          {editingTableData.length === 0 ? (
-            <div 
-              className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700"
-              onClick={addNewRow}
-            >
-              <Database className="w-16 h-16 mb-4 opacity-20" />
-              <h3 className="text-lg font-medium mb-2">空のテーブル</h3>
-              <p className="text-sm">クリックして最初の行を追加</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
-                <tr className="border-b border-gray-200 dark:border-slate-600">
-                  {editingTable.tableColumns.map(column => (
-                    <th 
-                      key={column.name} 
-                      className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-slate-600 min-w-[120px] relative group"
-                      style={{width: columnWidths[column.name] || 150}}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setUnifiedContextMenu({
-                          x: e.clientX, 
-                          y: e.clientY, 
-                          type: 'column',
-                          columnName: column.name
-                        });
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        {editingColumnName === column.name ? (
-                          <Input
-                            value={tempColumnName}
-                            onChange={(e) => setTempColumnName(e.target.value)}
-                            onBlur={() => {
-                              if (tempColumnName.trim() && tempColumnName !== column.name) {
-                                const updatedColumns = editingTable.tableColumns.map(col => 
-                                  col.name === column.name 
-                                    ? { ...col, name: tempColumnName.trim() }
-                                    : col
-                                );
-                                setEditingTable({
-                                  ...editingTable,
-                                  tableColumns: updatedColumns
-                                });
-                                // データも更新
-                                setEditingTableData(editingTableData.map(row => {
-                                  const newData = { ...row.data };
-                                  if (column.name in newData) {
-                                    newData[tempColumnName.trim()] = newData[column.name];
-                                    delete newData[column.name];
-                                  }
-                                  return { ...row, data: newData };
-                                }));
-                                saveTableData();
-                              }
-                              setEditingColumnName(null);
-                              setTempColumnName("");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              } else if (e.key === 'Escape') {
-                                setEditingColumnName(null);
-                                setTempColumnName("");
-                              }
-                            }}
-                            className="h-6 text-sm font-medium"
-                            autoFocus
-                          />
-                        ) : (
-                          <span 
-                            onDoubleClick={() => {
-                              setEditingColumnName(column.name);
-                              setTempColumnName(column.name);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            {column.name}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => {
-                              if (tableSortBy === column.name) {
-                                setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc');
-                              } else {
-                                setTableSortBy(column.name);
-                                setTableSortOrder('asc');
-                              }
-                            }}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-600"
-                          >
-                            {tableSortBy === column.name && (
-                              tableSortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      {/* リサイズハンドル */}
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize bg-transparent hover:bg-blue-300 opacity-0 group-hover:opacity-50"
-                        onMouseDown={(e) => startColumnResize(e, column.name)}
-                      />
-                    </th>
-                  ))}
-                  {/* 列追加ボタン */}
-                  <th className="w-12 py-3 px-2 border-r border-gray-200 dark:border-slate-600">
-                    <button
-                      onClick={() => {
-                        // 直接新しい列を追加
-                        const columnCount = editingTable.tableColumns.length;
-                        const newColumn: TableColumn = {
-                          name: `列${columnCount + 1}`,
-                          type: 'text'
-                        };
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: [...editingTable.tableColumns, newColumn]
-                        });
-                        saveTableData();
-                        // 即座に編集モードに入る
-                        setTimeout(() => {
-                          setEditingColumnName(newColumn.name);
-                          setTempColumnName(newColumn.name);
-                        }, 100);
-                      }}
-                      className="w-8 h-8 rounded hover:bg-gray-100 dark:hover:bg-slate-600 flex items-center justify-center text-gray-500"
-                      title="列を追加"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((row, rowIndex) => {
-                  return (
-                    <tr 
-                      key={row.id} 
-                      className="border-b border-gray-100 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700"
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setUnifiedContextMenu({
-                          x: e.clientX, 
-                          y: e.clientY, 
-                          type: 'row',
-                          rowId: row.id,
-                          rowIndex
-                        });
-                      }}
-                    >
-                      {editingTable.tableColumns.map(column => (
-                        <td key={column.name} className="py-2 px-4 text-sm border-r border-gray-100 dark:border-slate-600">
-                          {column.type === 'select' && (
-                            <Select
-                              value={row.data[column.name] || ''}
-                              onValueChange={(value) => updateCellValue(row.id, column.name, value)}
-                            >
-                              <SelectTrigger className="w-full h-8 text-sm">
-                                <SelectValue placeholder="選択..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {column.options?.map(option => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {column.type === 'multi-select' && (
-                            <div className="flex flex-wrap gap-1">
-                              {(row.data[column.name] || []).map((value: string) => (
-                                <Badge key={value} variant="secondary" className="text-xs">
-                                  {value}
-                                  <button
-                                    onClick={() => {
-                                      const current = row.data[column.name] || [];
-                                      const updated = current.filter((v: string) => v !== value);
-                                      updateCellValue(row.id, column.name, updated);
-                                    }}
-                                    className="ml-1 text-gray-500 hover:text-gray-700"
-                                  >
-                                    ×
-                                  </button>
-                                </Badge>
-                              ))}
-                              <Select
-                                value=""
-                                onValueChange={(value) => {
-                                  if (value) {
-                                    const current = row.data[column.name] || [];
-                                    const updated = current.includes(value)
-                                      ? current.filter((v: string) => v !== value)
-                                      : [...current, value];
-                                    updateCellValue(row.id, column.name, updated);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="w-20 h-6 text-xs">
-                                  <SelectValue placeholder="+" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {column.options?.map(option => (
-                                    <SelectItem key={option} value={option}>
-                                      {option}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          {column.type === 'checkbox' && (
-                            <input
-                              type="checkbox"
-                              checked={row.data[column.name] || false}
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.checked)}
-                              className="w-4 h-4 rounded border-gray-300"
-                            />
-                          )}
-                          {column.type === 'date' && (
-                            <Input
-                              type="date"
-                              value={row.data[column.name] || ''}
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.value)}
-                              className="w-full h-8 text-sm border-0 focus:ring-1 focus:ring-blue-500"
-                            />
-                          )}
-                          {(column.type === 'text' || column.type === 'number' || column.type === 'url' || column.type === 'formula') && (
-                            <Input
-                              type={column.type === 'number' ? 'number' : 'text'}
-                              value={column.type === 'formula' ? 
-                                calculateFormula(column.formula || '', row.data) : 
-                                row.data[column.name] || ''
-                              }
-                              onChange={(e) => updateCellValue(row.id, column.name, e.target.value)}
-                              disabled={column.type === 'formula'}
-                              className={`w-full h-8 text-sm border-0 focus:ring-1 focus:ring-blue-500 ${column.type === 'formula' ? 'bg-gray-50 dark:bg-slate-700' : ''}`}
-                            />
-                          )}
-                        </td>
-                      ))}
-                      {/* 空のセル（列追加ボタンの下） */}
-                      <td className="py-2 px-4 text-sm border-r border-gray-100 dark:border-slate-600"></td>
-                    </tr>
-                  );
-                })}
-                {/* 新しい行を追加するための行 */}
-                <tr 
-                  className="border-b border-gray-100 dark:border-slate-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer"
-                  onClick={addNewRow}
-                >
-                  {editingTable.tableColumns.map((column, index) => (
-                    <td 
-                      key={column.name} 
-                      className="py-3 px-4 text-sm border-r border-gray-100 dark:border-slate-600 text-gray-400 dark:text-gray-500"
-                    >
-                      {index === 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Plus className="w-4 h-4" />
-                          <span>新しい行を追加</span>
-                        </div>
-                      ) : (
-                        ""
-                      )}
-                    </td>
-                  ))}
-                  {/* 空のセル（列追加ボタンの下） */}
-                  <td className="py-3 px-4 text-sm border-r border-gray-100 dark:border-slate-600"></td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* 旧行の右クリックメニュー - 完全削除済み */}
-      </div>
-    );
-  };
-
-  // 列リサイズ機能
-  const startColumnResize = (e: React.MouseEvent, columnName: string) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = columnWidths[columnName] || 150;
-    setIsResizing({columnName, startX, startWidth});
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing) {
-        const diff = e.clientX - isResizing.startX;
-        const newWidth = Math.max(80, isResizing.startWidth + diff);
-        setColumnWidths(prev => ({
-          ...prev,
-          [isResizing.columnName]: newWidth
-        }));
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(null);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
-
   // 既存の工具テーブル表示
   const renderToolsTable = () => (
     <div className="flex-1 overflow-auto bg-white dark:bg-slate-800">
@@ -3094,7 +2327,6 @@ const FileManagementSystem = () => {
                 <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
                   <button 
                     onClick={() => {
-                      console.log('🏠 Root button clicked');
                       navigateToPath([]);
                     }}
                     className="hover:text-gray-700 dark:hover:text-slate-300"
@@ -3194,7 +2426,6 @@ const FileManagementSystem = () => {
             onContextMenu={(e) => !showToolsTable && handleRightClick(e)}
             onDragEnter={(e) => {
               e.preventDefault();
-              console.log('Drag enter detected');
               setIsDragOver(true);
             }}
             onDragLeave={(e) => {
@@ -3205,24 +2436,21 @@ const FileManagementSystem = () => {
             }}
             onDragOver={(e) => {
               e.preventDefault();
-              e.dataTransfer.dropEffect = 'copy';
             }}
             onDrop={(e) => {
               e.preventDefault();
-              e.stopPropagation();
               setIsDragOver(false);
-              console.log('Drop event fired', {
-                filesLength: e.dataTransfer.files?.length,
-                files: e.dataTransfer.files,
-                showToolsTable
-              });
-              if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && !showToolsTable) {
-                console.log('Calling handleUpload with files:', e.dataTransfer.files);
+              if (e.dataTransfer.files && !showToolsTable) {
                 handleUpload(e.dataTransfer.files);
               }
             }}
           >
-            {editingTable ? renderCustomTableNew() : showToolsTable ? renderToolsTable() : renderFileList()}
+            {selectedFile ? (
+              <FilePreview
+                file={selectedFile}
+                onClose={() => setSelectedFile(null)}
+              />
+            ) : editingTable ? renderCustomTable() : showToolsTable ? renderToolsTable() : renderFileList()}
             
             {/* ドラッグオーバー時のオーバーレイ */}
             {isDragOver && !showToolsTable && (
@@ -3230,7 +2458,6 @@ const FileManagementSystem = () => {
                 <div className="text-center">
                   <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
                   <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">ファイルをドロップしてアップロード</p>
-                  {isUploading && <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">アップロード中...</p>}
                 </div>
               </div>
             )}
@@ -3238,201 +2465,31 @@ const FileManagementSystem = () => {
         </div>
 
         {/* カラムヘッダー右クリックメニュー */}
-        {unifiedContextMenu && (
+        {columnContextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setUnifiedContextMenu(null)}
+              onClick={() => setColumnContextMenu(null)}
             />
             <div
               className="fixed z-50 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg py-1 min-w-[200px]"
-              style={{ left: unifiedContextMenu.x, top: unifiedContextMenu.y }}
+              style={{ left: columnContextMenu.x, top: columnContextMenu.y }}
             >
-              {/* 列の操作メニュー */}
-              {unifiedContextMenu.type === 'column' && unifiedContextMenu.columnName && (
-                <>
-                  {/* 列タイプ選択サブメニュー */}
-                  <div className="px-3 py-1.5">
-                    <div className="text-xs text-gray-500 mb-1">列タイプを選択:</div>
-                    <div className="grid grid-cols-2 gap-1">
-                      {(['text', 'number', 'date', 'select', 'checkbox', 'multi-select', 'url', 'formula'] as TableColumn['type'][]).map(type => {
-                        const currentColumn = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
-                        const isActive = currentColumn?.type === type;
-                        
-                        return (
-                          <button
-                            key={type}
-                            className={`px-2 py-1 text-xs rounded text-left hover:bg-gray-100 dark:hover:bg-slate-600 ${
-                              isActive 
-                                ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
-                                : 'text-gray-700 dark:text-gray-300'
-                            }`}
-                            onClick={() => {
-                              if (!isActive) {
-                                const updatedColumns = editingTable.tableColumns.map(col => 
-                                  col.name === unifiedContextMenu.columnName 
-                                    ? { ...col, type }
-                                    : col
-                                );
-                                setEditingTable({
-                                  ...editingTable,
-                                  tableColumns: updatedColumns
-                                });
-                                saveTableData();
-                              }
-                              setUnifiedContextMenu(null);
-                            }}
-                          >
-                            {type}
-                            {isActive && ' ✓'}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // インライン編集モードに入る
-                      setEditingColumnName(unifiedContextMenu.columnName);
-                      setTempColumnName(unifiedContextMenu.columnName);
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Edit className="w-3 h-3 mr-2" />
-                    列名を変更
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // カラムを複製
-                      const column = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
-                      if (column) {
-                        const newColumn: TableColumn = {
-                          ...column,
-                          name: `${column.name} (コピー)`
-                        };
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: [...editingTable.tableColumns, newColumn]
-                        });
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Copy className="w-3 h-3 mr-2" />
-                    列を複製
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center text-red-600"
-                    onClick={() => {
-                      if (confirm('この列を削除してもよろしいですか？')) {
-                        const updatedColumns = editingTable.tableColumns.filter(col => col.name !== unifiedContextMenu.columnName);
-                        setEditingTable({
-                          ...editingTable,
-                          tableColumns: updatedColumns
-                        });
-                        // データからも削除
-                        setEditingTableData(editingTableData.map(row => {
-                          const newData = { ...row.data };
-                          delete newData[unifiedContextMenu.columnName!];
-                          return { ...row, data: newData };
-                        }));
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    列を削除
-                  </button>
-                </>
-              )}
-
-              {/* 行の操作メニュー */}
-              {unifiedContextMenu.type === 'row' && unifiedContextMenu.rowId && (
-                <>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 上に行を挿入
-                      const newRow: TableRow = {
-                        id: crypto.randomUUID(),
-                        data: {}
-                      };
-                      const newData = [...editingTableData];
-                      newData.splice(unifiedContextMenu.rowIndex!, 0, newRow);
-                      setEditingTableData(newData);
-                      saveTableData();
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Plus className="w-3 h-3 mr-2" />
-                    上に行を挿入
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 下に行を挿入
-                      const newRow: TableRow = {
-                        id: crypto.randomUUID(),
-                        data: {}
-                      };
-                      const newData = [...editingTableData];
-                      newData.splice(unifiedContextMenu.rowIndex! + 1, 0, newRow);
-                      setEditingTableData(newData);
-                      saveTableData();
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Plus className="w-3 h-3 mr-2" />
-                    下に行を挿入
-                  </button>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
-                    onClick={() => {
-                      // 行を複製
-                      const targetRow = editingTableData.find(r => r.id === unifiedContextMenu.rowId);
-                      if (targetRow) {
-                        const newRow: TableRow = {
-                          id: crypto.randomUUID(),
-                          data: { ...targetRow.data }
-                        };
-                        const newData = [...editingTableData];
-                        newData.splice(unifiedContextMenu.rowIndex! + 1, 0, newRow);
-                        setEditingTableData(newData);
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Copy className="w-3 h-3 mr-2" />
-                    行を複製
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
-                  <button
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center text-red-600"
-                    onClick={() => {
-                      if (confirm('この行を削除してもよろしいですか？')) {
-                        setEditingTableData(editingTableData.filter(row => row.id !== unifiedContextMenu.rowId));
-                        saveTableData();
-                      }
-                      setUnifiedContextMenu(null);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    行を削除
-                  </button>
-                </>
-              )}
+              <button
+                className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
+                onClick={() => {
+                  // TODO: カラムタイプ変更
+                  setColumnContextMenu(null);
+                }}
+              >
+                <Edit className="w-3 h-3 mr-2" />
+                カラムタイプを変更
+              </button>
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                 onClick={() => {
                   // カラムを複製
-                  const column = editingTable?.tableColumns?.find(c => c.name === unifiedContextMenu.columnName);
+                  const column = editingTable?.tableColumns?.find(c => c.name === columnContextMenu.columnName);
                   if (column) {
                     const newColumn: TableColumn = {
                       ...column,
@@ -3445,7 +2502,7 @@ const FileManagementSystem = () => {
                     setEditingTable(updatedTable);
                     saveTableData();
                   }
-                  setUnifiedContextMenu(null);
+                  setColumnContextMenu(null);
                 }}
               >
                 <Copy className="w-3 h-3 mr-2" />
@@ -3455,24 +2512,24 @@ const FileManagementSystem = () => {
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                 onClick={() => {
-                  if (tableSortBy === unifiedContextMenu.columnName) {
+                  if (tableSortBy === columnContextMenu.columnName) {
                     setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc');
                   } else {
-                    setTableSortBy(unifiedContextMenu.columnName!);
+                    setTableSortBy(columnContextMenu.columnName);
                     setTableSortOrder('asc');
                   }
-                  setUnifiedContextMenu(null);
+                  setColumnContextMenu(null);
                 }}
               >
                 <SortAsc className="w-3 h-3 mr-2" />
-                {tableSortBy === unifiedContextMenu.columnName && tableSortOrder === 'asc' ? '降順で並び替え' : '昇順で並び替え'}
+                {tableSortBy === columnContextMenu.columnName && tableSortOrder === 'asc' ? '降順で並び替え' : '昇順で並び替え'}
               </button>
               <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
               <button
                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center text-red-600"
                 onClick={() => {
-                  removeColumn(unifiedContextMenu.columnName!);
-                  setUnifiedContextMenu(null);
+                  removeColumn(columnContextMenu.columnName);
+                  setColumnContextMenu(null);
                 }}
               >
                 <Trash2 className="w-3 h-3 mr-2" />
@@ -3483,7 +2540,7 @@ const FileManagementSystem = () => {
         )}
 
         {/* セル右クリックメニュー */}
-        {false && (
+        {cellContextMenu && (
           <>
             <div
               className="fixed inset-0 z-40"
@@ -3625,10 +2682,8 @@ const FileManagementSystem = () => {
                   <button
                     className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                     onClick={() => {
-                      console.log('🖱️ Background menu clicked');
                       handleCreateFolder();
                       setContextMenu(null);
-                      console.log('📋 Context menu closed');
                     }}
                   >
                     <FolderPlus className="w-3 h-3 mr-2" />
@@ -3637,7 +2692,6 @@ const FileManagementSystem = () => {
                   <button
                     className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                     onClick={() => {
-                      console.log('🗃️ New database menu clicked');
                       setShowTableCreator(true);
                       setContextMenu(null);
                     }}
@@ -3678,7 +2732,6 @@ const FileManagementSystem = () => {
                     className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center"
                     onClick={() => {
                       const node = findNodeById(contextMenu.nodeId!);
-                      if (node) handleFileOpen(node);
                       setContextMenu(null);
                     }}
                   >
@@ -3981,271 +3034,6 @@ const FileManagementSystem = () => {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ファイルプレビューモーダル */}
-      {filePreview.show && filePreview.file && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-800 rounded-lg max-w-4xl max-h-[90vh] w-full mx-4 overflow-hidden">
-            {/* ヘッダー */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-600">
-              <h3 className="text-lg font-semibold">{filePreview.file.name}</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilePreview({ show: false, file: null })}
-              >
-                ✕
-              </Button>
-            </div>
-
-            {/* コンテンツ */}
-            <div className="p-4 overflow-auto max-h-[70vh]">
-              {filePreview.file.pdfData ? (
-                // PDF表示
-                <div>
-                  {/* PDFページナビゲーション */}
-                  <div className="flex items-center justify-between mb-4 bg-gray-100 dark:bg-slate-700 p-2 rounded">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPdfPage(Math.max(1, currentPdfPage - 1))}
-                      disabled={currentPdfPage <= 1}
-                    >
-                      前のページ
-                    </Button>
-                    <span className="text-sm">
-                      {currentPdfPage} / {pdfNumPages} ページ
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPdfPage(Math.min(pdfNumPages, currentPdfPage + 1))}
-                      disabled={currentPdfPage >= pdfNumPages}
-                    >
-                      次のページ
-                    </Button>
-                  </div>
-
-                  {/* PDF表示 */}
-                  <div className="text-center">
-                    <Document
-                      file={filePreview.file.pdfData.dataUrl}
-                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
-                      loading={<div>PDFを読み込み中...</div>}
-                      error={<div>PDFの読み込みに失敗しました</div>}
-                    >
-                      <Page
-                        pageNumber={currentPdfPage}
-                        width={600}
-                        loading={<div>ページを読み込み中...</div>}
-                        error={<div>ページの読み込みに失敗しました</div>}
-                      />
-                    </Document>
-                  </div>
-                </div>
-              ) : filePreview.file.excelData ? (
-                // Excel表示（強化版）
-                <div>
-                  {/* シートタブとメタデータ */}
-                  <div className="mb-4">
-                    {filePreview.file.excelData.sheetNames.length > 1 && (
-                      <div className="flex gap-2 mb-2 border-b">
-                        {filePreview.file.excelData.sheetNames.map(sheetName => (
-                          <button
-                            key={sheetName}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                              activeExcelSheet === sheetName
-                                ? 'border-blue-500 text-blue-600 bg-blue-50'
-                                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }`}
-                            onClick={() => setActiveExcelSheet(sheetName)}
-                          >
-                            {sheetName}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* メタデータ表示 */}
-                    {filePreview.file.excelData.metadata && (
-                      <div className="text-xs text-gray-500 mb-2">
-                        {filePreview.file.excelData.metadata.creator && (
-                          <span className="mr-4">作成者: {filePreview.file.excelData.metadata.creator}</span>
-                        )}
-                        {filePreview.file.excelData.metadata.created && (
-                          <span>作成日: {new Date(filePreview.file.excelData.metadata.created).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* シンプルで実用的なExcelテーブル */}
-                  {activeExcelSheet && filePreview.file.excelData.sheets[activeExcelSheet] && (
-                    <div className="w-full">
-                      {/* スクロール可能なテーブルコンテナ */}
-                      <div className="border border-gray-300 rounded-lg bg-white overflow-hidden">
-                        <div className="text-xs text-gray-500 p-2 border-b bg-gray-50">
-                          Excel表示 (最初の500行まで表示) - 横縦スクロール可能
-                        </div>
-                        <div className="overflow-auto max-h-[500px] max-w-full">
-                          <table className="border-collapse text-sm" style={{minWidth: 'max-content'}}>
-                            {/* 列ヘッダー */}
-                            <thead className="sticky top-0 bg-gray-100 z-10">
-                              <tr>
-                                <th className="border border-gray-400 bg-gray-200 p-1 text-center font-bold text-gray-700 w-12 min-w-[48px]">
-                                  #
-                                </th>
-                                {filePreview.file.excelData.sheets[activeExcelSheet][0]?.map((_, colIndex) => (
-                                  <th
-                                    key={colIndex}
-                                    className="border border-gray-400 bg-gray-100 p-1 text-center font-bold text-gray-700"
-                                    style={{minWidth: '120px', maxWidth: '200px'}}
-                                  >
-                                    {XLSX.utils.encode_col(colIndex)}
-                                  </th>
-                                ))}
-                            </tr>
-                          </thead>
-
-                          {/* データ行 */}
-                          <tbody>
-                            {filePreview.file.excelData.sheets[activeExcelSheet]
-                              .slice(0, 500)
-                              .map((row, rowIndex) => (
-                              <tr
-                                key={rowIndex}
-                                className={`hover:bg-blue-50 ${
-                                  rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                } ${rowIndex === 0 ? 'bg-blue-100 font-semibold' : ''}`}
-                              >
-                                {/* 行番号 */}
-                                <td className="border border-gray-400 bg-gray-100 p-1 text-center font-bold text-gray-700 w-12 min-w-[48px]">
-                                  {rowIndex + 1}
-                                </td>
-
-                                {/* データセル */}
-                                {Array.from({ length: Math.max(...filePreview.file.excelData.sheets[activeExcelSheet].map(r => r.length)) }, (_, colIndex) => {
-                                  const cellData = row[colIndex];
-                                  const isString = typeof cellData === 'string';
-                                  const displayValue = isString ? cellData : (cellData?.value || '');
-
-                                  return (
-                                    <td
-                                      key={colIndex}
-                                      className="border border-gray-300 p-1 overflow-hidden"
-                                      style={{minWidth: '120px', maxWidth: '200px'}}
-                                      title={String(displayValue)}
-                                    >
-                                      <div className="truncate text-gray-900 text-xs">
-                                        {String(displayValue)}
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* 表示件数情報 */}
-                      <div className="mt-2 text-sm text-gray-600">
-                        表示: {Math.min(500, filePreview.file.excelData.sheets[activeExcelSheet].length)}行 /
-                        全{filePreview.file.excelData.sheets[activeExcelSheet].length}行
-                        {filePreview.file.excelData.sheets[activeExcelSheet].length > 500 && (
-                          <span className="ml-2 text-orange-600">
-                            ※ 最初の500行のみ表示
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                filePreview.file.fileType &&
-                ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(
-                  filePreview.file.fileType.toLowerCase()
-                ) && filePreview.file.dataUrl
-              ) ? (
-                {/* 画像表示 */}
-                <div className="text-center">
-                  <img
-                    src={filePreview.file.dataUrl}
-                    alt={filePreview.file.name}
-                    className="max-w-full max-h-[60vh] object-contain"
-                  />
-                </div>
-              ) : filePreview.file.content ? (
-                {/* テキスト表示 */}
-                <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 dark:bg-slate-700 p-4 rounded">
-                  {filePreview.file.content}
-                </pre>
-              ) : filePreview.file.dataUrl ? (
-                {/* その他のファイル（PDF等） */}
-                <div className="text-center">
-                  <p className="mb-4">このファイルタイプのプレビューはサポートされていません。</p>
-                  <Button
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = filePreview.file.dataUrl!;
-                      link.download = filePreview.file.name;
-                      link.click();
-                    }}
-                  >
-                    ダウンロード
-                  </Button>
-                </div>
-              ) : (
-                <p>ファイルの内容が読み込めませんでした。</p>
-              )}
-            </div>
-
-            {/* フッター */}
-            <div className="p-4 border-t border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400 grid grid-cols-2 gap-4">
-                <div>
-                  <p>📄 サイズ: {formatFileSize(filePreview.file.size)}</p>
-                  <p>📅 更新日: {formatDate(filePreview.file.modifiedDate)}</p>
-                  <p>👤 更新者: {filePreview.file.modifiedBy}</p>
-                </div>
-                <div>
-                  {filePreview.file.excelData && (
-                    <>
-                      <p>📊 シート数: {filePreview.file.excelData.sheetNames.length}個</p>
-                      {activeExcelSheet && (
-                        <p>📈 行数: {filePreview.file.excelData.sheets[activeExcelSheet]?.length || 0}行</p>
-                      )}
-                    </>
-                  )}
-                  {filePreview.file.pdfData && (
-                    <p>📑 ページ数: {pdfNumPages}ページ</p>
-                  )}
-                </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = filePreview.file.dataUrl!;
-                    link.download = filePreview.file.name;
-                    link.click();
-                  }}
-                >
-                  📥 ダウンロード
-                </Button>
-                {(filePreview.file.excelData || filePreview.file.pdfData) && (
-                  <Badge variant="secondary" className="text-xs">
-                    プレビュー対応
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );
