@@ -13,11 +13,10 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { createCompany, joinCompanyWithInvite, getUserCompanies } from '@/lib/firebase/company';
-import { 
+import {
   PurposeStep,
   CompanyStep,
-  JoinStep,
-  SuccessStep 
+  SuccessStep
 } from './components/OnboardingSteps';
 
 interface StepInfo {
@@ -81,17 +80,13 @@ export default function OnboardingPage() {
   const getStepInfo = (stepIndex: number) => {
     switch (stepIndex) {
       case 0:
-        return { id: 'purpose', title: 'ようこそ', subtitle: '使用目的を選択' };
+        return { id: 'purpose', title: 'ようこそ', subtitle: '組織作成を開始' };
       case 1:
-        return {
-          id: formData.purpose === 'create' ? 'company' : 'join',
-          title: formData.purpose === 'create' ? '組織作成' : 'チーム参加',
-          subtitle: formData.purpose === 'create' ? '組織情報を入力' : '招待コードを入力',
-        };
+        return { id: 'company', title: '組織作成', subtitle: '組織情報を入力' };
       case 2:
         return { id: 'success', title: '完了', subtitle: 'セットアップ完了' };
       default:
-        return { id: 'purpose', title: 'ようこそ', subtitle: '使用目的を選択' };
+        return { id: 'purpose', title: 'ようこそ', subtitle: '組織作成を開始' };
     }
   };
 
@@ -100,25 +95,18 @@ export default function OnboardingPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return !!formData.purpose;
+        return formData.purpose === 'create';
       case 1:
-        if (formData.purpose === 'create') {
-          return !!formData.companyName.trim();
-        } else {
-          return formData.inviteCode.length === 8;
-        }
+        return !!formData.companyName.trim();
       default:
         return true;
     }
   };
 
   const handleNext = async () => {
-    if (currentStep === 1 && formData.purpose === 'create') {
+    if (currentStep === 1) {
       // 企業作成処理
       await handleCreateCompany();
-    } else if (currentStep === 1 && formData.purpose === 'join') {
-      // 参加処理
-      await handleJoinCompany();
     } else {
       setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
     }
@@ -215,9 +203,7 @@ export default function OnboardingPage() {
       case 0:
         return <PurposeStep formData={formData} updateFormData={updateFormData} />;
       case 1:
-        return formData.purpose === 'create' 
-          ? <CompanyStep formData={formData} updateFormData={updateFormData} />
-          : <JoinStep formData={formData} updateFormData={updateFormData} />;
+        return <CompanyStep formData={formData} updateFormData={updateFormData} />;
       case 2:
         return <SuccessStep formData={formData} updateFormData={updateFormData} />;
       default:

@@ -269,22 +269,33 @@ export const calculateResourceUtilization = (
 };
 
 // プロセスグループ化
-// プロセスグループ化
 export const groupProcesses = (
- processes: Process[], 
- viewType: "machine" | "person" | "project"
+ processes: Process[],
+ viewType: "machine" | "person" | "project",
+ allMachines?: string[]
 ): Record<string, Process[]> => {
  let grouped: Record<string, Process[]> = {};
 
  if (viewType === "machine") {
-   processes.forEach((process) => {
-     process.assignedMachines.forEach((machine) => {
-       const key = machine || "未割当";
-       if (!grouped[key]) grouped[key] = [];
-       grouped[key].push(process);
+   // 機械マスタから全ての機械を初期化（空の配列で）
+   if (allMachines && allMachines.length > 0) {
+     allMachines.forEach(machine => {
+       grouped[machine] = [];
      });
-     if (process.assignedMachines.length === 0) {
-       if (!grouped["未割当"]) grouped["未割当"] = [];
+   }
+
+   // 未割当も追加
+   grouped["未割当"] = [];
+
+   // 各プロセスを適切な機械に割り当て
+   processes.forEach((process) => {
+     if (process.assignedMachines && process.assignedMachines.length > 0) {
+       process.assignedMachines.forEach((machine) => {
+         const key = machine || "未割当";
+         if (!grouped[key]) grouped[key] = [];
+         grouped[key].push(process);
+       });
+     } else {
        grouped["未割当"].push(process);
      }
    });

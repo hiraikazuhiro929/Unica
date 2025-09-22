@@ -939,7 +939,7 @@ const GoogleLikeCalendar = () => {
         <div className="bg-white dark:bg-slate-800 border-b border-gray-300 dark:border-slate-700 shadow-sm px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+              <div className="p-3 bg-slate-600 rounded-xl">
                 <CalendarIcon className="w-8 h-8 text-white" />
               </div>
               <div>

@@ -1044,7 +1044,7 @@ const MainDashboard = () => {
                       {processes.length > 3 && (
                         <button
                           onClick={() => router.push('/tasks')}
-                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 text-blue-700 dark:text-blue-300 hover:from-blue-500/20 hover:to-purple-500/20 dark:hover:from-blue-400/20 dark:hover:to-purple-400/20 rounded-2xl border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50 transition-all duration-300 backdrop-blur-sm interactive-scale"
+                          className="w-full mt-6 py-4 px-6 text-sm font-medium bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-2xl border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300 backdrop-blur-sm interactive-scale"
                         >
                           他 {processes.length - 3} 件の工程を表示 →
                         </button>
@@ -1053,8 +1053,8 @@ const MainDashboard = () => {
                   ) : (
                     <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 modern-shadow-lg border border-gray-200/50 dark:border-slate-600/50">
                       <div className="text-center text-gray-500 dark:text-gray-400">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center floating-animation">
-                          <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center floating-animation">
+                          <Clock className="w-8 h-8 text-slate-600 dark:text-slate-400" />
                         </div>
                         <p className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">工程データを読み込み中...</p>
                         <p className="text-sm mb-2">現在のデータ件数: {processes.length}</p>

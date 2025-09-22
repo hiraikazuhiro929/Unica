@@ -556,53 +556,55 @@ const AnnouncementsPage = () => {
 
       {/* 作成ダイアログ */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-600">
           <DialogHeader>
-            <DialogTitle>新しいお知らせを作成</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-white">新しいお知らせを作成</DialogTitle>
+            <DialogDescription className="dark:text-slate-300">
               社内メンバーに向けた重要なお知らせを作成してください
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">タイトル *</Label>
+              <Label htmlFor="title" className="dark:text-slate-200">タイトル *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="お知らせのタイトルを入力..."
+                className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="content">内容 *</Label>
+              <Label htmlFor="content" className="dark:text-slate-200">内容 *</Label>
               <Textarea
                 id="content"
                 value={formData.content}
                 onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                 placeholder="お知らせの内容を入力..."
                 rows={4}
+                className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="category">カテゴリ</Label>
+                <Label htmlFor="category" className="dark:text-slate-200">カテゴリ</Label>
                 <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     <SelectValue placeholder="カテゴリを選択" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-700 dark:border-slate-600">
                     {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id} className="dark:text-white dark:hover:bg-slate-600">{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="priority">優先度</Label>
+                <Label htmlFor="priority" className="dark:text-slate-200">優先度</Label>
                 <Select value={formData.priority} onValueChange={(value: any) => setFormData(prev => ({ ...prev, priority: value }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="優先度を選択" />
@@ -617,12 +619,13 @@ const AnnouncementsPage = () => {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="expires">有効期限（任意）</Label>
+              <Label htmlFor="expires" className="dark:text-slate-200">有効期限（任意）</Label>
               <Input
                 id="expires"
                 type="date"
                 value={formData.expiresAt}
                 onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
+                className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
               />
             </div>
           </div>
@@ -640,10 +643,10 @@ const AnnouncementsPage = () => {
 
       {/* 編集ダイアログ */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-600">
           <DialogHeader>
-            <DialogTitle>お知らせを編集</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-white">お知らせを編集</DialogTitle>
+            <DialogDescription className="dark:text-slate-300">
               お知らせの内容を変更してください
             </DialogDescription>
           </DialogHeader>
@@ -674,12 +677,12 @@ const AnnouncementsPage = () => {
               <div className="grid gap-2">
                 <Label htmlFor="edit-category">カテゴリ</Label>
                 <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                     <SelectValue placeholder="カテゴリを選択" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-700 dark:border-slate-600">
                     {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id} className="dark:text-white dark:hover:bg-slate-600">{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

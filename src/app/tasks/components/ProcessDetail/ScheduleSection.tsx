@@ -48,7 +48,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-green-700 border-b-2 border-green-200 pb-2">
+      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
         スケジュール
       </h3>
       <div className="grid grid-cols-2 gap-4">
@@ -57,10 +57,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">受注日</Label>
           {editingField !== "orderDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("orderDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.orderDate)}
               </span>
             </div>
@@ -76,7 +76,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.orderDate)}
                 </Button>
@@ -100,10 +100,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">入荷日</Label>
           {editingField !== "arrivalDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("arrivalDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.arrivalDate)}
               </span>
             </div>
@@ -119,7 +119,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.arrivalDate)}
                 </Button>
@@ -145,10 +145,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">データ作業日</Label>
           {editingField !== "dataWorkDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("dataWorkDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.dataWorkDate)}
               </span>
             </div>
@@ -164,7 +164,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.dataWorkDate)}
                 </Button>
@@ -190,10 +190,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">加工開始予定日</Label>
           {editingField !== "processingPlanDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("processingPlanDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.processingPlanDate)}
               </span>
             </div>
@@ -209,7 +209,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.processingPlanDate)}
                 </Button>
@@ -237,10 +237,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">出荷日</Label>
           {editingField !== "shipmentDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("shipmentDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.shipmentDate)}
               </span>
             </div>
@@ -256,7 +256,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.shipmentDate)}
                 </Button>
@@ -282,10 +282,10 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">納期</Label>
           {editingField !== "dueDate" ? (
             <div
-              className="p-3 hover:bg-green-50 cursor-pointer rounded-lg border-2 border-transparent hover:border-green-200 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("dueDate")}
             >
-              <span className="text-gray-800 font-medium">
+              <span className="text-gray-800 dark:text-gray-200 font-medium">
                 {formatShortDate(process.dueDate || process.shipmentDate)}
               </span>
             </div>
@@ -301,7 +301,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left border-green-300 hover:border-green-500"
+                  className="w-full justify-start text-left border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 dark:bg-slate-800 dark:text-white"
                 >
                   {formatShortDate(process.dueDate || process.shipmentDate)}
                 </Button>

@@ -540,7 +540,7 @@ const FileManagementSystem = () => {
 
   // ノード操作
   const handleNodeClick = (node: FileSystemNode, event?: React.MouseEvent) => {
-    
+
     if (event?.ctrlKey || event?.metaKey) {
       // Ctrl+Click で複数選択
       const newSelected = new Set(selectedItems);
@@ -554,9 +554,13 @@ const FileManagementSystem = () => {
     }
 
     if (node.type === 'folder') {
-      // ノードのパスから正しい階層を取得
+      // フォルダクリック時は、そのフォルダの中に移動
       const pathParts = node.path.split('/').filter(part => part !== '');
       navigateToPath(pathParts);
+      // フォルダを展開
+      const newExpanded = new Set(expandedFolders);
+      newExpanded.add(node.id);
+      setExpandedFolders(newExpanded);
     } else if (node.type === 'database') {
       if (node.name === '工具管理.db') {
         setShowToolsTable(true);
@@ -578,8 +582,10 @@ const FileManagementSystem = () => {
 
   const handleDoubleClick = (node: FileSystemNode) => {
     if (node.type === 'folder') {
+      // ダブルクリック時はフォルダを開く
       toggleFolder(node.id);
-      navigateToPath([...selectedPath, node.name]);
+      const pathParts = node.path.split('/').filter(part => part !== '');
+      navigateToPath(pathParts);
     } else if (node.type === 'database') {
       if (node.name === '工具管理.db') {
         setShowToolsTable(true);
@@ -1229,9 +1235,9 @@ const FileManagementSystem = () => {
 
           {node.type === 'folder' ? (
             isExpanded ? (
-              <FolderOpen className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+              <FolderOpen className="w-4 h-4 mr-2 text-slate-600 dark:text-slate-400" />
             ) : (
-              <Folder className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+              <Folder className="w-4 h-4 mr-2 text-slate-600 dark:text-slate-400" />
             )
           ) : (
             <Icon className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
@@ -1740,7 +1746,7 @@ const FileManagementSystem = () => {
               <p className="text-sm mb-6">新しい行を追加してデータベースを開始しましょう</p>
               <Button
                 onClick={addNewRow}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
+                className="bg-slate-600 hover:bg-slate-700 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 最初の行を追加
@@ -2018,7 +2024,7 @@ const FileManagementSystem = () => {
                               {row.data[column.name] || '未設定'}
                             </Badge>
                           ) : column.type === 'formula' ? (
-                            <span className="font-mono text-blue-600">
+                            <span className="font-mono text-slate-600 dark:text-slate-400">
                               {column.formula ? evaluateFormula(column.formula, row.data, editingTableData) : '数式未設定'}
                             </span>
                           ) : column.type === 'url' ? (
@@ -2027,7 +2033,7 @@ const FileManagementSystem = () => {
                                 href={row.data[column.name]} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 underline"
+                                className="text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300 underline"
                               >
                                 {row.data[column.name].length > 30 
                                   ? `${row.data[column.name].substring(0, 30)}...` 
@@ -2321,7 +2327,7 @@ const FileManagementSystem = () => {
         <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <HardDrive className="w-6 h-6 text-blue-600" />
+              <HardDrive className="w-6 h-6 text-slate-600 dark:text-slate-400" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white">ファイル管理</h1>
                 <div className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-2">
@@ -2456,8 +2462,8 @@ const FileManagementSystem = () => {
             {isDragOver && !showToolsTable && (
               <div className="absolute inset-0 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-400 dark:border-blue-500">
                 <div className="text-center">
-                  <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                  <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">ファイルをドロップしてアップロード</p>
+                  <Upload className="w-16 h-16 text-slate-500 dark:text-slate-400 mx-auto mb-4" />
+                  <p className="text-xl font-semibold text-slate-600 dark:text-slate-400">ファイルをドロップしてアップロード</p>
                 </div>
               </div>
             )}

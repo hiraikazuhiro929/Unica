@@ -79,7 +79,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6"
+      className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
       onMouseDown={(e) => {
         if (
           !document.getSelection()?.toString() &&
@@ -91,18 +91,17 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-600"
-        style={{ borderTopColor: getClientColor(editedProcess.orderClient) }}
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-black/50 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-200 dark:border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex-shrink-0">
+        <div className="bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-white p-6 flex-shrink-0 border-b border-slate-600 dark:border-slate-700">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">
                 {editedProcess.projectName || "新規工程"}
               </h2>
-              <p className="text-blue-100 mt-1">
+              <p className="text-slate-300 dark:text-slate-400 mt-1">
                 {editedProcess.managementNumber && editedProcess.lineNumber
                   ? `${editedProcess.managementNumber} / ${editedProcess.lineNumber}`
                   : ""}
@@ -110,7 +109,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-300 transition-colors"
+              className="text-slate-400 hover:text-white transition-colors duration-200 hover:bg-slate-700 rounded-lg p-2"
             >
               <X className="w-6 h-6" />
             </button>
@@ -118,7 +117,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
         </div>
 
         {/* コンテンツ */}
-        <div className="p-4 overflow-y-auto flex-1 bg-gray-50 dark:bg-gray-800">
+        <div className="p-6 overflow-y-auto flex-1 bg-gray-50 dark:bg-slate-900/50">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 左カラム */}
             <div className="space-y-6">
@@ -153,14 +152,14 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
         </div>
 
         {/* フッターボタン */}
-        <div className="flex justify-between gap-3 px-6 py-4 border-t bg-gray-50 flex-shrink-0">
+        <div className="flex justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex-shrink-0">
           <div className="flex gap-3">
             {/* 工数管理への遷移ボタン（既存工程のみ） */}
             {!isNew && editedProcess.id && (
               <Button
                 variant="outline"
                 onClick={handleMoveToWorkHours}
-                className="border-green-300 text-green-600 hover:bg-green-50"
+                className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 <Clock className="w-4 h-4 mr-2" />
                 工数管理
@@ -172,19 +171,19 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
           <div className="flex gap-3">
             {isNew && (
               <>
-                <Button variant="outline" onClick={onClose}>
+                <Button variant="outline" onClick={onClose} className="dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
                   キャンセル
                 </Button>
                 <Button
                   onClick={handleSave}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   追加
                 </Button>
               </>
             )}
             {!isNew && (
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} className="dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
                 閉じる
               </Button>
             )}

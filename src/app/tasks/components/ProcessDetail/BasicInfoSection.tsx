@@ -42,7 +42,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-blue-700 border-b-2 border-blue-200 pb-1">
+      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
         基本情報
       </h3>
       <div className="grid grid-cols-2 gap-3">
@@ -51,7 +51,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">案件名</Label>
           {editingField !== "projectName" ? (
             <div
-              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("projectName")}
             >
               <span className="text-gray-800 dark:text-gray-200 font-medium">
@@ -68,7 +68,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                   setEditingField(null);
                 }
               }}
-              className="border-blue-300 focus:border-blue-500"
+              className="border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 dark:bg-slate-800 dark:text-white"
               autoFocus
             />
           )}
@@ -79,7 +79,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">管理番号</Label>
           {editingField !== "managementNumber" ? (
             <div
-              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("managementNumber")}
             >
               <span className="text-gray-800 dark:text-gray-200 font-medium">
@@ -98,7 +98,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                   setEditingField(null);
                 }
               }}
-              className="border-blue-300 focus:border-blue-500"
+              className="border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 dark:bg-slate-800 dark:text-white"
               autoFocus
             />
           )}
@@ -110,7 +110,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <div className="relative">
             {editingField !== "orderClient" ? (
               <div
-                className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
                 onClick={() => setEditingField("orderClient")}
               >
                 <span className="text-gray-800 dark:text-gray-200 font-medium">
@@ -132,7 +132,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                   }}
                   placeholder="受注先を入力..."
                   list="client-options"
-                  className="border-blue-300 focus:border-blue-500"
+                  className="border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 dark:bg-slate-800 dark:text-white"
                   autoFocus
                 />
                 <datalist id="client-options">
@@ -150,7 +150,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <Label className="text-gray-700 dark:text-gray-300 font-medium">数量</Label>
           {editingField !== "quantity" ? (
             <div
-              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-800/50 cursor-pointer rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-600 transition-all min-h-[44px] flex items-center bg-gray-50 dark:bg-gray-700"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer rounded-lg border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all min-h-[44px] flex items-center bg-white dark:bg-slate-800 shadow-sm hover:shadow-md"
               onClick={() => setEditingField("quantity")}
             >
               <span className="text-gray-800 dark:text-gray-200 font-medium">
@@ -170,7 +170,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                   setEditingField(null);
                 }
               }}
-              className="border-blue-300 focus:border-blue-500"
+              className="border-slate-300 dark:border-slate-600 focus:border-slate-500 dark:focus:border-slate-400 dark:bg-slate-800 dark:text-white"
               autoFocus
             />
           )}

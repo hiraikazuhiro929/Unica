@@ -191,6 +191,28 @@ const PartnersPage = () => {
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+  // 新規取引先フォームの状態
+  const [newPartner, setNewPartner] = useState({
+    name: "",
+    nameKana: "",
+    type: "customer" as PartnerType,
+    status: "active" as Partner["status"],
+    priority: "normal" as Partner["priority"],
+    phone: "",
+    email: "",
+    postalCode: "",
+    prefecture: "",
+    city: "",
+    address1: "",
+    address2: "",
+    industry: "",
+  });
+
+  // 担当者リスト
+  const [contacts, setContacts] = useState([
+    { name: "", title: "", phone: "", email: "" }
+  ]);
+
   // パートナーカテゴリ
   const categories = [
     { id: "automotive", name: "自動車", icon: Package },
@@ -714,6 +736,113 @@ const PartnersPage = () => {
     }
   };
 
+  // 担当者の追加
+  const addContact = () => {
+    setContacts([...contacts, { name: "", title: "", phone: "", email: "" }]);
+  };
+
+  // 担当者の削除
+  const removeContact = (index: number) => {
+    if (contacts.length > 1) {
+      setContacts(contacts.filter((_, i) => i !== index));
+    }
+  };
+
+  // 担当者の更新
+  const updateContact = (index: number, field: string, value: string) => {
+    const updatedContacts = [...contacts];
+    updatedContacts[index] = { ...updatedContacts[index], [field]: value };
+    setContacts(updatedContacts);
+  };
+
+  // 新規取引先の保存
+  const handleSaveNewPartner = async () => {
+    if (!newPartner.name || !newPartner.email) {
+      alert("会社名とメールアドレスは必須です。");
+      return;
+    }
+
+    // 担当者の最低1名チェック
+    const validContacts = contacts.filter(c => c.name && c.email);
+    if (validContacts.length === 0) {
+      alert("担当者を最低1名入力してください。");
+      return;
+    }
+
+    try {
+      const partnerData = {
+        name: newPartner.name,
+        nameKana: newPartner.nameKana,
+        type: newPartner.type,
+        category: "other" as PartnerCategory, // デフォルト値
+        status: newPartner.status,
+        priority: newPartner.priority,
+        isStarred: false,
+        contactInfo: {
+          phone: newPartner.phone,
+          email: newPartner.email,
+        },
+        address: {
+          postalCode: newPartner.postalCode,
+          prefecture: newPartner.prefecture,
+          city: newPartner.city,
+          address1: newPartner.address1,
+          ...(newPartner.address2 && { address2: newPartner.address2 }),
+        },
+        businessInfo: {
+          industry: newPartner.industry,
+          representativeName: validContacts[0].name, // 最初の担当者を代表者とする
+          representativeTitle: validContacts[0].title || "担当者",
+        },
+        financialInfo: {
+          paymentTerms: "月末締め翌月末払い", // デフォルト値
+          totalRevenue: 0,
+          totalOrders: 0,
+          averageOrderValue: 0,
+        },
+        orders: [],
+        contacts: validContacts.map((contact, index) => ({
+          id: `contact-${index}`,
+          name: contact.name,
+          title: contact.title || "担当者",
+          phone: contact.phone,
+          email: contact.email,
+          isPrimary: index === 0,
+        })),
+        notes: [],
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await createPartner(partnerData);
+      await refreshData();
+
+      // フォームをリセット
+      setNewPartner({
+        name: "",
+        nameKana: "",
+        type: "customer",
+        status: "active",
+        priority: "normal",
+        phone: "",
+        email: "",
+        postalCode: "",
+        prefecture: "",
+        city: "",
+        address1: "",
+        address2: "",
+        industry: "",
+      });
+      setContacts([{ name: "", title: "", phone: "", email: "" }]);
+
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error('Failed to create partner:', error);
+      alert('取引先の作成に失敗しました: ' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <div className="ml-16 h-screen flex flex-col">
@@ -839,9 +968,9 @@ const PartnersPage = () => {
 
               <Button
                 onClick={() => setShowCreateDialog(true)}
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium px-4"
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 !text-white font-medium px-4"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4 mr-2 text-white" />
                 取引先追加
               </Button>
               <div className="text-sm text-gray-600 dark:text-slate-300">
@@ -945,28 +1074,6 @@ const PartnersPage = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">連絡先</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">住所</th>
                       <th 
-                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
-                        onClick={() => handleSort("revenue")}
-                      >
-                        <div className="flex items-center justify-end space-x-1">
-                          <span>総売上</span>
-                          {sortBy === "revenue" && (
-                            sortOrder === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                          )}
-                        </div>
-                      </th>
-                      <th 
-                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
-                        onClick={() => handleSort("orders")}
-                      >
-                        <div className="flex items-center justify-end space-x-1">
-                          <span>注文数</span>
-                          {sortBy === "orders" && (
-                            sortOrder === "asc" ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                          )}
-                        </div>
-                      </th>
-                      <th 
                         className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider"
                         onClick={() => handleSort("lastContact")}
                       >
@@ -1040,22 +1147,31 @@ const PartnersPage = () => {
                             <div className="text-gray-500 dark:text-slate-400 truncate max-w-[120px]">{partner.address.address1}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right">
-                          <div className="font-semibold text-blue-600 dark:text-blue-400">
-                            {formatCurrency(partner.financialInfo.totalRevenue)}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right">
-                          <div className="font-semibold text-gray-900 dark:text-slate-200">
-                            {partner.financialInfo.totalOrders}
-                          </div>
-                        </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-slate-200">
-                            {partner.lastContactDate 
-                              ? partner.lastContactDate.toLocaleDateString("ja-JP")
-                              : "-"
-                            }
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-gray-900 dark:text-slate-200">
+                              {partner.lastContactDate
+                                ? partner.lastContactDate.toLocaleDateString("ja-JP")
+                                : "-"
+                              }
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updatePartner(partner.id, { lastContactDate: new Date() });
+                                  await refreshData();
+                                } catch (error) {
+                                  console.error('Failed to update contact date:', error);
+                                }
+                              }}
+                              className="px-2 py-1 text-xs"
+                            >
+                              <Clock className="w-3 h-3 mr-1" />
+                              連絡済
+                            </Button>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
@@ -1110,360 +1226,125 @@ const PartnersPage = () => {
 
         {/* 詳細ダイアログ */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-600">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-600">
             {selectedPartner && (
               <>
                 <DialogHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
-                        <Users className="w-6 h-6 text-gray-600 dark:text-slate-300" />
-                      </div>
-                      <div>
-                        <DialogTitle className="text-xl dark:text-white">
-                          {selectedPartner.name}
-                        </DialogTitle>
-                        <DialogDescription className="dark:text-slate-300">
-                          {selectedPartner.businessInfo.industry} • {selectedPartner.businessInfo.representativeName}
-                        </DialogDescription>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <DialogTitle className="text-2xl font-bold dark:text-white mb-2">
+                        {selectedPartner.name}
+                      </DialogTitle>
+                      <div className="flex items-center gap-2">
+                        {getTypeBadge(selectedPartner.type)}
+                        {getStatusBadge(selectedPartner.status)}
+                        {getPriorityBadge(selectedPartner.priority)}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {getTypeBadge(selectedPartner.type)}
-                      {getStatusBadge(selectedPartner.status)}
-                      {getPriorityBadge(selectedPartner.priority)}
-                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await updatePartner(selectedPartner.id, { lastContactDate: new Date() });
+                          await refreshData();
+                        } catch (error) {
+                          console.error('Failed to update contact date:', error);
+                        }
+                      }}
+                      className="text-sm"
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      連絡記録
+                    </Button>
                   </div>
                 </DialogHeader>
 
-                <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="overview">概要</TabsTrigger>
-                    <TabsTrigger value="contacts">連絡先</TabsTrigger>
-                    <TabsTrigger value="orders">取引履歴</TabsTrigger>
-                    <TabsTrigger value="notes">メモ</TabsTrigger>
-                    <TabsTrigger value="financials">財務</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="overview" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm dark:text-white">基本情報</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">会社名</label>
-                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.name}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">フリガナ</label>
-                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.nameKana}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">業界</label>
-                            <p className="text-sm text-gray-900 dark:text-white">{selectedPartner.businessInfo.industry}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">従業員数</label>
-                            <p className="text-sm text-gray-900 dark:text-white">
-                              {selectedPartner.businessInfo.employeeCount ? 
-                                `${selectedPartner.businessInfo.employeeCount.toLocaleString()}名` : 
-                                "未設定"
-                              }
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm dark:text-white">連絡先</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <Phone className="w-4 h-4 text-gray-500 dark:text-slate-400" />
-                            <span className="text-sm dark:text-slate-200">{selectedPartner.contactInfo.phone}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Mail className="w-4 h-4 text-gray-500 dark:text-slate-400" />
-                            <span className="text-sm dark:text-slate-200">{selectedPartner.contactInfo.email}</span>
-                          </div>
-                          {selectedPartner.contactInfo.website && (
-                            <div className="flex items-center space-x-2">
-                              <Globe className="w-4 h-4 text-gray-500 dark:text-slate-400" />
-                              <a 
-                                href={selectedPartner.contactInfo.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline"
-                              >
-                                {selectedPartner.contactInfo.website}
-                                <ExternalLink className="w-3 h-3 inline ml-1" />
-                              </a>
-                            </div>
-                          )}
-                          <div className="flex items-start space-x-2">
-                            <MapPin className="w-4 h-4 text-gray-500 dark:text-slate-400 mt-0.5" />
-                            <div className="text-sm dark:text-slate-200">
-                              <div>〒{selectedPartner.address.postalCode}</div>
-                              <div>
-                                {selectedPartner.address.prefecture} {selectedPartner.address.city}
-                              </div>
-                              <div>{selectedPartner.address.address1}</div>
-                              {selectedPartner.address.address2 && (
-                                <div>{selectedPartner.address.address2}</div>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                <div className="space-y-6">
+                  {/* 基本情報 */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold dark:text-white border-b border-gray-200 dark:border-slate-600 pb-2">基本情報</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-slate-400">フリガナ</span>
+                          <p className="font-medium dark:text-white">{selectedPartner.nameKana}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-slate-400">業種</span>
+                          <p className="font-medium dark:text-white">{selectedPartner.businessInfo.industry}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-600 dark:text-slate-400">最終連絡日</span>
+                          <p className="font-medium dark:text-white">
+                            {selectedPartner.lastContactDate
+                              ? selectedPartner.lastContactDate.toLocaleDateString("ja-JP")
+                              : "記録なし"
+                            }
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    {selectedPartner.tags.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm dark:text-white">タグ</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedPartner.tags.map((tag, index) => (
-                              <Badge key={index} variant="secondary">
-                                {tag}
-                              </Badge>
-                            ))}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold dark:text-white border-b border-gray-200 dark:border-slate-600 pb-2">連絡先</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                          <span className="dark:text-slate-200">{selectedPartner.contactInfo.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                          <span className="dark:text-slate-200">{selectedPartner.contactInfo.email}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-gray-500 dark:text-slate-400 mt-0.5" />
+                          <div className="text-sm dark:text-slate-200">
+                            <div>〒{selectedPartner.address.postalCode}</div>
+                            <div>{selectedPartner.address.prefecture} {selectedPartner.address.city}</div>
+                            <div>{selectedPartner.address.address1}</div>
+                            {selectedPartner.address.address2 && <div>{selectedPartner.address.address2}</div>}
                           </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="contacts" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold dark:text-white">担当者一覧</h3>
-                      <Button size="sm">
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        担当者追加
-                      </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-3">
+                  </div>
+
+                  {/* 担当者一覧 */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold dark:text-white border-b border-gray-200 dark:border-slate-600 pb-2">担当者</h3>
+                    <div className="grid gap-3">
                       {selectedPartner.contacts.map(contact => (
-                        <Card key={contact.id}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <h4 className="font-medium dark:text-white">{contact.name}</h4>
-                                  {contact.isPrimary && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      主担当
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-600 dark:text-slate-300">{contact.title}</p>
-                                {contact.department && (
-                                  <p className="text-sm text-gray-500 dark:text-slate-400">{contact.department}</p>
+                        <div key={contact.id} className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium dark:text-white">{contact.name}</h4>
+                                {contact.isPrimary && (
+                                  <Badge variant="secondary" className="text-xs">メイン</Badge>
                                 )}
-                                <div className="flex items-center space-x-4 mt-2 text-sm">
-                                  {contact.phone && (
-                                    <div className="flex items-center space-x-1">
-                                      <Phone className="w-3 h-3 text-gray-500 dark:text-slate-400" />
-                                      <span className="dark:text-slate-200">{contact.phone}</span>
-                                    </div>
-                                  )}
-                                  {contact.email && (
-                                    <div className="flex items-center space-x-1">
-                                      <Mail className="w-3 h-3 text-gray-500 dark:text-slate-400" />
-                                      <span className="dark:text-slate-200">{contact.email}</span>
-                                    </div>
-                                  )}
-                                </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <Button variant="outline" size="sm">
-                                  <Edit className="w-3 h-3" />
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                  <MessageSquare className="w-3 h-3" />
-                                </Button>
+                              <p className="text-sm text-gray-600 dark:text-slate-300">{contact.title}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm">
+                                {contact.phone && (
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3 text-gray-500 dark:text-slate-400" />
+                                    <span className="dark:text-slate-200">{contact.phone}</span>
+                                  </div>
+                                )}
+                                {contact.email && (
+                                  <div className="flex items-center gap-1">
+                                    <Mail className="w-3 h-3 text-gray-500 dark:text-slate-400" />
+                                    <span className="dark:text-slate-200">{contact.email}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                  </TabsContent>
-
-                  <TabsContent value="orders" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold dark:text-white">取引履歴</h3>
-                      <Button size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        新規注文
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      {selectedPartner.orders.length === 0 ? (
-                        <Card>
-                          <CardContent className="p-8 text-center">
-                            <Package className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
-                            <p className="text-gray-500 dark:text-slate-400">取引履歴がありません</p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        selectedPartner.orders.map(order => (
-                          <Card key={order.id}>
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <div>
-                                  <h4 className="font-medium dark:text-white">{order.orderNumber}</h4>
-                                  <p className="text-sm text-gray-600 dark:text-slate-300">
-                                    {order.orderDate.toLocaleDateString("ja-JP")}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-semibold text-lg dark:text-white">
-                                    {formatCurrency(order.totalAmount)}
-                                  </div>
-                                  <Badge
-                                    variant="outline"
-                                    className={
-                                      order.status === "completed" ? "bg-green-100 text-green-800" :
-                                      order.status === "production" ? "bg-blue-100 text-blue-800" :
-                                      order.status === "confirmed" ? "bg-yellow-100 text-yellow-800" :
-                                      "bg-gray-100 text-gray-800"
-                                    }
-                                  >
-                                    {order.status === "completed" ? "完了" :
-                                     order.status === "production" ? "生産中" :
-                                     order.status === "confirmed" ? "確定" :
-                                     order.status === "shipped" ? "出荷済み" :
-                                     order.status === "cancelled" ? "キャンセル" : "下書き"}
-                                  </Badge>
-                                </div>
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-slate-300">
-                                <div className="mb-2">
-                                  <span className="font-medium">製品: </span>
-                                  {order.products.join(", ")}
-                                </div>
-                                {order.deliveryDate && (
-                                  <div className="flex items-center space-x-1">
-                                    <Truck className="w-3 h-3 text-gray-500 dark:text-slate-400" />
-                                    <span>納期: {order.deliveryDate.toLocaleDateString("ja-JP")}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="notes" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold dark:text-white">メモ・連絡履歴</h3>
-                      <Button size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        メモ追加
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      {selectedPartner.notes.length === 0 ? (
-                        <Card>
-                          <CardContent className="p-8 text-center">
-                            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
-                            <p className="text-gray-500 dark:text-slate-400">メモがありません</p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        selectedPartner.notes.map(note => (
-                          <Card key={note.id}>
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {note.category === "meeting" ? "会議" :
-                                     note.category === "call" ? "電話" :
-                                     note.category === "email" ? "メール" : "その他"}
-                                  </Badge>
-                                  <span className="text-sm text-gray-600 dark:text-slate-300">{note.author}</span>
-                                </div>
-                                <span className="text-xs text-gray-500 dark:text-slate-400">
-                                  {note.createdAt.toLocaleDateString("ja-JP")}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-900 dark:text-white whitespace-pre-line">
-                                {note.content}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="financials" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm dark:text-white">取引実績</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-slate-300">総売上</span>
-                            <span className="font-semibold text-lg dark:text-white">
-                              {formatCurrency(selectedPartner.financialInfo.totalRevenue)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-slate-300">総注文数</span>
-                            <span className="font-semibold dark:text-white">
-                              {selectedPartner.financialInfo.totalOrders}件
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-slate-300">平均注文額</span>
-                            <span className="font-semibold dark:text-white">
-                              {formatCurrency(selectedPartner.financialInfo.averageOrderValue)}
-                            </span>
-                          </div>
-                          {selectedPartner.financialInfo.lastOrderDate && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-600 dark:text-slate-300">最終注文日</span>
-                              <span className="font-semibold dark:text-white">
-                                {selectedPartner.financialInfo.lastOrderDate.toLocaleDateString("ja-JP")}
-                              </span>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm dark:text-white">支払い条件</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <span className="text-sm text-gray-600 dark:text-slate-300">支払い条件</span>
-                            <p className="font-medium dark:text-white">
-                              {selectedPartner.financialInfo.paymentTerms}
-                            </p>
-                          </div>
-                          {selectedPartner.financialInfo.creditLimit && (
-                            <div>
-                              <span className="text-sm text-gray-600 dark:text-slate-300">与信限度額</span>
-                              <p className="font-medium dark:text-white">
-                                {formatCurrency(selectedPartner.financialInfo.creditLimit)}
-                              </p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                </div>
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
@@ -1476,6 +1357,243 @@ const PartnersPage = () => {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* 新規取引先作成ダイアログ */}
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-slate-800">
+            <DialogHeader>
+              <DialogTitle className="dark:text-white">新規取引先追加</DialogTitle>
+              <DialogDescription className="dark:text-slate-300">
+                新しい取引先の情報を入力してください。
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* 基本情報 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold dark:text-white">基本情報</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name" className="dark:text-slate-200">会社名 *</Label>
+                    <Input
+                      id="name"
+                      value={newPartner.name}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="株式会社○○"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nameKana" className="dark:text-slate-200">フリガナ</Label>
+                    <Input
+                      id="nameKana"
+                      value={newPartner.nameKana}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, nameKana: e.target.value }))}
+                      placeholder="カブシキガイシャ○○"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="type" className="dark:text-slate-200">取引タイプ</Label>
+                    <Select value={newPartner.type} onValueChange={(value) => setNewPartner(prev => ({ ...prev, type: value as PartnerType }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="customer">顧客</SelectItem>
+                        <SelectItem value="supplier">仕入先</SelectItem>
+                        <SelectItem value="both">顧客・仕入先</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="priority" className="dark:text-slate-200">優先度</Label>
+                    <Select value={newPartner.priority} onValueChange={(value) => setNewPartner(prev => ({ ...prev, priority: value as Partner["priority"] }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">低</SelectItem>
+                        <SelectItem value="normal">普通</SelectItem>
+                        <SelectItem value="high">重要</SelectItem>
+                        <SelectItem value="vip">VIP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="industry" className="dark:text-slate-200">業種</Label>
+                  <Input
+                    id="industry"
+                    value={newPartner.industry}
+                    onChange={(e) => setNewPartner(prev => ({ ...prev, industry: e.target.value }))}
+                    placeholder="製造業"
+                  />
+                </div>
+              </div>
+
+              {/* 会社連絡先情報 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold dark:text-white">会社連絡先</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone" className="dark:text-slate-200">代表電話番号</Label>
+                    <Input
+                      id="phone"
+                      value={newPartner.phone}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="03-1234-5678"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className="dark:text-slate-200">代表メールアドレス *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newPartner.email}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="info@example.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 住所情報 */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold dark:text-white">住所</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="postalCode" className="dark:text-slate-200">郵便番号</Label>
+                    <Input
+                      id="postalCode"
+                      value={newPartner.postalCode}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, postalCode: e.target.value }))}
+                      placeholder="123-4567"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="prefecture" className="dark:text-slate-200">都道府県</Label>
+                    <Input
+                      id="prefecture"
+                      value={newPartner.prefecture}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, prefecture: e.target.value }))}
+                      placeholder="東京都"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city" className="dark:text-slate-200">市区町村</Label>
+                    <Input
+                      id="city"
+                      value={newPartner.city}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, city: e.target.value }))}
+                      placeholder="千代田区"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="address1" className="dark:text-slate-200">住所1</Label>
+                    <Input
+                      id="address1"
+                      value={newPartner.address1}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, address1: e.target.value }))}
+                      placeholder="丸の内1-1-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address2" className="dark:text-slate-200">住所2（建物名等）</Label>
+                    <Input
+                      id="address2"
+                      value={newPartner.address2}
+                      onChange={(e) => setNewPartner(prev => ({ ...prev, address2: e.target.value }))}
+                      placeholder="○○ビル10F"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 担当者情報 */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold dark:text-white">担当者 *</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addContact}
+                    className="text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    担当者追加
+                  </Button>
+                </div>
+                {contacts.map((contact, index) => (
+                  <div key={index} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium dark:text-white">担当者 {index + 1}</span>
+                      {contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContact(index)}
+                          className="text-red-600 hover:text-red-700 text-xs"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          削除
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="dark:text-slate-200">氏名 *</Label>
+                        <Input
+                          value={contact.name}
+                          onChange={(e) => updateContact(index, "name", e.target.value)}
+                          placeholder="山田 太郎"
+                        />
+                      </div>
+                      <div>
+                        <Label className="dark:text-slate-200">役職</Label>
+                        <Input
+                          value={contact.title}
+                          onChange={(e) => updateContact(index, "title", e.target.value)}
+                          placeholder="営業部長"
+                        />
+                      </div>
+                      <div>
+                        <Label className="dark:text-slate-200">電話番号</Label>
+                        <Input
+                          value={contact.phone}
+                          onChange={(e) => updateContact(index, "phone", e.target.value)}
+                          placeholder="03-1234-5678"
+                        />
+                      </div>
+                      <div>
+                        <Label className="dark:text-slate-200">メールアドレス *</Label>
+                        <Input
+                          type="email"
+                          value={contact.email}
+                          onChange={(e) => updateContact(index, "email", e.target.value)}
+                          placeholder="yamada@example.com"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleSaveNewPartner} className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                取引先を追加
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

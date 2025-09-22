@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Process } from "@/app/tasks/types";
 import { calculateTotalHours } from "@/app/tasks/constants";
 import { StatusBadge } from "./cards/StatusBadge";
+import { getMachinesFromWorkHours } from "@/app/tasks/utils/machineUtils";
 
 import { DatePickerField } from "./forms/DatePickerField";
 
@@ -49,6 +50,29 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
     y: 0,
   });
   const [isDragging, setIsDragging] = useState(false);
+
+  // 機械情報の状態管理
+  const [machines, setMachines] = useState<string[]>([]);
+  const [machinesLoading, setMachinesLoading] = useState(false);
+
+  // 機械情報を取得
+  useEffect(() => {
+    const fetchMachines = async () => {
+      if (!process.id) return;
+
+      setMachinesLoading(true);
+      try {
+        const machineList = await getMachinesFromWorkHours(process.id);
+        setMachines(machineList);
+      } catch (error) {
+        console.error('機械情報の取得に失敗:', error);
+      } finally {
+        setMachinesLoading(false);
+      }
+    };
+
+    fetchMachines();
+  }, [process.id]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -165,28 +189,32 @@ export const ProcessRow: React.FC<ProcessRowProps> = ({
               <Package className="w-4 h-4 text-gray-600 dark:text-slate-400" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">{process.quantity}個</span>
             </div>
-            <div className="flex items-center gap-1 truncate">
-              <User className="w-4 h-4 text-gray-600 dark:text-slate-400" />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{process.fieldPerson}</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1 truncate">
+                <User className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{process.fieldPerson}</span>
+              </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 ml-4">
               <div>
                 <div className="flex gap-1">
                   <div className="flex flex-col justify-center pt-[2px]">
                     <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" />
                   </div>
                   <div className="space-y-0.5">
-                    {process.assignedMachines.length > 0 ? (
-                      process.assignedMachines.map((machine, index) => (
+                    {machinesLoading ? (
+                      <div className="text-xs text-gray-600 dark:text-slate-400">読み込み中...</div>
+                    ) : machines.length > 0 ? (
+                      machines.map((machine, index) => (
                         <div
                           key={index}
-                          className="text-xs text-gray-700 dark:text-slate-300 truncate font-medium"
+                          className="text-xs text-gray-900 dark:text-white truncate font-medium"
                         >
                           {machine}
                         </div>
                       ))
                     ) : (
-                      <div className="text-xs text-gray-500 dark:text-slate-400">未割当</div>
+                      <div className="text-xs text-gray-600 dark:text-slate-400">未割当</div>
                     )}
                   </div>
                 </div>

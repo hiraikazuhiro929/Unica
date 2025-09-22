@@ -638,6 +638,35 @@ export async function removeMember(
 // =============================================================================
 
 /**
+ * 企業の招待コードを取得（なければ作成）
+ */
+export async function getOrCreateCompanyInviteCode(companyId: string, createdBy: string): Promise<string> {
+  // 既存のアクティブな招待コードを検索
+  const inviteQuery = query(
+    collection(db, COMPANY_COLLECTIONS.INVITES),
+    where('companyId', '==', companyId),
+    where('isActive', '==', true),
+    where('email', '==', null) // 一般用（メール指定なし）の招待コード
+  );
+
+  const inviteSnap = await getDocs(inviteQuery);
+
+  if (!inviteSnap.empty) {
+    // 既存のコードがあれば返す
+    const existingInvite = inviteSnap.docs[0].data();
+    return existingInvite.code;
+  }
+
+  // なければ新しい招待コードを作成
+  const invite = await createInvite(companyId, createdBy, {
+    expiresInDays: 365, // 1年間有効
+    maxUses: 1000, // 大きめの使用回数
+  });
+
+  return invite.code;
+}
+
+/**
  * 招待コードを生成
  */
 function generateInviteCode(): string {

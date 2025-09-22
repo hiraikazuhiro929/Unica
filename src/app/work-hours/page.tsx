@@ -45,6 +45,7 @@ import {
   ChevronsDown,
   ChevronsUp,
   Download,
+  Package,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -88,6 +89,8 @@ import { getProcessesList } from "@/lib/firebase/processes";
 import type { Order } from "@/app/tasks/types";
 import type { Process } from "@/app/tasks/types";
 import { exportWorkHours } from "@/lib/utils/exportUtils";
+import { exportIntegratedData, exportByPeriod } from "@/lib/utils/integratedExportUtils";
+import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
 import { ProcessType, getProcessTypes, subscribeToProcessTypes, createProcessType, updateProcessType, deleteProcessType } from "@/lib/firebase/processTypes";
 
 const WorkHoursManagement = () => {
@@ -98,6 +101,7 @@ const WorkHoursManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedWorkHours, setSelectedWorkHours] = useState<EnhancedWorkHours | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showWorkerModal, setShowWorkerModal] = useState(false);
@@ -324,16 +328,19 @@ const WorkHoursManagement = () => {
     }
   };
 
-  // Filter data
+  // Filter data based on active tab
   const filteredData = workHoursData.filter((wh) => {
-    const matchesSearch = 
+    // Tab filtering first
+    const matchesTab = activeTab === 'active' ? wh.status !== 'completed' : wh.status === 'completed';
+
+    const matchesSearch =
       wh.projectName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       wh.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       wh.managementNumber?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = filterStatus === "all" || wh.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
+
+    return matchesTab && matchesSearch && matchesStatus;
   });
 
   // リアルタイム稼働状況
@@ -783,6 +790,32 @@ const WorkHoursManagement = () => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'active'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              稼働中工数 ({workHoursData.filter(wh => wh.status !== 'completed').length})
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'completed'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              完了済み工数 ({workHoursData.filter(wh => wh.status === 'completed').length})
+            </button>
+          </div>
+        </div>
+
         {/* メインコンテンツ - 3列レイアウト */}
         <div className="flex-1 overflow-hidden flex">
           {/* 左側：統計・ダッシュボード */}
@@ -1007,6 +1040,58 @@ const WorkHoursManagement = () => {
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Excel形式でダウンロード
+                    </DropdownMenuItem>
+
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const result = await exportIntegratedData('excel', {
+                          includeCompleted: activeTab === 'completed' || activeTab === 'active',
+                          includeActive: activeTab === 'active' || activeTab === 'completed'
+                        });
+                        if (result.success) {
+                          alert(`✅ ${result.message}\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                        } else {
+                          alert(`❌ ${result.message}`);
+                        }
+                      }}
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      統合エクスポート (案件+工程+工数)
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const result = await exportByPeriod('month', new Date(), 'excel');
+                        if (result.success) {
+                          alert(`✅ 今月分の統合データをエクスポートしました\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                        } else {
+                          alert(`❌ ${result.message}`);
+                        }
+                      }}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      今月分統合エクスポート
+                    </DropdownMenuItem>
+
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const result = await exportComprehensiveProjectData('excel', {
+                          includeCompleted: activeTab === 'completed' || activeTab === 'active',
+                          includeActive: activeTab === 'active' || activeTab === 'completed'
+                        });
+                        if (result.success) {
+                          alert(`✅ 包括的プロジェクトデータをエクスポートしました\n案件数: ${result.projectCount}件\n\n含まれるデータ:\n・案件情報（受注金額、納期等）\n・関連工程詳細\n・実作業時間・コスト\n・収益性分析`);
+                        } else {
+                          alert(`❌ ${result.message}`);
+                        }
+                      }}
+                    >
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      包括的プロジェクトデータ
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

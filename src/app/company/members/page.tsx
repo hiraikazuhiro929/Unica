@@ -15,13 +15,17 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { 
+import {
   AppUser,
   updateAppUser,
   DEPARTMENTS,
   ROLES,
   getRoleDisplayName
 } from '@/lib/firebase/auth';
+import {
+  createInvite,
+  getOrCreateCompanyInviteCode
+} from '@/lib/firebase/company';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -162,16 +166,35 @@ export default function CompanyMembersPage() {
   const [inviteMessage, setInviteMessage] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showDetailModal, setShowDetailModal] = useState<AppUser | null>(null);
+  const [companyInviteCode, setCompanyInviteCode] = useState<string>('');
+  const [inviteCodeLoading, setInviteCodeLoading] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   const canManage = useMemo(() => {
     if (!user) return false;
     return user.role === 'admin' || user.role === 'manager';
   }, [user]);
 
-  // Load members
+  // Load members and invite code
   useEffect(() => {
     loadMembers();
+    loadInviteCode();
   }, [user, currentCompany]);
+
+  // 招待コードを取得
+  const loadInviteCode = async () => {
+    if (!user || !currentCompany?.id || !canManage) return;
+
+    setInviteCodeLoading(true);
+    try {
+      const code = await getOrCreateCompanyInviteCode(currentCompany.id, user.uid);
+      setCompanyInviteCode(code);
+    } catch (error) {
+      console.error('招待コード取得エラー:', error);
+    } finally {
+      setInviteCodeLoading(false);
+    }
+  };
 
   const loadMembers = async () => {
     console.log('🔍 loadMembers called, user:', user);
@@ -435,9 +458,62 @@ export default function CompanyMembersPage() {
 
   // Copy invite link
   const copyInviteLink = () => {
-    const inviteLink = `${window.location.origin}/invite?companyId=${currentCompany?.id}&role=${inviteRole}`;
+    const inviteLink = `${window.location.origin}/join/${companyInviteCode}`;
     navigator.clipboard.writeText(inviteLink);
     alert('招待リンクをコピーしました');
+  };
+
+  const copyInviteCode = () => {
+    navigator.clipboard.writeText(companyInviteCode);
+    alert('招待コードをコピーしました');
+  };
+
+  const handleSendInvite = async () => {
+    if (!user || !currentCompany?.id || !inviteEmail) return;
+
+    setSendingInvite(true);
+    try {
+      // 1. 招待データを作成
+      const invite = await createInvite(currentCompany.id, user.uid, {
+        email: inviteEmail,
+        role: inviteRole as any,
+      });
+
+      // 2. 招待リンクを生成
+      const inviteLink = `${window.location.origin}/join/${invite.code}`;
+
+      // 3. メール送信
+      const response = await fetch('/api/send-invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: inviteEmail,
+          inviteLink,
+          companyName: currentCompany.name,
+          inviterName: user.name,
+          role: ROLES.find(r => r.value === inviteRole)?.label || inviteRole,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'メール送信に失敗しました');
+      }
+
+      alert(`${inviteEmail}に招待メールを送信しました！`);
+      setShowInviteDialog(false);
+      setInviteEmail('');
+      setInviteRole('worker');
+      setInviteMessage('');
+    } catch (error) {
+      console.error('招待送信エラー:', error);
+      alert(`招待の送信に失敗しました: ${error.message}`);
+    } finally {
+      setSendingInvite(false);
+    }
   };
 
   if (loading) {
@@ -472,6 +548,36 @@ export default function CompanyMembersPage() {
                 </div>
               </div>
             </div>
+
+            {/* 招待コード表示（管理者のみ） */}
+            {canManage && selectedMembers.size === 0 && (
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">企業招待コード</div>
+                    <div className="flex items-center gap-1">
+                      {inviteCodeLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <>
+                          <code className="text-sm font-mono text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/40 px-2 py-1 rounded">
+                            {companyInviteCode}
+                          </code>
+                          <Button
+                            onClick={copyInviteCode}
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/40"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {canManage && selectedMembers.size > 0 && (
               <div className="flex items-center gap-2">
@@ -561,7 +667,10 @@ export default function CompanyMembersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className={cn(viewMode === 'list' && "bg-gray-100")}
+                  className={cn(
+                    "dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700",
+                    viewMode === 'list' && "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white"
+                  )}
                 >
                   リスト
                 </Button>
@@ -569,7 +678,10 @@ export default function CompanyMembersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className={cn(viewMode === 'grid' && "bg-gray-100")}
+                  className={cn(
+                    "dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700",
+                    viewMode === 'grid' && "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white"
+                  )}
                 >
                   グリッド
                 </Button>
@@ -577,23 +689,13 @@ export default function CompanyMembersPage() {
               
               {canManage && (
                 <>
-                  <Button 
-                    variant="outline"
+                  <Button
                     size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
                     onClick={() => setShowInviteDialog(true)}
-                    className="border-blue-200 text-blue-600 hover:bg-blue-50"
                   >
                     <Mail className="w-4 h-4 mr-1" />
                     招待
-                  </Button>
-                  
-                  <Button 
-                    size="sm"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                    onClick={() => setShowAddMember(true)}
-                  >
-                    <UserPlus className="w-4 h-4 mr-1" />
-                    追加
                   </Button>
                 </>
               )}
@@ -975,13 +1077,13 @@ export default function CompanyMembersPage() {
           <DialogHeader>
             <DialogTitle>メンバー招待</DialogTitle>
             <DialogDescription id="invite-dialog-description">
-              新しいメンバーを招待するためのリンクを生成します
+              メールアドレスまたは招待リンクを使用してメンバーを招待できます
             </DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="email" className="mt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="email">メール招待</TabsTrigger>
-              <TabsTrigger value="link">リンク生成</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-700">
+              <TabsTrigger value="email" className="dark:text-slate-300 dark:data-[state=active]:bg-slate-600 dark:data-[state=active]:text-white">メール招待</TabsTrigger>
+              <TabsTrigger value="link" className="dark:text-slate-300 dark:data-[state=active]:bg-slate-600 dark:data-[state=active]:text-white">リンク生成</TabsTrigger>
             </TabsList>
             
             <TabsContent value="email" className="space-y-4">
@@ -1036,17 +1138,20 @@ export default function CompanyMembersPage() {
                   キャンセル
                 </Button>
                 <Button
-                  onClick={() => {
-                    alert(`${inviteEmail}に招待メールを送信しました`);
-                    setShowInviteDialog(false);
-                    setInviteEmail('');
-                    setInviteRole('worker');
-                    setInviteMessage('');
-                  }}
-                  disabled={!inviteEmail}
+                  onClick={handleSendInvite}
+                  disabled={!inviteEmail || sendingInvite}
                 >
-                  <Mail className="w-4 h-4 mr-2" />
-                  招待を送信
+                  {sendingInvite ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      送信中...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      招待を送信
+                    </>
+                  )}
                 </Button>
               </div>
             </TabsContent>
@@ -1075,7 +1180,7 @@ export default function CompanyMembersPage() {
                 </label>
                 <div className="flex gap-2">
                   <Input
-                    value={`${window.location.origin}/invite?companyId=${currentCompany?.id}&role=${inviteRole}`}
+                    value={`${window.location.origin}/join/${companyInviteCode}`}
                     readOnly
                     className="font-mono text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
                   />

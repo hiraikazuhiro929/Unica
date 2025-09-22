@@ -300,7 +300,7 @@ export class ManagementNumberManager {
     relatedId: string
   ): Promise<boolean> {
     try {
-      const record = await this.findByManagementNumber(managementNumber);
+      const record = await this.findByManagementNumberWithRepair(managementNumber);
       if (!record) {
         throw new Error(`Management number not found: ${managementNumber}`);
       }
@@ -341,7 +341,7 @@ export class ManagementNumberManager {
     status: ManagementNumberRecord['status']
   ): Promise<boolean> {
     try {
-      const record = await this.findByManagementNumber(managementNumber);
+      const record = await this.findByManagementNumberWithRepair(managementNumber);
       if (!record) {
         throw new Error(`Management number not found: ${managementNumber}`);
       }
@@ -368,6 +368,116 @@ export class ManagementNumberManager {
       console.error('Failed to update status:', error);
       return false;
     }
+  }
+
+  // =============================================================================
+  // データ修復・同期
+  // =============================================================================
+
+  /**
+   * 管理番号レコードが存在しない場合の修復処理
+   * 既存のデータから管理番号レコードを再構築
+   */
+  public async repairMissingRecord(managementNumber: string): Promise<ManagementNumberRecord | null> {
+    console.log(`🔧 管理番号レコードの修復を試行: ${managementNumber}`);
+
+    try {
+      // 既存の受注データを検索
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('managementNumber', '==', managementNumber),
+        limit(1)
+      );
+      const ordersSnapshot = await getDocs(ordersQuery);
+
+      if (!ordersSnapshot.empty) {
+        const orderDoc = ordersSnapshot.docs[0];
+        const orderData = { id: orderDoc.id, ...orderDoc.data() };
+
+        // 管理番号レコードを再構築
+        const newRecord: Omit<ManagementNumberRecord, 'id'> = {
+          managementNumber,
+          type: 'order',
+          status: orderData.status === 'completed' ? 'completed' : 'active',
+          relatedIds: {
+            orderId: orderDoc.id
+          },
+          projectName: orderData.projectName || '',
+          client: orderData.client || '',
+          assignee: orderData.assignee,
+          quantity: orderData.quantity,
+          priority: orderData.priority || 'medium',
+          tags: orderData.tags || [],
+          notes: orderData.description,
+          createdAt: orderData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        // 関連する工程データを検索
+        const processesQuery = query(
+          collection(db, 'companyTasks'),
+          where('managementNumber', '==', managementNumber),
+          limit(1)
+        );
+        const processesSnapshot = await getDocs(processesQuery);
+
+        if (!processesSnapshot.empty) {
+          const processDoc = processesSnapshot.docs[0];
+          newRecord.relatedIds.processId = processDoc.id;
+        }
+
+        // 関連する工数データを検索
+        const workHoursQuery = query(
+          collection(db, 'workHours'),
+          where('managementNumber', '==', managementNumber),
+          limit(1)
+        );
+        const workHoursSnapshot = await getDocs(workHoursQuery);
+
+        if (!workHoursSnapshot.empty) {
+          const workHoursDoc = workHoursSnapshot.docs[0];
+          newRecord.relatedIds.workHoursId = workHoursDoc.id;
+        }
+
+        // レコードを保存
+        const recordRef = doc(collection(db, 'management-numbers'));
+        await setDoc(recordRef, newRecord);
+
+        const repairedRecord = { id: recordRef.id, ...newRecord };
+
+        console.log(`✅ 管理番号レコードを修復しました: ${managementNumber}`);
+        logSecurityEvent('management_number_repaired', {
+          managementNumber,
+          recordId: recordRef.id,
+          foundRelatedIds: Object.keys(newRecord.relatedIds).length
+        });
+
+        return repairedRecord;
+      }
+
+      console.log(`❌ 修復対象のデータが見つかりません: ${managementNumber}`);
+      return null;
+
+    } catch (error) {
+      console.error('管理番号レコード修復エラー:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 拡張検索: 管理番号レコードが見つからない場合は修復を試行
+   */
+  public async findByManagementNumberWithRepair(managementNumber: string): Promise<ManagementNumberRecord | null> {
+    // まず通常の検索を試行
+    let record = await this.findByManagementNumber(managementNumber);
+
+    if (!record) {
+      // 見つからない場合は修復を試行
+      console.log(`🔍 管理番号レコードが見つかりません。修復を試行します: ${managementNumber}`);
+      record = await this.repairMissingRecord(managementNumber);
+    }
+
+    return record;
   }
 
   // =============================================================================
@@ -434,7 +544,7 @@ export class ManagementNumberManager {
     workHoursData?: any;
     dailyReports?: any[];
   }> {
-    const record = await this.findByManagementNumber(managementNumber);
+    const record = await this.findByManagementNumberWithRepair(managementNumber);
     
     if (!record) {
       return { record: null };
@@ -505,7 +615,7 @@ export class ManagementNumberManager {
       // 各製番のレコードを取得
       for (const managementNumber of managementNumbers) {
         try {
-          const record = await this.findByManagementNumber(managementNumber);
+          const record = await this.findByManagementNumberWithRepair(managementNumber);
           if (!record) {
             results.failed++;
             results.errors.push(`Management number not found: ${managementNumber}`);
@@ -577,11 +687,68 @@ export const generateOrderNumber = async (projectName: string, client: string, a
 };
 
 /**
- * 製番の存在確認
+ * 製番の存在確認（拡張版 - 修復機能付き）
  */
 export const validateManagementNumber = async (managementNumber: string): Promise<boolean> => {
-  const record = await managementNumberManager.findByManagementNumber(managementNumber);
+  const record = await managementNumberManager.findByManagementNumberWithRepair(managementNumber);
   return record !== null && record.status === 'active';
+};
+
+/**
+ * 管理番号から関連データを全て取得（拡張版 - 修復機能付き）
+ */
+export const getManagementNumberDetailsWithRepair = async (managementNumber: string) => {
+  const record = await managementNumberManager.findByManagementNumberWithRepair(managementNumber);
+
+  if (!record) {
+    return { record: null };
+  }
+
+  const result: any = { record };
+
+  // 関連データを並列取得
+  const promises = [];
+
+  if (record.relatedIds.orderId) {
+    promises.push(
+      getDoc(doc(db, 'orders', record.relatedIds.orderId))
+        .then(doc => doc.exists() ? { orderData: { id: doc.id, ...doc.data() } } : {})
+    );
+  }
+
+  if (record.relatedIds.processId) {
+    promises.push(
+      getDoc(doc(db, 'companyTasks', record.relatedIds.processId))
+        .then(doc => doc.exists() ? { processData: { id: doc.id, ...doc.data() } } : {})
+    );
+  }
+
+  if (record.relatedIds.workHoursId) {
+    promises.push(
+      getDoc(doc(db, 'workHours', record.relatedIds.workHoursId))
+        .then(doc => doc.exists() ? { workHoursData: { id: doc.id, ...doc.data() } } : {})
+    );
+  }
+
+  if (record.relatedIds.dailyReportIds?.length) {
+    const reportPromises = record.relatedIds.dailyReportIds.map(reportId =>
+      getDoc(doc(db, 'daily-reports', reportId))
+        .then(doc => doc.exists() ? { id: doc.id, ...doc.data() } : null)
+    );
+    promises.push(
+      Promise.all(reportPromises)
+        .then(reports => ({ dailyReports: reports.filter(r => r !== null) }))
+    );
+  }
+
+  const relatedData = await Promise.all(promises);
+
+  // 結果をマージ
+  relatedData.forEach(data => {
+    Object.assign(result, data);
+  });
+
+  return result;
 };
 
 export default ManagementNumberManager;

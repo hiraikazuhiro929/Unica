@@ -51,6 +51,8 @@ import { ProcessDetail } from "@/app/tasks/components/ProcessDetail";
 import { GanttChart } from "@/app/tasks/components/gantt/GanttChart";
 import { KanbanBoard } from "@/app/tasks/components/kanban/KanbanBoard";
 import { exportProcesses } from "@/lib/utils/exportUtils";
+import { exportIntegratedData, exportByPeriod } from "@/lib/utils/integratedExportUtils";
+import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
 
 const ProcessList = () => {
   const searchParams = useSearchParams();
@@ -82,6 +84,7 @@ const ProcessList = () => {
   const [kanbanFilterPriority, setKanbanFilterPriority] = useState<Process["priority"] | "all">("all");
   const [kanbanFilterAssignee, setKanbanFilterAssignee] = useState<string>("all");
   const [showCompleted, setShowCompleted] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
 
   // カスタムフックを使用
   const {
@@ -157,12 +160,12 @@ const ProcessList = () => {
   // ステータス別カラー
   const getStatusColor = (status: Process["status"]) => {
     const colors = {
-      planning: "bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
-      "data-work": "bg-purple-50 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800",
-      processing: "bg-amber-50 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-      finishing: "bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800",
-      completed: "bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700",
-      delayed: "bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800",
+      planning: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      "data-work": "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800",
+      processing: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+      finishing: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+      completed: "bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+      delayed: "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
     };
     return colors[status];
   };
@@ -275,9 +278,84 @@ const ProcessList = () => {
                     <FileText className="w-4 h-4 mr-2" />
                     Excel形式でダウンロード
                   </DropdownMenuItem>
+
+                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
+
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const result = await exportIntegratedData('excel', {
+                        includeCompleted: activeTab === 'completed' || activeTab === 'active',
+                        includeActive: activeTab === 'active' || activeTab === 'completed'
+                      });
+                      if (result.success) {
+                        alert(`✅ ${result.message}\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                      } else {
+                        alert(`❌ ${result.message}`);
+                      }
+                    }}
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    統合エクスポート (案件+工程+工数)
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const result = await exportByPeriod('month', new Date(), 'excel');
+                      if (result.success) {
+                        alert(`✅ 今月分の統合データをエクスポートしました\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                      } else {
+                        alert(`❌ ${result.message}`);
+                      }
+                    }}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    今月分統合エクスポート
+                  </DropdownMenuItem>
+
+                  <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
+
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const result = await exportComprehensiveProjectData('excel');
+                      if (result.success) {
+                        alert(`✅ 完了済み案件の包括的データをエクスポートしました\n案件数: ${result.projectCount}件\n\n含まれるデータ:\n・完了案件の受注〜納品履歴\n・関連工程の実績詳細\n・実作業時間・コスト\n・収益性分析（粗利・粗利率）`);
+                      } else {
+                        alert(`❌ ${result.message}`);
+                      }
+                    }}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    完了案件アーカイブデータ
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'active'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              稼働中工程 ({companies.flatMap(c => c.processes).filter(p => p.status !== 'completed').length})
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'completed'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              完了済み工程 ({companies.flatMap(c => c.processes).filter(p => p.status === 'completed').length})
+            </button>
           </div>
         </div>
 
@@ -306,7 +384,7 @@ const ProcessList = () => {
                   <div className="text-xs text-gray-500 dark:text-slate-400 mb-2">ステータス</div>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'all' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'all' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('all')}
                   >
@@ -314,7 +392,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'planning' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'planning' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('planning')}
                   >
@@ -322,7 +400,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'processing' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'processing' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('processing')}
                   >
@@ -330,7 +408,7 @@ const ProcessList = () => {
                   </button>
                   <button 
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                      filterStatus === 'completed' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      filterStatus === 'completed' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => setFilterStatus('completed')}
                   >
@@ -370,7 +448,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'machine' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'machine' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('machine')}
                       >
@@ -378,7 +456,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'person' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'person' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('person')}
                       >
@@ -386,7 +464,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          ganttViewType === 'project' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          ganttViewType === 'project' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setGanttViewType('project')}
                       >
@@ -495,7 +573,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'status' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'status' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('status')}
                       >
@@ -503,7 +581,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'priority' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('priority')}
                       >
@@ -511,7 +589,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanGroupBy === 'assignee' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanGroupBy === 'assignee' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanGroupBy('assignee')}
                       >
@@ -525,7 +603,7 @@ const ProcessList = () => {
                     <div className="space-y-1">
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'dueDate' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'dueDate' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('dueDate')}
                       >
@@ -533,7 +611,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'priority' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'priority' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('priority')}
                       >
@@ -541,7 +619,7 @@ const ProcessList = () => {
                       </button>
                       <button 
                         className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                          kanbanSortBy === 'progress' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
+                          kanbanSortBy === 'progress' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 font-medium' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                         }`}
                         onClick={() => setKanbanSortBy('progress')}
                       >
@@ -664,7 +742,7 @@ const ProcessList = () => {
 
                 {/* 新規工程ボタン */}
                 <Button
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-4"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium px-4 shadow-sm hover:shadow-md transition-all duration-200"
                   onClick={() => {
                     setSelectedProcess(createNewProcess());
                     setShowNewProcessModal(true);
@@ -783,7 +861,7 @@ const ProcessList = () => {
 
                   {activeView === "gantt" && (
                     <GanttChart
-                      processes={(showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed')).filter(p => p.processingPlanDate)}
+                      processes={(activeTab === 'completed' ? allProcesses.filter(p => p.status === 'completed') : allProcesses.filter(p => p.status !== 'completed')).filter(p => p.processingPlanDate)}
                       viewType={ganttViewType}
                       showWeekends={showWeekends}
                       showMinimap={showMinimap}
@@ -800,7 +878,7 @@ const ProcessList = () => {
                     <div className="bg-transparent">
                       <KanbanBoard
                         processes={(() => {
-                          let filtered = showCompleted ? allProcesses : allProcesses.filter(p => p.status !== 'completed');
+                          let filtered = activeTab === 'completed' ? allProcesses.filter(p => p.status === 'completed') : allProcesses.filter(p => p.status !== 'completed');
                           
                           // ソート処理
                           return filtered.sort((a, b) => {

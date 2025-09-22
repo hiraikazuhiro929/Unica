@@ -35,6 +35,9 @@ import {
   getStatusBadgeStyle,
   getDaysBetween,
 } from "@/app/tasks/components/gantt/ganttUtils";
+import { updateProcessAssignedMachines } from "@/app/tasks/utils/machineUtils";
+import { getMachines } from "@/lib/firebase/machines";
+import type { Machine } from "@/lib/firebase/machines";
 
 // サンプルデータ（変更なし）
 const sampleProcesses: Process[] = [
@@ -200,11 +203,52 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
   const [resizeStartDate, setResizeStartDate] = useState<Date | null>(null);
   const [originalProcess, setOriginalProcess] = useState<Process | null>(null);
   const [tempProcesses, setTempProcesses] = useState<Map<string, Process>>(new Map());
+  const [updatedProcesses, setUpdatedProcesses] = useState<Process[]>([]);
+  const [allMachines, setAllMachines] = useState<string[]>([]);
 
   // propsのzoomLevelが変更されたら更新
   useEffect(() => {
     setZoomLevel(propsZoomLevel);
   }, [propsZoomLevel]);
+
+  // プロセスデータが変更されたときに機械情報を更新
+  useEffect(() => {
+    const updateProcessesMachines = async () => {
+      if (processes.length === 0) {
+        setUpdatedProcesses([]);
+        return;
+      }
+
+      try {
+        const updated = await Promise.all(
+          processes.map(process => updateProcessAssignedMachines(process))
+        );
+        setUpdatedProcesses(updated);
+      } catch (error) {
+        console.error('機械情報の一括更新に失敗:', error);
+        setUpdatedProcesses(processes);
+      }
+    };
+
+    updateProcessesMachines();
+  }, [processes]);
+
+  // 機械マスタを取得
+  useEffect(() => {
+    const loadMachines = async () => {
+      try {
+        const { data: machinesData, success } = await getMachines();
+        if (success && machinesData) {
+          const machineNames = machinesData.map(machine => machine.name);
+          setAllMachines(machineNames);
+        }
+      } catch (error) {
+        console.error('機械マスタの取得に失敗:', error);
+      }
+    };
+
+    loadMachines();
+  }, []);
 
   const ganttRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
@@ -277,7 +321,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
   // メモ化されたフィルタリング
   const filteredProcesses = useMemo(() => {
-    return processes.filter((process) => {
+    return updatedProcesses.filter((process) => {
       const matchesSearch =
         process.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         process.managementNumber
@@ -293,7 +337,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [processes, searchQuery, statusFilter, priorityFilter]);
+  }, [updatedProcesses, searchQuery, statusFilter, priorityFilter]);
 
   // プロジェクト全体の日付範囲を計算（固定バッファ）
   const projectDateRange = useMemo(() => {
@@ -318,8 +362,8 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
 
   // メモ化されたプロセスグループ化
   const groupedData = useMemo(() => {
-    return groupProcesses(filteredProcesses, viewType);
-  }, [filteredProcesses, viewType]);
+    return groupProcesses(filteredProcesses, viewType, allMachines);
+  }, [filteredProcesses, viewType, allMachines]);
 
   // バークリックハンドラー（ドラッグ直後100ms無効化）
   const handleBarClick = useCallback(
@@ -385,64 +429,73 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
         return;
       }
 
-      // 通常の移動処理
-      const mouseEvent = event.activatorEvent as MouseEvent;
-      if (!mouseEvent || !ganttRef.current) return;
-
-      const ganttRect = ganttRef.current.getBoundingClientRect();
-      const finalMouseX = mouseEvent.clientX + delta.x;
-      const x = finalMouseX - ganttRect.left + ganttRef.current.scrollLeft;
-      const dateIndex = Math.floor(x / zoomLevel); // zoomLevelを使用
-
-      if (dateIndex >= 0 && dateIndex < dates.length) {
-        const targetDate = dates[dateIndex];
-
-        // 日付の妥当性チェック
-        if (!draggedProcess.processingPlanDate) {
-          console.warn("加工予定日が未入力のため、移動できません:", draggedProcess.projectName);
-          return;
-        }
-
-        const originalStartDate = new Date(draggedProcess.processingPlanDate);
-        const originalEndDate = new Date(
-          draggedProcess.dueDate || draggedProcess.shipmentDate || draggedProcess.processingPlanDate
-        );
-
-        // 日付が有効かチェック
-        if (isNaN(originalStartDate.getTime()) || isNaN(originalEndDate.getTime())) {
-          console.error("Invalid date values", {
-            processingPlanDate: draggedProcess.processingPlanDate,
-            dueDate: draggedProcess.dueDate,
-            shipmentDate: draggedProcess.shipmentDate
-          });
-          return;
-        }
-
-        const duration = getDaysBetween(originalStartDate, originalEndDate) + 1;
-
-        const offsetDays = Math.round(duration * dragOffset);
-        const newStartDate = new Date(targetDate);
-        newStartDate.setDate(newStartDate.getDate() - offsetDays);
-
-        const newEndDate = new Date(newStartDate);
-        newEndDate.setDate(newEndDate.getDate() + duration - 1);
-
-        // 新しい日付が有効かチェック
-        if (isNaN(newStartDate.getTime()) || isNaN(newEndDate.getTime())) {
-          console.error("Invalid new date values");
-          return;
-        }
-
-        const updatedProcess = {
-          ...draggedProcess,
-          processingPlanDate: newStartDate.toISOString().split("T")[0],
-          dueDate: newEndDate.toISOString().split("T")[0],
-        };
-
-        onProcessUpdate(updatedProcess);
+      // 日付の妥当性チェック
+      if (!draggedProcess.processingPlanDate) {
+        console.warn("加工予定日が未入力のため、移動できません:", draggedProcess.projectName);
+        return;
       }
+
+      const originalStartDate = new Date(draggedProcess.processingPlanDate);
+      const originalEndDate = new Date(
+        draggedProcess.dueDate || draggedProcess.shipmentDate || draggedProcess.processingPlanDate
+      );
+
+      // 日付が有効かチェック
+      if (isNaN(originalStartDate.getTime()) || isNaN(originalEndDate.getTime())) {
+        console.error("Invalid date values", {
+          processingPlanDate: draggedProcess.processingPlanDate,
+          dueDate: draggedProcess.dueDate,
+          shipmentDate: draggedProcess.shipmentDate
+        });
+        return;
+      }
+
+      // ドラッグによる日数の移動を計算
+      // delta.x はピクセル単位の移動量、zoomLevel は1日あたりのピクセル数
+      const daysMoved = Math.round(delta.x / zoomLevel);
+
+      // 元の期間の長さを保持
+      const duration = getDaysBetween(originalStartDate, originalEndDate);
+
+      // 新しい開始日と終了日を計算
+      const newStartDate = new Date(originalStartDate);
+      newStartDate.setDate(newStartDate.getDate() + daysMoved);
+
+      const newEndDate = new Date(originalEndDate);
+      newEndDate.setDate(newEndDate.getDate() + daysMoved);
+
+      // 新しい日付が有効かチェック
+      if (isNaN(newStartDate.getTime()) || isNaN(newEndDate.getTime())) {
+        console.error("Invalid new date values");
+        return;
+      }
+
+      // 日付範囲を自動的に拡張（必要に応じて）
+      const currentMinDate = new Date(dates[0]);
+      const currentMaxDate = new Date(dates[dates.length - 1]);
+
+      // 範囲外にドロップされた場合、日付範囲を拡張
+      if (newStartDate < currentMinDate) {
+        // 開始日を前に拡張
+        const daysToExtend = Math.ceil((currentMinDate.getTime() - newStartDate.getTime()) / (1000 * 60 * 60 * 24));
+        console.log(`日付範囲を${daysToExtend}日前に拡張します`);
+      }
+
+      if (newEndDate > currentMaxDate) {
+        // 終了日を後ろに拡張
+        const daysToExtend = Math.ceil((newEndDate.getTime() - currentMaxDate.getTime()) / (1000 * 60 * 60 * 24));
+        console.log(`日付範囲を${daysToExtend}日後に拡張します`);
+      }
+
+      const updatedProcess = {
+        ...draggedProcess,
+        processingPlanDate: newStartDate.toISOString().split("T")[0],
+        dueDate: newEndDate.toISOString().split("T")[0],
+      };
+
+      onProcessUpdate(updatedProcess);
     },
-    [draggedProcess, dates, dragOffset, onProcessUpdate, isResizing, zoomLevel]
+    [draggedProcess, dragOffset, onProcessUpdate, isResizing, zoomLevel, dates]
   );
 
   // リサイズハンドラー
@@ -453,7 +506,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
       if (!isResizing || !originalProcess) return;
 
       const deltaX = e.clientX - resizeStartX;
-      const daysDelta = Math.round(deltaX / zoomLevel);
+      const daysDelta = Math.round((deltaX / zoomLevel) * 2) / 2; // 0.5日単位で調整
 
       const newProcess = { ...originalProcess };
       let validResize = false;
@@ -477,7 +530,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
         const endDateStr = originalProcess.dueDate || originalProcess.shipmentDate || originalProcess.processingPlanDate;
         const endDate = new Date(endDateStr);
         
-        if (!isNaN(endDate.getTime()) && newStartDate < endDate) {
+        if (!isNaN(endDate.getTime()) && newStartDate <= endDate) {
           newProcess.processingPlanDate = newStartDate.toISOString().split("T")[0];
           validResize = true;
         }
@@ -504,7 +557,7 @@ const GanttChartComponent: React.FC<GanttChartProps> = ({
         }
         
         const startDate = new Date(originalProcess.processingPlanDate);
-        if (!isNaN(startDate.getTime()) && newEndDate > startDate) {
+        if (!isNaN(startDate.getTime()) && newEndDate >= startDate) {
           newProcess.dueDate = newEndDate.toISOString().split("T")[0];
           validResize = true;
         }

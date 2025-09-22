@@ -59,6 +59,8 @@ import {
   type OrderItem
 } from "@/lib/firebase/orders";
 import { exportOrders } from "@/lib/utils/exportUtils";
+import { exportIntegratedData, exportByPeriod, exportCompletedData } from "@/lib/utils/integratedExportUtils";
+import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
 
 const OrderManagement = () => {
   const { trackAction } = useActivityTracking();
@@ -75,6 +77,7 @@ const OrderManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClient, setFilterClient] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
 
   // Initialize data
   useEffect(() => {
@@ -200,6 +203,68 @@ const OrderManagement = () => {
 
     setIsSaving(true);
     try {
+      // 重複チェック: 既存の工程・工数データの確認
+      console.log(`🔍 重複チェック開始: ${order.managementNumber}`);
+
+      // 管理番号から既存データを検索
+      const { managementNumberManager } = await import('@/lib/utils/managementNumber');
+      const existingRecord = await managementNumberManager.findByManagementNumberWithRepair(order.managementNumber);
+
+      if (existingRecord?.relatedIds?.processId || existingRecord?.relatedIds?.workHoursId) {
+        const existingData = [];
+        if (existingRecord.relatedIds.processId) existingData.push('工程データ');
+        if (existingRecord.relatedIds.workHoursId) existingData.push('工数データ');
+
+        const confirmMessage = `⚠️ 既に作成済みのデータが存在します:
+${existingData.join('、')}
+
+続行すると重複データが作成される可能性があります。
+それでも続行しますか？
+
+既存データを確認したい場合は「キャンセル」を選択し、工程管理・工数管理画面で「${order.managementNumber}」を検索してください。`;
+
+        if (!confirm(confirmMessage)) {
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // 直接データベース検索による二重チェック
+      const { getProcessesList } = await import('@/lib/firebase/processes');
+      const { getWorkHoursList } = await import('@/lib/firebase/workHours');
+
+      const [existingProcessesResult, existingWorkHoursResult] = await Promise.all([
+        getProcessesList({
+          filters: { managementNumber: order.managementNumber },
+          limit: 1
+        }),
+        getWorkHoursList({
+          filters: { managementNumber: order.managementNumber },
+          limit: 1
+        })
+      ]);
+
+      if (existingProcessesResult.data?.length > 0 || existingWorkHoursResult.data?.length > 0) {
+        console.log('⚠️ データベースで既存データを発見');
+        const existingData = [];
+        if (existingProcessesResult.data?.length > 0) existingData.push(`工程データ(${existingProcessesResult.data.length}件)`);
+        if (existingWorkHoursResult.data?.length > 0) existingData.push(`工数データ(${existingWorkHoursResult.data.length}件)`);
+
+        alert(`❌ 重複データの作成を防止しました
+
+既存データ:
+${existingData.join('、')}
+
+管理番号: ${order.managementNumber}
+
+既存データを確認・編集するには、工程管理・工数管理画面で上記の管理番号を検索してください。`);
+
+        setIsSaving(false);
+        return;
+      }
+
+      console.log('✅ 重複チェック完了: 新規作成を継続');
+
       // 工程データの作成
       const processData = {
         orderId: order.id,
@@ -285,7 +350,28 @@ const OrderManagement = () => {
 
       // 工数作成
       const workHoursResult = await createWorkHours(workHoursData);
-      
+
+      // 管理番号レコードに関連IDを登録（双方向同期）
+      console.log('🔄 管理番号レコードに関連IDを同期中...');
+
+      try {
+        if (processResult.id) {
+          await managementNumberManager.linkRelatedId(order.managementNumber, 'processId', processResult.id);
+          console.log(`✅ 工程ID同期完了: ${processResult.id}`);
+        }
+
+        if (workHoursResult.id) {
+          await managementNumberManager.linkRelatedId(order.managementNumber, 'workHoursId', workHoursResult.id);
+          console.log(`✅ 工数ID同期完了: ${workHoursResult.id}`);
+        }
+
+        console.log('✅ 双方向同期完了');
+      } catch (syncError) {
+        console.error('同期エラー:', syncError);
+        // 同期エラーは警告として表示するが、作成は成功として扱う
+        console.warn('⚠️ 管理番号レコードの同期に失敗しましたが、データ作成は成功しました');
+      }
+
       // 受注案件のステータス更新
       await updateOrder(order.id, {
         status: 'data-work',
@@ -297,6 +383,7 @@ const OrderManagement = () => {
 
 📋 工程ID: ${processResult.id}
 ⏱️ 工数管理ID: ${workHoursResult.id || 'エラー'}
+🔗 管理番号: ${order.managementNumber}
 
 工程管理・工数管理画面で詳細な工数を入力してください。`);
 
@@ -308,17 +395,20 @@ const OrderManagement = () => {
     }
   };
 
-  // Filter orders
+  // Filter orders based on active tab
   const filteredOrders = orders.filter((order) => {
+    // Tab filtering first
+    const matchesTab = activeTab === 'active' ? order.status !== 'completed' : order.status === 'completed';
+
     const matchesSearch =
       order.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.managementNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.client.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     const matchesClient = filterClient === 'all' || order.client === filterClient;
-    
-    return matchesSearch && matchesStatus && matchesClient;
+
+    return matchesTab && matchesSearch && matchesStatus && matchesClient;
   });
 
   // Get unique clients for filter
@@ -396,6 +486,32 @@ const OrderManagement = () => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'active'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              稼働中案件 ({orders.filter(o => o.status !== 'completed').length})
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'completed'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              完了済み案件 ({orders.filter(o => o.status === 'completed').length})
+            </button>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-3">
           <div className="flex flex-col md:flex-row gap-4">
@@ -412,16 +528,25 @@ const OrderManagement = () => {
               </div>
             </div>
             
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select
+              value={filterStatus}
+              onValueChange={setFilterStatus}
+              disabled={activeTab === 'completed'}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="ステータスで絞り込み" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">すべてのステータス</SelectItem>
-                <SelectItem value="planning">計画中</SelectItem>
-                <SelectItem value="data-work">データ作業中</SelectItem>
-                <SelectItem value="processing">進行中</SelectItem>
-                <SelectItem value="completed">完了</SelectItem>
+                {activeTab === 'active' ? (
+                  <>
+                    <SelectItem value="planning">計画中</SelectItem>
+                    <SelectItem value="data-work">データ作業中</SelectItem>
+                    <SelectItem value="processing">進行中</SelectItem>
+                  </>
+                ) : (
+                  <SelectItem value="completed">完了</SelectItem>
+                )}
               </SelectContent>
             </Select>
             
@@ -472,13 +597,62 @@ const OrderManagement = () => {
                   <FileText className="w-4 h-4 mr-2" />
                   CSV形式でダウンロード
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => {
                     exportOrders(filteredOrders, 'excel');
                   }}
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Excel形式でダウンロード
+                </DropdownMenuItem>
+
+                <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
+
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const result = await exportIntegratedData('excel', {
+                      includeCompleted: activeTab === 'completed' || activeTab === 'active',
+                      includeActive: activeTab === 'active' || activeTab === 'completed'
+                    });
+                    if (result.success) {
+                      alert(`✅ ${result.message}\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                    } else {
+                      alert(`❌ ${result.message}`);
+                    }
+                  }}
+                >
+                  <Package className="w-4 h-4 mr-2" />
+                  統合エクスポート (案件+工程+工数)
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const result = await exportByPeriod('month', new Date(), 'excel');
+                    if (result.success) {
+                      alert(`✅ 今月分の統合データをエクスポートしました\n受注案件: ${result.counts?.orders}件\n工程管理: ${result.counts?.processes}件\n工数管理: ${result.counts?.workHours}件`);
+                    } else {
+                      alert(`❌ ${result.message}`);
+                    }
+                  }}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  今月分統合エクスポート
+                </DropdownMenuItem>
+
+                <div className="border-t border-gray-200 dark:border-slate-600 my-1"></div>
+
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const result = await exportComprehensiveProjectData('excel');
+                    if (result.success) {
+                      alert(`✅ 完了済み案件の包括的データをエクスポートしました\n案件数: ${result.projectCount}件\n\n含まれるデータ:\n・完了案件の受注〜納品履歴\n・関連工程の実績詳細\n・実作業時間・コスト\n・収益性分析（粗利・粗利率）`);
+                    } else {
+                      alert(`❌ ${result.message}`);
+                    }
+                  }}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  完了案件アーカイブデータ
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

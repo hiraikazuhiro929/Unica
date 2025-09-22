@@ -20,6 +20,7 @@ import {
   getClientColor,
   calculateTotalHours,
 } from "@/app/tasks/components/gantt/ganttUtils";
+import { getMachinesFromWorkHours } from "@/app/tasks/utils/machineUtils";
 
 interface GanttBarProps {
   process: Process;
@@ -72,6 +73,29 @@ export const GanttBar: React.FC<GanttBarProps> = ({
   // リサイズ用のstate
   const [isHovered, setIsHovered] = useState(false);
 
+  // 機械情報の状態管理
+  const [machines, setMachines] = useState<string[]>([]);
+  const [machinesLoading, setMachinesLoading] = useState(false);
+
+  // 機械情報を取得
+  useEffect(() => {
+    const fetchMachines = async () => {
+      if (!process.id) return;
+
+      setMachinesLoading(true);
+      try {
+        const machineList = await getMachinesFromWorkHours(process.id);
+        setMachines(machineList);
+      } catch (error) {
+        console.error('機械情報の取得に失敗:', error);
+      } finally {
+        setMachinesLoading(false);
+      }
+    };
+
+    fetchMachines();
+  }, [process.id]);
+
   const handleResizeMouseDown = (
     e: React.MouseEvent,
     edge: "left" | "right"
@@ -98,7 +122,7 @@ export const GanttBar: React.FC<GanttBarProps> = ({
               {...(!isResizing ? attributes : {})}
               style={{
                 backgroundColor: getClientColor(process.orderClient),
-                width: `${Math.max(position.width, 2)}%`,
+                width: `${Math.max(position.width, 0.5)}%`,
                 left: `${position.left}%`,
                 top: position.top !== undefined ? `${position.top}px` : `50%`, // ← この行に変更
                 height: "24px",
@@ -195,6 +219,9 @@ export const GanttBar: React.FC<GanttBarProps> = ({
                 {new Date(
                   process.dueDate || process.shipmentDate
                 ).toLocaleDateString("ja-JP")}
+              </div>
+              <div className="text-sm">
+                機械: {machinesLoading ? "読み込み中..." : machines.length > 0 ? machines.join(", ") : "未設定"}
               </div>
               {process.remarks && (
                 <div className="text-sm text-amber-600">

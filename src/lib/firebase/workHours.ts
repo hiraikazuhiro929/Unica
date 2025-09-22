@@ -120,6 +120,22 @@ export const createWorkHours = async (
 
     const docRef = await addDoc(collection(db, WORK_HOURS_COLLECTIONS.WORK_HOURS), sanitizeForFirestore(cleanedData));
 
+    // 管理番号システムに工数IDを関連付け
+    if (workHoursData.managementNumber) {
+      try {
+        const { managementNumberManager } = await import('../utils/managementNumber');
+        await managementNumberManager.linkRelatedId(
+          workHoursData.managementNumber,
+          'workHoursId',
+          docRef.id
+        );
+        console.log(`✅ 工数ID同期完了: ${docRef.id} -> ${workHoursData.managementNumber}`);
+      } catch (linkError) {
+        console.error('管理番号同期エラー:', linkError);
+        // 同期エラーは警告として記録するが、作成は成功として扱う
+      }
+    }
+
     // 履歴記録
     await createWorkHoursHistory({
       workHoursId: docRef.id || '',
@@ -400,8 +416,8 @@ export const syncWorkHoursFromDailyReport = async (
         // 製番管理システムを使用して正確に検索
         const { managementNumberManager } = await import('../utils/managementNumber');
         
-        // 1. 製番でレコードを直接検索
-        const managementRecord = await managementNumberManager.findByManagementNumber(productionNumber);
+        // 1. 製番でレコードを直接検索（修復機能付き）
+        const managementRecord = await managementNumberManager.findByManagementNumberWithRepair(productionNumber);
         
         let matchingWorkHours = null;
         

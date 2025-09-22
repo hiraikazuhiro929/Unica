@@ -31,6 +31,9 @@ import {
   ChevronDown,
   FileText,
   RefreshCcw,
+  Camera,
+  X,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,6 +42,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { exportDefectReports } from "@/lib/utils/exportUtils";
 import { useDefectReports } from './hooks/useDefectReports';
 
@@ -82,6 +94,21 @@ const DefectReportsPage = () => {
   const [filterStatus, setFilterStatus] = useState<"all" | DefectReport["status"]>("all");
   const [filterCategory, setFilterCategory] = useState<"all" | DefectReport["category"]>("all");
   const [showNewReportModal, setShowNewReportModal] = useState(false);
+
+  // 新規報告フォームの状態
+  const [newReport, setNewReport] = useState({
+    title: "",
+    description: "",
+    severity: "medium" as DefectReport["severity"],
+    category: "quality" as DefectReport["category"],
+    reporter: "",
+    location: "",
+    estimatedCost: "",
+  });
+
+  // 画像添付用の状態
+  const [attachedImages, setAttachedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   // エラー表示
   useEffect(() => {
@@ -227,6 +254,94 @@ const DefectReportsPage = () => {
     material: "材料",
     safety: "安全",
     other: "その他"
+  };
+
+  // 画像添付処理
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    const totalImages = attachedImages.length + newFiles.length;
+
+    if (totalImages > 5) {
+      alert("画像は最大5枚まで添付できます。");
+      return;
+    }
+
+    // ファイルサイズチェック（5MB制限）
+    const oversizedFiles = newFiles.filter(file => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      alert("画像ファイルは5MB以下にしてください。");
+      return;
+    }
+
+    // 画像ファイルのみ許可
+    const imageFiles = newFiles.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length !== newFiles.length) {
+      alert("画像ファイルのみ添付できます。");
+      return;
+    }
+
+    setAttachedImages(prev => [...prev, ...imageFiles]);
+
+    // プレビュー生成
+    imageFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // 画像削除
+  const removeImage = (index: number) => {
+    setAttachedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 新規報告の保存
+  const handleSaveNewReport = async () => {
+    if (!newReport.title || !newReport.description || !newReport.reporter) {
+      alert("必須項目を入力してください。");
+      return;
+    }
+
+    try {
+      const reportData = {
+        title: newReport.title,
+        description: newReport.description,
+        severity: newReport.severity,
+        category: newReport.category,
+        reporter: newReport.reporter,
+        location: newReport.location,
+        estimatedCost: newReport.estimatedCost ? parseFloat(newReport.estimatedCost) : undefined,
+        status: "open" as DefectReport["status"],
+        dateReported: new Date(),
+      };
+
+      await createReport(reportData);
+      await refreshData();
+
+      // フォームをリセット
+      setNewReport({
+        title: "",
+        description: "",
+        severity: "medium",
+        category: "quality",
+        reporter: "",
+        location: "",
+        estimatedCost: "",
+      });
+      setAttachedImages([]);
+      setImagePreviews([]);
+
+      setShowNewReportModal(false);
+    } catch (error) {
+      console.error('Failed to create report:', error);
+      alert('報告の作成に失敗しました: ' + (error as Error).message);
+    }
   };
 
   return (
@@ -467,6 +582,169 @@ const DefectReportsPage = () => {
             )}
           </div>
         </div>
+
+        {/* 新規報告モーダル */}
+        <Dialog open={showNewReportModal} onOpenChange={setShowNewReportModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-slate-800">
+            <DialogHeader>
+              <DialogTitle className="dark:text-white">新規不具合報告</DialogTitle>
+              <DialogDescription className="dark:text-slate-300">
+                不具合の詳細情報を入力してください。
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title" className="dark:text-slate-200">タイトル *</Label>
+                  <Input
+                    id="title"
+                    value={newReport.title}
+                    onChange={(e) => setNewReport(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="不具合のタイトルを入力"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reporter" className="dark:text-slate-200">報告者 *</Label>
+                  <Input
+                    id="reporter"
+                    value={newReport.reporter}
+                    onChange={(e) => setNewReport(prev => ({ ...prev, reporter: e.target.value }))}
+                    placeholder="報告者名を入力"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description" className="dark:text-slate-200">詳細説明 *</Label>
+                <Textarea
+                  id="description"
+                  rows={4}
+                  value={newReport.description}
+                  onChange={(e) => setNewReport(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="不具合の詳細な説明を入力してください"
+                  className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="severity" className="dark:text-slate-200">重要度</Label>
+                  <Select value={newReport.severity} onValueChange={(value) => setNewReport(prev => ({ ...prev, severity: value as DefectReport["severity"] }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">低</SelectItem>
+                      <SelectItem value="medium">中</SelectItem>
+                      <SelectItem value="high">高</SelectItem>
+                      <SelectItem value="critical">緊急</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="category" className="dark:text-slate-200">分類</Label>
+                  <Select value={newReport.category} onValueChange={(value) => setNewReport(prev => ({ ...prev, category: value as DefectReport["category"] }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="quality">品質</SelectItem>
+                      <SelectItem value="equipment">設備</SelectItem>
+                      <SelectItem value="process">工程</SelectItem>
+                      <SelectItem value="material">材料</SelectItem>
+                      <SelectItem value="safety">安全</SelectItem>
+                      <SelectItem value="other">その他</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="location" className="dark:text-slate-200">発生場所</Label>
+                <Input
+                  id="location"
+                  value={newReport.location}
+                  onChange={(e) => setNewReport(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="不具合の発生場所を入力"
+                  className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="estimatedCost" className="dark:text-slate-200">推定費用 (円)</Label>
+                <Input
+                  id="estimatedCost"
+                  type="number"
+                  value={newReport.estimatedCost}
+                  onChange={(e) => setNewReport(prev => ({ ...prev, estimatedCost: e.target.value }))}
+                  placeholder="推定される対応費用を入力"
+                  className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* 画像添付セクション */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="dark:text-slate-200">写真添付 (最大5枚、1枚5MB以下)</Label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="image-upload"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:hover:bg-slate-600"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    写真を追加
+                  </Button>
+                </div>
+              </div>
+
+              {/* 画像プレビュー */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`添付画像 ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200 dark:border-slate-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 py-0.5 rounded">
+                        {Math.round(attachedImages[index]?.size / 1024)}KB
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowNewReportModal(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleSaveNewReport} className="bg-red-600 hover:bg-red-700">
+                報告を作成
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

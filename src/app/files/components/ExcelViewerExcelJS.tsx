@@ -488,6 +488,32 @@ const ExcelViewerExcelJS: React.FC<ExcelViewerExcelJSProps> = ({ file, onClose }
     return name;
   };
 
+  // ファイルダウンロード機能
+  const handleDownload = () => {
+    if (!file.dataUrl) {
+      // ダミーファイルの場合
+      const dummyContent = `ファイル名: ${file.name}\nファイルタイプ: Excel\nサイズ: 不明`;
+      const blob = new Blob([dummyContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // 実際のファイルがある場合
+    const a = document.createElement('a');
+    a.href = file.dataUrl;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   // 色調調整関数（Excelのtint値に対応）
   const applyTint = (color: string, tint: number): string => {
     if (!color.startsWith('#') || tint === 0) return color;
@@ -894,6 +920,14 @@ const ExcelViewerExcelJS: React.FC<ExcelViewerExcelJSProps> = ({ file, onClose }
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              ダウンロード
+            </Button>
             <Button
               variant="outline"
               size="sm"

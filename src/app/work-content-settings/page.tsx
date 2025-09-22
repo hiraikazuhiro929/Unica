@@ -185,8 +185,8 @@ export default function WorkContentSettingsPage() {
               </CardTitle>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button 
-                    className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white border-0 shadow-md"
+                  <Button
+                    className="bg-slate-600 hover:bg-slate-700 text-white border-0 shadow-md"
                     onClick={() => {
                       setEditingItem(null);
                       setFormData({ name: "", nameJapanese: "", isActive: true });
@@ -242,7 +242,7 @@ export default function WorkContentSettingsPage() {
                       </Button>
                       <Button
                         onClick={handleSaveItem}
-                        className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white"
+                        className="bg-slate-600 hover:bg-slate-700 text-white"
                         disabled={!formData.name.trim() || !formData.nameJapanese.trim()}
                       >
                         {editingItem ? "更新" : "追加"}

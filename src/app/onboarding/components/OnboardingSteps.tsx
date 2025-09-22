@@ -36,10 +36,10 @@ export const PurposeStep: React.FC<StepProps> = ({ formData, updateFormData }) =
         animate={{ opacity: 1, y: 0 }}
         className="text-3xl font-bold text-gray-900"
       >
-        Unicaをどのように使いますか？
+        新しい組織を作成
       </motion.h1>
       <p className="text-gray-600 text-lg">
-        最適な体験を提供するため、教えてください
+        チームでの製造業務管理を始めましょう
       </p>
     </div>
 
@@ -51,13 +51,6 @@ export const PurposeStep: React.FC<StepProps> = ({ formData, updateFormData }) =
           title: '新しいチームを作る',
           subtitle: 'あなたが管理者として始める',
           color: 'blue',
-        },
-        {
-          id: 'join',
-          icon: Users,
-          title: '既存のチームに参加',
-          subtitle: '招待されたチームに参加する',
-          color: 'green',
         },
       ].map((option) => {
         const Icon = option.icon;

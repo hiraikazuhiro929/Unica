@@ -424,7 +424,7 @@ export default function ModernSidebar() {
         {/* ユーザー設定 */}
         <div className="mt-2 relative" style={{ paddingLeft: '16px' }} ref={userMenuRef}>
           <div className="flex items-center py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-700 dark:hover:bg-slate-700 cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white font-bold flex-shrink-0">
               {user?.name?.charAt(0) || 'U'}
             </div>
             <div className={`ml-3 flex items-center justify-between flex-1 transition-all duration-300 ${

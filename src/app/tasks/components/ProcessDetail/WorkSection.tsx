@@ -16,7 +16,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-orange-700 border-b-2 border-orange-200 pb-2">
+      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
         作業内容
       </h3>
       <div className="space-y-3">
@@ -26,7 +26,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               段取り (時間)
             </Label>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
               {process.workDetails.setup}H
             </span>
           </div>
@@ -35,7 +35,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               機械加工 (時間)
             </Label>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
               {process.workDetails.machining}H
             </span>
           </div>
@@ -44,7 +44,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
               仕上げ (時間)
             </Label>
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
               {process.workDetails.finishing}H
             </span>
           </div>
@@ -57,8 +57,8 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
             process.workDetails.additionalMachining > 0) ||
           (process.workDetails.additionalFinishing &&
             process.workDetails.additionalFinishing > 0)) && (
-          <div className="space-y-3 pt-3 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-600">追加工数</h4>
+          <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">追加工数</h4>
 
             {process.workDetails.additionalSetup &&
               process.workDetails.additionalSetup > 0 && (
@@ -66,7 +66,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
                   <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加段取り
                   </Label>
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
                     {process.workDetails.additionalSetup}H
                   </span>
                 </div>
@@ -78,7 +78,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
                   <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加機械加工
                   </Label>
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
                     {process.workDetails.additionalMachining}H
                   </span>
                 </div>
@@ -90,7 +90,7 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
                   <Label className="text-gray-700 dark:text-gray-300 font-medium w-32">
                     追加仕上げ
                   </Label>
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
                     {process.workDetails.additionalFinishing}H
                   </span>
                 </div>
