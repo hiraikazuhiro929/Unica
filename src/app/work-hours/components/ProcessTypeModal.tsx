@@ -81,7 +81,7 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {processType ? '工程タイプ編集' : '工程タイプ追加'}
           </h2>
@@ -102,7 +102,7 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
               onChange={(e) => setFormData({ ...formData, nameJapanese: e.target.value })}
               placeholder="例: 検査"
               required
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800"
             />
           </div>
 
@@ -113,7 +113,7 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="例: inspection"
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800"
             />
             <p className="text-xs text-gray-500 mt-1">
               空欄の場合は自動生成されます
@@ -131,7 +131,7 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-slate-800">
                 <SelectItem value="setup">段取り</SelectItem>
                 <SelectItem value="machining">加工</SelectItem>
                 <SelectItem value="finishing">仕上げ</SelectItem>
@@ -146,12 +146,12 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
             <Input
               type="number"
               value={formData.hourlyRate || ''}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                hourlyRate: e.target.value ? parseInt(e.target.value) : undefined 
+              onChange={(e) => setFormData({
+                ...formData,
+                hourlyRate: e.target.value ? parseInt(e.target.value) : undefined
               })}
               placeholder="例: 3000"
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800"
             />
           </div>
 
@@ -160,12 +160,12 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
             <Input
               type="number"
               value={formData.order}
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                order: parseInt(e.target.value) || 1 
+              onChange={(e) => setFormData({
+                ...formData,
+                order: parseInt(e.target.value) || 1
               })}
               min="1"
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800"
             />
           </div>
 
@@ -175,7 +175,7 @@ export const ProcessTypeModal: React.FC<ProcessTypeModalProps> = ({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="工程の説明を入力"
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800"
               rows={3}
             />
           </div>

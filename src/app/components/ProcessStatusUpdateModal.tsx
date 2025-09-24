@@ -151,9 +151,9 @@ const ProcessStatusUpdateModal: React.FC<ProcessStatusUpdateModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent className="max-w-2xl dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white">
             <Activity className="w-5 h-5" />
             <span>工程状況更新</span>
           </DialogTitle>

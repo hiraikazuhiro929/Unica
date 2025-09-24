@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { ChatNotification, ChatUser } from "@/lib/firebase/chat";
 import { subscribeToNotifications, markNotificationAsRead } from "@/lib/firebase/chat";
+import { formatNotificationTime } from "@/lib/utils/dateFormatter";
 
 interface NotificationSystemProps {
   users: ChatUser[];
@@ -223,16 +224,9 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
     }
   };
 
-  // 時間のフォーマット
+  // 時間のフォーマット（統一されたユーティリティを使用）
   const formatTime = (timestamp: any): string => {
-    const date = timestamp?.toDate?.() || new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-    
-    if (diffInMinutes < 1) return 'たった今';
-    if (diffInMinutes < 60) return `${diffInMinutes}分前`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}時間前`;
-    return date.toLocaleDateString('ja-JP');
+    return formatNotificationTime(timestamp);
   };
 
   // 通知権限の要求

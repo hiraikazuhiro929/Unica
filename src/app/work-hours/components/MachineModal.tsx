@@ -74,7 +74,7 @@ export const MachineModal: React.FC<MachineModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-md border border-gray-200 dark:border-slate-600 shadow-xl">
-        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-orange-50 to-red-50 dark:from-slate-700 dark:to-slate-600">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-orange-600" />
@@ -102,6 +102,7 @@ export const MachineModal: React.FC<MachineModalProps> = ({
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="例: CNC-001"
               required
+              className="dark:bg-slate-800"
             />
           </div>
 
@@ -114,7 +115,7 @@ export const MachineModal: React.FC<MachineModalProps> = ({
               <SelectTrigger>
                 <SelectValue placeholder="機械タイプを選択" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-slate-800">
                 {machineTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -133,6 +134,7 @@ export const MachineModal: React.FC<MachineModalProps> = ({
               onChange={(e) => setFormData({ ...formData, hourlyRate: Number(e.target.value) })}
               min="0"
               step="500"
+              className="dark:bg-slate-800"
             />
           </div>
 

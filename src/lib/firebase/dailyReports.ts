@@ -56,7 +56,7 @@ export const createDailyReport = async (reportData: Omit<DailyReportEntry, 'id' 
       id: docRef.id,
       data: { id: docRef.id, ...newReport }
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating daily report:', error);
     return {
       success: false,
@@ -83,7 +83,7 @@ export const updateDailyReport = async (id: string, updateData: Partial<DailyRep
       id,
       data: updatedData
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating daily report:', error);
     return {
       success: false,
@@ -111,7 +111,7 @@ export const confirmDailyReport = async (reportId: string, confirmedBy: string) 
       success: true,
       id: reportId
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error confirming daily report:', error);
     return {
       success: false,
@@ -149,7 +149,7 @@ export const addReplyToDailyReport = async (
       id: reportId,
       data: updatedData
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error adding reply to daily report:', error);
     return {
       success: false,
@@ -185,7 +185,7 @@ export const markReplyAsRead = async (reportId: string) => {
       success: true,
       id: reportId
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error marking reply as read:', error);
     return {
       success: false,
@@ -232,7 +232,7 @@ export const getDailyReportsByWorker = async (workerId: string, options?: {
       success: true,
       data: reports
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting daily reports:', error);
     return {
       success: false,
@@ -276,7 +276,7 @@ export const saveDailyReportDraft = async (workerId: string, date: string, draft
       success: true,
       id: draftId
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error saving daily report draft:', error);
     return {
       success: false,
@@ -305,7 +305,7 @@ export const getDailyReportDraft = async (workerId: string, date: string) => {
         error: '下書きが見つかりません'
       };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting daily report draft:', error);
     return {
       success: false,
@@ -381,7 +381,7 @@ export const subscribeToDailyReports = (
     });
     
     return unsubscribe;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error setting up daily reports subscription:', error);
     return () => {}; // 空の関数を返す
   }
@@ -434,7 +434,7 @@ export const getDailyReportsList = async (options?: {
       success: true,
       data: reports
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting daily reports list:', error);
     return {
       success: false,
@@ -496,7 +496,7 @@ export const subscribeToDailyReportsList = (
     });
     
     return unsubscribe;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error setting up daily reports list subscription:', error);
     return () => {}; // 空の関数を返す
   }
@@ -600,7 +600,7 @@ export const calculateDailyReportStatistics = async (): Promise<{
       success: true,
       data: statistics
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error calculating daily report statistics:', error);
     return {
       success: false,

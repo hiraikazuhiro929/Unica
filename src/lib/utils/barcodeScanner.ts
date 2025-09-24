@@ -345,7 +345,7 @@ export class BarcodeScanner {
       const newTorchState = !settings.torch;
       
       await track.applyConstraints({
-        advanced: [{ torch: newTorchState }] as any
+        advanced: [{ torch: newTorchState } as MediaTrackConstraintSet]
       });
       
       return newTorchState;

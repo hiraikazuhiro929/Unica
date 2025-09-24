@@ -29,6 +29,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './config';
 import { AppUser } from '@/types';
+import { log } from '@/lib/logger';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -54,7 +55,7 @@ export const signUpWithEmail = async (email: string, password: string, displayNa
     await createUserProfile(result.user);
     
     return { user: result.user, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return { user: null, error: error.message };
   }
 };
@@ -63,7 +64,7 @@ export const signInWithEmail = async (email: string, password: string) => {
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return { user: result.user, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return { user: null, error: error.message };
   }
 };
@@ -73,7 +74,7 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     await createUserProfile(result.user);
     return { user: result.user, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return { user: null, error: error.message };
   }
 };
@@ -82,7 +83,7 @@ export const logOut = async () => {
   try {
     await signOut(auth);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return { error: error.message };
   }
 };
@@ -91,7 +92,7 @@ export const resetPassword = async (email: string) => {
   try {
     await sendPasswordResetEmail(auth, email);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return { error: error.message };
   }
 };
@@ -169,10 +170,10 @@ export const registerAppUser = async (userData: {
   error: string | null;
 }> => {
   try {
-    console.log('🔐 registerAppUser: Starting registration process');
+    log.auth('Starting registration process', undefined, 'registerAppUser');
     
     // 社員番号の重複チェック
-    console.log('🔍 Checking employee ID:', userData.employeeId);
+    log.debug('Checking employee ID', { employeeId: userData.employeeId }, 'registerAppUser');
     const employeeExists = await checkEmployeeIdExists(userData.employeeId);
     if (employeeExists) {
       console.warn('⚠️ Employee ID already exists:', userData.employeeId);
@@ -180,7 +181,7 @@ export const registerAppUser = async (userData: {
     }
 
     // Firebase Authentication でユーザー作成
-    console.log('🔥 Creating Firebase user for:', userData.email);
+    log.auth('Creating Firebase user', { email: userData.email }, 'registerAppUser');
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       userData.email,
@@ -188,10 +189,10 @@ export const registerAppUser = async (userData: {
     );
 
     const firebaseUser = userCredential.user;
-    console.log('✅ Firebase user created:', firebaseUser.uid);
+    log.auth('Firebase user created', { uid: firebaseUser.uid }, 'registerAppUser');
 
     // プロフィール更新
-    console.log('👤 Updating user profile');
+    log.debug('Updating user profile', undefined, 'registerAppUser');
     await updateProfile(firebaseUser, {
       displayName: userData.name,
     });
@@ -209,12 +210,12 @@ export const registerAppUser = async (userData: {
       updatedAt: serverTimestamp(),
     };
 
-    console.log('💾 Saving to Firestore:', appUser);
+    log.debug('Saving to Firestore', { uid: appUser.uid, name: appUser.name }, 'registerAppUser');
     await setDoc(doc(db, 'appUsers', firebaseUser.uid), appUser);
-    console.log('✅ User data saved to Firestore');
+    log.info('User data saved to Firestore', undefined, 'registerAppUser');
 
     return { user: appUser, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('❌ Registration error:', error);
     return { user: null, error: getAuthErrorMessage(error) };
   }
@@ -345,7 +346,7 @@ export const updateAppUser = async (
   updateData: Partial<Omit<AppUser, 'uid' | 'createdAt'>>
 ): Promise<{ error: string | null }> => {
   try {
-    console.log('🔄 Updating user data:', uid, updateData);
+    log.debug('Updating user data', { uid, updateData }, 'updateAppUser');
     
     // 社員番号が変更される場合は重複チェック
     if (updateData.employeeId) {
@@ -370,9 +371,9 @@ export const updateAppUser = async (
       });
     }
 
-    console.log('✅ User data updated successfully');
+    log.info('User data updated successfully', undefined, 'updateAppUser');
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('❌ Update user error:', error);
     return { error: error.message || 'ユーザー情報の更新に失敗しました' };
   }
@@ -403,9 +404,9 @@ export const updateUserPassword = async (
     // パスワード更新
     await firebaseUpdatePassword(auth.currentUser, newPassword);
     
-    console.log('✅ Password updated successfully');
+    log.info('Password updated successfully', undefined, 'updatePassword');
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('❌ Password update error:', error);
     return { error: getAuthErrorMessage(error) };
   }
@@ -428,9 +429,9 @@ export const deleteUserAccount = async (): Promise<{ error: string | null }> => 
     // Firebase Authからアカウント削除
     await deleteUser(auth.currentUser);
     
-    console.log('✅ Account deleted successfully');
+    log.info('Account deleted successfully', undefined, 'deleteAccount');
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('❌ Account deletion error:', error);
     return { error: getAuthErrorMessage(error) };
   }

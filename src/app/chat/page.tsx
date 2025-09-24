@@ -54,6 +54,7 @@ import { useChat } from "./hooks/useChat";
 import type { ChatAttachment, ChatMessage, ChatChannel } from "@/lib/firebase/chat";
 import { updateChannel, deleteChannel, updateServer, deleteServer, getServerInfo, ServerInfo, createCategory, subscribeToCategories, ChannelCategory } from "@/lib/firebase/chat";
 import { initializeChatData } from "@/lib/firebase/initChatData";
+import { formatChatTimestamp } from "@/lib/utils/dateFormatter";
 
 // 新しいコンポーネント
 import { ChannelCreateDialog } from "./components/ChannelCreateDialog";
@@ -628,14 +629,7 @@ const DiscordLikeChat = () => {
   }, []);
 
   const formatTimestamp = useCallback((timestamp: any): string => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleString("ja-JP", { 
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatChatTimestamp(timestamp);
   }, []);
 
   // 初期データ作成

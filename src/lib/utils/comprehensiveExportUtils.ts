@@ -1,7 +1,7 @@
 import { exportToExcel, generateFileName } from './exportUtils';
-import { getOrders } from '@/lib/firebase/orders';
-import { getProcessesList } from '@/lib/firebase/processes';
-import { getWorkHoursList } from '@/lib/firebase/workHours';
+import { getOrders, type OrderItem } from '@/lib/firebase/orders';
+import { getProcessesList, type EnhancedProcess } from '@/lib/firebase/processes';
+import { getWorkHoursList, type EnhancedWorkHours } from '@/lib/firebase/workHours';
 
 export interface ComprehensiveExportOptions {
   dateRange?: {
@@ -93,11 +93,11 @@ export const exportComprehensiveProjectData = async (
 };
 
 // 案件ベースの包括データ構築
-const buildComprehensiveProjectData = async (orders: any[], processes: any[], workHours: any[]) => {
+const buildComprehensiveProjectData = async (orders: OrderItem[], processes: EnhancedProcess[], workHours: EnhancedWorkHours[]) => {
   const comprehensiveData = {
-    summary: [] as any[],
-    detailed: [] as any[],
-    timeline: [] as any[]
+    summary: [] as Record<string, any>[],
+    detailed: [] as Record<string, any>[],
+    timeline: [] as Record<string, any>[]
   };
 
   for (const order of orders) {

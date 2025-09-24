@@ -80,7 +80,7 @@ export const createCompanyTask = async (
     });
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating company task:', error);
     return { id: null, error: error.message };
   }
@@ -142,7 +142,7 @@ export const getCompanyTasks = async (filters?: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting company tasks:', error);
     return { data: [], error: error.message };
   }
@@ -169,7 +169,7 @@ export const updateCompanyTask = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating company task:', error);
     return { error: error.message };
   }
@@ -186,7 +186,7 @@ export const deleteCompanyTask = async (
     await deleteDoc(docRef);
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting company task:', error);
     return { error: error.message };
   }
@@ -210,7 +210,7 @@ export const createPersonalTask = async (
     });
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating personal task:', error);
     return { id: null, error: error.message };
   }
@@ -275,7 +275,7 @@ export const getPersonalTasks = async (filters?: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting personal tasks:', error);
     return { data: [], error: error.message };
   }
@@ -302,7 +302,7 @@ export const updatePersonalTask = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating personal task:', error);
     return { error: error.message };
   }
@@ -319,7 +319,7 @@ export const deletePersonalTask = async (
     await deleteDoc(docRef);
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting personal task:', error);
     return { error: error.message };
   }
@@ -446,7 +446,7 @@ export const deleteAllPersonalTasks = async (): Promise<{ error: string | null }
     
     console.log(`${querySnapshot.docs.length} 個の個人タスクを削除しました`);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting all personal tasks:', error);
     return { error: error.message };
   }
@@ -464,7 +464,7 @@ export const deleteAllCompanyTasks = async (): Promise<{ error: string | null }>
     
     console.log(`${querySnapshot.docs.length} 個の会社タスクを削除しました`);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting all company tasks:', error);
     return { error: error.message };
   }
@@ -530,7 +530,7 @@ export const getTasksStatistics = async (userId?: string): Promise<{
       },
       error: null
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting tasks statistics:', error);
     return {
       data: {

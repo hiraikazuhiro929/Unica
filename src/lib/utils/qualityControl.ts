@@ -546,7 +546,7 @@ export class QualityControlSystem {
         cause,
         count,
         impact: count > 10 ? 'high' : count > 5 ? 'medium' : 'low'
-      })) as any;
+      })) as Array<{ cause: string; count: number; impact: 'high' | 'medium' | 'low' }>;
   }
 
   // =============================================================================

@@ -95,13 +95,13 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-white p-6 flex-shrink-0 border-b border-slate-600 dark:border-slate-700">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 text-gray-800 dark:text-white p-6 flex-shrink-0 border-b border-blue-100 dark:border-slate-600">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">
                 {editedProcess.projectName || "新規工程"}
               </h2>
-              <p className="text-slate-300 dark:text-slate-400 mt-1">
+              <p className="text-gray-600 dark:text-slate-400 mt-1">
                 {editedProcess.managementNumber && editedProcess.lineNumber
                   ? `${editedProcess.managementNumber} / ${editedProcess.lineNumber}`
                   : ""}
@@ -109,7 +109,7 @@ export const ProcessDetail: React.FC<ProcessDetailProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white transition-colors duration-200 hover:bg-slate-700 rounded-lg p-2"
+              className="text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white transition-colors duration-200 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-lg p-2"
             >
               <X className="w-6 h-6" />
             </button>

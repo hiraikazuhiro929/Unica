@@ -1,0 +1,14 @@
+
+> unica@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, using available port 3004 instead.
+   ▲ Next.js 15.3.5
+   - Local:        http://localhost:3004
+   - Network:      http://192.10.10.102:3004
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ✓ forceSwcTransforms
+
+ ✓ Starting...
+ ✓ Ready in 1916ms

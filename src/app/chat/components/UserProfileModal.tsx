@@ -23,6 +23,7 @@ import {
   Calendar,
 } from "lucide-react";
 import type { ChatUser } from "@/lib/firebase/chat";
+import { formatRelativeTime } from "@/lib/utils/dateFormatter";
 
 interface UserProfileModalProps {
   user: ChatUser | null;
@@ -76,22 +77,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   const formatLastSeen = (lastSeen: any): string => {
-    if (!lastSeen) return '不明';
-    
-    const date = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-    
-    if (diffInMinutes < 1) return 'たった今';
-    if (diffInMinutes < 60) return `${diffInMinutes}分前`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}時間前`;
-    
-    return date.toLocaleDateString('ja-JP', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatRelativeTime(lastSeen);
   };
 
   const handleDirectMessage = () => {
@@ -114,11 +100,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
           <div className="flex items-center justify-between">
-            <DialogTitle>ユーザープロフィール</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <DialogTitle className="dark:text-white">ユーザープロフィール</DialogTitle>
+            <Button variant="ghost" size="sm" onClick={onClose} className="dark:hover:bg-slate-600">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -138,7 +124,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{user.name}</h3>
               <div className="flex items-center space-x-2 mt-1">
                 <Badge variant="secondary" className="text-xs">
                   {user.role}
@@ -154,17 +140,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center space-x-3 text-sm">
               <Mail className="w-4 h-4 text-gray-500" />
-              <span className="text-gray-700">{user.email}</span>
+              <span className="text-gray-700 dark:text-slate-300">{user.email}</span>
             </div>
             
             <div className="flex items-center space-x-3 text-sm">
               <Building2 className="w-4 h-4 text-gray-500" />
-              <span className="text-gray-700">{user.department}</span>
+              <span className="text-gray-700 dark:text-slate-300">{user.department}</span>
             </div>
             
             <div className="flex items-center space-x-3 text-sm">
               <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-gray-700">
+              <span className="text-gray-700 dark:text-slate-300">
                 最後のアクティブ: {formatLastSeen(user.lastSeen)}
               </span>
             </div>
@@ -172,7 +158,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             {user.statusMessage && (
               <div className="flex items-center space-x-3 text-sm">
                 <MessageCircle className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-700 italic">"{user.statusMessage}"</span>
+                <span className="text-gray-700 dark:text-slate-300 italic">"{user.statusMessage}"</span>
               </div>
             )}
           </div>
@@ -180,7 +166,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* 権限情報 */}
           {user.permissions && (
             <div className="border-t pt-4">
-              <h4 className="font-medium text-gray-900 mb-2">権限</h4>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">権限</h4>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {user.permissions.canCreateChannels && (
                   <div className="flex items-center space-x-2">
@@ -259,12 +245,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* 現在のユーザーの場合 */}
           {isCurrentUser && (
             <div className="border-t pt-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <UserCheck className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">あなたのプロフィール</span>
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">あなたのプロフィール</span>
                 </div>
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
                   設定でプロフィールを変更できます
                 </p>
               </div>

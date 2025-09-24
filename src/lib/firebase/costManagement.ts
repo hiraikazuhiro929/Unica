@@ -142,7 +142,7 @@ export const createOrUpdateBudget = async (
       ...budgetData,
       currencyCode: budgetData.currencyCode || 'JPY',
       lastUpdated: new Date().toISOString(),
-      budgetVersion: (currentBudget as any)?.budgetVersion ? (currentBudget as any).budgetVersion + 1 : 1,
+      budgetVersion: (currentBudget && 'budgetVersion' in currentBudget) ? (currentBudget as Record<string, any>).budgetVersion + 1 : 1,
       revisions: [],
       alerts: []
     };
@@ -158,7 +158,7 @@ export const createOrUpdateBudget = async (
         changes: calculateBudgetChanges(currentBudget, newBudget)
       };
 
-      newBudget.revisions = [revision, ...(currentBudget as any)?.revisions || []].slice(0, 10);
+      newBudget.revisions = [revision, ...((currentBudget as Record<string, any>)?.revisions || [])].slice(0, 10);
     }
 
     // 予算アラートをチェック
@@ -627,7 +627,7 @@ const calculateBudgetChanges = (
 
   fieldsToCheck.forEach(field => {
     const oldValue = oldBudget[field];
-    const newValue = (newBudget as any)[field];
+    const newValue = (newBudget as Record<string, any>)[field];
     
     if (oldValue !== newValue) {
       changes.push({

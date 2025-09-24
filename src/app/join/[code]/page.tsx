@@ -13,6 +13,7 @@ import { Loader2, Building2, AlertCircle, CheckCircle, UserPlus } from "lucide-r
 import { registerAppUser, DEPARTMENTS, ROLES } from "@/lib/firebase/auth";
 import { joinCompanyWithInvite } from "@/lib/firebase/company";
 import { useAuth } from "@/contexts/AuthContext";
+import { UserRole } from "@/types";
 
 export default function JoinWithCodePage() {
   const router = useRouter();
@@ -26,17 +27,32 @@ export default function JoinWithCodePage() {
     confirmPassword: "",
     name: "",
     employeeId: "",
-    role: "" as "" | "admin" | "manager" | "leader" | "worker",
+    role: "" as "" | UserRole,
     department: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // 招待コードの形式チェック
+  // 招待コードの形式チェック（32文字以上の個別招待コードのみ）
   useEffect(() => {
-    if (!inviteCode || inviteCode.length !== 8) {
-      setError("無効な招待コードです");
+    if (!inviteCode) {
+      setError("招待コードが不正です");
+      return;
+    }
+
+    // 32文字以上のセキュアトークンのみ受け入れ
+    if (inviteCode.length < 32) {
+      setError(
+        "⚠️ セキュリティエラー：" +
+        "\n\n" +
+        "この招待リンクは古い形式（固定招待コード）です。" +
+        "\n\n" +
+        "セキュリティ強化により、個別招待のみサポートしています。" +
+        "\n\n" +
+        "管理者に新しい個別招待メールの再送依頼をしてください。"
+      );
+      return;
     }
   }, [inviteCode]);
 
@@ -101,7 +117,7 @@ export default function JoinWithCodePage() {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        role: formData.role,
+        role: formData.role as UserRole,
         department: formData.department,
         employeeId: formData.employeeId,
       });
@@ -116,9 +132,9 @@ export default function JoinWithCodePage() {
         return;
       }
 
-      // 2. 企業に参加
+      // 2. 企業に参加（個別招待トークンをそのまま使用）
       const joinResult = await joinCompanyWithInvite(
-        inviteCode.toUpperCase(),
+        inviteCode, // セキュアトークンは大文字変換不要
         result.user.uid,
         { name: formData.name, email: formData.email }
       );
@@ -175,7 +191,9 @@ export default function JoinWithCodePage() {
               企業に参加
             </CardTitle>
             <CardDescription>
-              招待コード: <code className="font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded">{inviteCode}</code>
+              個別招待トークン: <code className="font-mono text-green-600 bg-green-50 px-2 py-1 rounded text-xs">
+                {inviteCode?.substring(0, 8)}...（32文字セキュアトークン）
+              </code>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -239,8 +257,20 @@ export default function JoinWithCodePage() {
                 </Select>
               </div>
 
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">📧 個別招待について</p>
+                  <ul className="text-xs space-y-1">
+                    <li>• 32文字のセキュアトークンで保護</li>
+                    <li>• メールアドレスが事前登録済み</li>
+                    <li>• 7日間の有効期限</li>
+                    <li>• 1回限りの使用</li>
+                  </ul>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="role">役職</Label>
+                <Label htmlFor="role">役職（招待時に指定済み）</Label>
                 <Select
                   value={formData.role}
                   onValueChange={(value) => handleSelectChange("role", value)}

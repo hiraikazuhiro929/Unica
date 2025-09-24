@@ -115,9 +115,9 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white">
             <Hash className="w-5 h-5" />
             <span>{channel.name} の設定</span>
           </DialogTitle>
@@ -153,6 +153,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 onChange={(e) => setChannelName(e.target.value)}
                 disabled={!isOwner}
                 placeholder="チャンネル名を入力"
+                className="dark:bg-slate-800"
               />
             </div>
 
@@ -164,6 +165,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 onChange={(e) => setChannelTopic(e.target.value)}
                 disabled={!isOwner}
                 placeholder="このチャンネルの話題を設定"
+                className="dark:bg-slate-800"
               />
             </div>
 
@@ -176,6 +178,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 disabled={!isOwner}
                 placeholder="チャンネルの説明を入力"
                 rows={3}
+                className="dark:bg-slate-800"
               />
             </div>
 
@@ -185,7 +188,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="dark:bg-slate-800">
                   <SelectItem value="text">テキスト</SelectItem>
                   <SelectItem value="voice">ボイス</SelectItem>
                   <SelectItem value="announcement">アナウンス</SelectItem>
@@ -196,7 +199,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label htmlFor="private-channel">プライベートチャンネル</Label>
-                <p className="text-sm text-gray-500">招待されたメンバーのみアクセス可能</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">招待されたメンバーのみアクセス可能</p>
               </div>
               <Switch
                 id="private-channel"
@@ -226,21 +229,21 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
           {/* 権限設定 */}
           <TabsContent value="permissions" className="space-y-4 mt-4">
             <div className="space-y-4">
-              <h3 className="font-semibold">ロール別権限</h3>
+              <h3 className="font-semibold dark:text-white">ロール別権限</h3>
               
               <div className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">管理者</p>
-                    <p className="text-sm text-gray-500">すべての権限を持つ</p>
+                    <p className="font-medium dark:text-white">管理者</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">すべての権限を持つ</p>
                   </div>
                   <Badge>フルアクセス</Badge>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">メンバー</p>
-                    <p className="text-sm text-gray-500">メッセージの送信と閲覧</p>
+                    <p className="font-medium dark:text-white">メンバー</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">メッセージの送信と閲覧</p>
                   </div>
                   <div className="flex space-x-2">
                     <Badge variant="outline">読み取り</Badge>
@@ -250,15 +253,15 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">ゲスト</p>
-                    <p className="text-sm text-gray-500">閲覧のみ</p>
+                    <p className="font-medium dark:text-white">ゲスト</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">閲覧のみ</p>
                   </div>
                   <Badge variant="outline">読み取りのみ</Badge>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-medium text-sm">詳細権限</h4>
+                <h4 className="font-medium text-sm dark:text-white">詳細権限</h4>
                 
                 <div className="flex items-center justify-between">
                   <Label>メッセージを送信</Label>
@@ -292,7 +295,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
           <TabsContent value="members" className="space-y-4 mt-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">チャンネルメンバー ({channel.memberCount || 0}人)</h3>
+                <h3 className="font-semibold dark:text-white">チャンネルメンバー ({channel.memberCount || 0}人)</h3>
                 <Button size="sm">
                   <UserPlus className="w-4 h-4 mr-2" />
                   メンバーを追加
@@ -307,8 +310,8 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                         {user.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.role}</p>
+                        <p className="font-medium dark:text-white">{user.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">{user.role}</p>
                       </div>
                     </div>
                     {isOwner && user.id !== currentUserId && (
@@ -325,13 +328,13 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
           {/* 通知設定 */}
           <TabsContent value="notifications" className="space-y-4 mt-4">
             <div className="space-y-4">
-              <h3 className="font-semibold">通知設定</h3>
+              <h3 className="font-semibold dark:text-white">通知設定</h3>
               
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>すべてのメッセージ</Label>
-                    <p className="text-sm text-gray-500">すべての新着メッセージを通知</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">すべての新着メッセージを通知</p>
                   </div>
                   <Switch />
                 </div>
@@ -339,7 +342,7 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>@メンションのみ</Label>
-                    <p className="text-sm text-gray-500">自分がメンションされたときのみ通知</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">自分がメンションされたときのみ通知</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
@@ -347,14 +350,14 @@ export const ChannelSettingsModal: React.FC<ChannelSettingsModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>なし</Label>
-                    <p className="text-sm text-gray-500">このチャンネルの通知を無効化</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">このチャンネルの通知を無効化</p>
                   </div>
                   <Switch />
                 </div>
               </div>
 
               <div className="border-t pt-4 space-y-3">
-                <h4 className="font-medium text-sm">サウンド設定</h4>
+                <h4 className="font-medium text-sm dark:text-white">サウンド設定</h4>
                 
                 <div className="flex items-center justify-between">
                   <Label>通知音を再生</Label>

@@ -5,7 +5,39 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, inviteLink, companyName, inviterName, role } = await request.json();
+    // リクエストボディを取得して文字エンコーディングを検証
+    const rawBody = await request.text();
+
+    // 文字化けチェック: 不正文字を含む場合はエラーを返す
+    if (rawBody.includes('�') || /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(rawBody)) {
+      console.error('Invalid character encoding detected in request body:', rawBody);
+      return NextResponse.json(
+        { error: 'リクエストの文字エンコーディングが正しくありません。UTF-8で送信してください。' },
+        { status: 400 }
+      );
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw body:', rawBody);
+      return NextResponse.json(
+        { error: 'JSONの形式が正しくありません。' },
+        { status: 400 }
+      );
+    }
+
+    const {
+      email,
+      inviteLink,
+      companyName,
+      inviterName,
+      role,
+      message,
+      expiresAt
+    } = parsedData;
 
     if (!email || !inviteLink || !companyName) {
       return NextResponse.json(
@@ -14,17 +46,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // セキュリティ: 招待リンクの形式を検証
+    const urlPattern = /^https?:\/\/[^\/]+\/join\/[a-zA-Z0-9]+$/;
+    if (!urlPattern.test(inviteLink)) {
+      return NextResponse.json(
+        { error: '不正な招待リンクです' },
+        { status: 400 }
+      );
+    }
+
+    // テキスト版メール本文
+    const textContent = `
+${companyName}に招待されました
+
+${inviterName ? `${inviterName}さんから${companyName}のチームに参加する招待が届きました。` : ''}
+
+${message ? `メッセージ: ${message}` : ''}
+
+参加する役職: ${role}
+${expiresAt ? `この招待は${new Date(expiresAt).toLocaleDateString('ja-JP')}まで有効です` : ''}
+
+下記のリンクをクリックしてチームに参加してください：
+${inviteLink}
+
+上記のリンクが機能しない場合は、以下のURLをコピーしてブラウザに貼り付けてください：
+${inviteLink}
+
+このメールは${companyName}からの招待です。
+心当たりがない場合は、このメールを削除してください。
+
+© 2024 Unica製造業務管理システム
+    `.trim();
+
+    // 文字化け防止：subject と text を明示的にUTF-8エンコーディング確保
+    const emailSubject = `${companyName}への招待`;
+
     const { data, error } = await resend.emails.send({
       from: 'noreply@resend.dev', // 開発時はこのアドレスを使用
       to: email,
-      subject: `${companyName}への招待`,
+      subject: emailSubject,
+      text: textContent,
+      headers: {
+        'Content-Type': 'text/html; charset=UTF-8',
+        'Content-Transfer-Encoding': '8bit'
+      },
       html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="ja">
         <head>
-          <meta charset="utf-8">
+          <meta charset="UTF-8">
+          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${companyName}への招待</title>
+          <title>${emailSubject}</title>
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -47,9 +120,17 @@ export async function POST(request: NextRequest) {
               ${inviterName}さんから${companyName}のチームに参加する招待が届きました。
             </p>` : ''}
 
+            ${message ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 24px 0;">
+              <p style="margin: 0 0 4px; font-size: 14px; color: #92400e; font-weight: 500;">メッセージ</p>
+              <p style="margin: 0; font-size: 14px; color: #451a03; white-space: pre-wrap;">${message}</p>
+            </div>` : ''}
+
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0;">
               <p style="margin: 0 0 8px; font-size: 14px; color: #64748b; font-weight: 500;">参加する役職</p>
               <p style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 600;">${role}</p>
+              ${expiresAt ? `<p style="margin: 8px 0 0; font-size: 12px; color: #ef4444;">
+                ⚠️ この招待は${new Date(expiresAt).toLocaleDateString('ja-JP')}まで有効です
+              </p>` : ''}
             </div>
 
             <div style="text-align: center; margin: 32px 0;">
@@ -102,8 +183,19 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('API error:', error);
+
+    // エラーの詳細情報をログに記録
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+
     return NextResponse.json(
-      { error: 'サーバーエラーが発生しました' },
+      {
+        error: 'サーバーエラーが発生しました',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      },
       { status: 500 }
     );
   }

@@ -79,7 +79,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-md border border-gray-200 dark:border-slate-600 shadow-xl">
-        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-slate-700 dark:to-slate-600">
+        <div className="p-6 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-600" />
@@ -107,6 +107,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="作業者名を入力"
               required
+              className="dark:bg-slate-800"
             />
           </div>
 
@@ -119,6 +120,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
               onChange={(e) => setFormData({ ...formData, hourlyRate: Number(e.target.value) })}
               min="0"
               step="100"
+              className="dark:bg-slate-800"
             />
           </div>
 
@@ -131,6 +133,7 @@ export const WorkerModal: React.FC<WorkerModalProps> = ({
                 onChange={(e) => setSkillInput(e.target.value)}
                 placeholder="スキルを入力"
                 onKeyPress={(e) => e.key === 'Enter' && addSkill()}
+                className="dark:bg-slate-800"
               />
               <Button
                 type="button"

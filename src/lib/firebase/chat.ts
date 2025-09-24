@@ -246,9 +246,10 @@ export const createCategory = async (
     });
     
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating category:', error);
-    return { id: null, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { id: null, error: errorMessage };
   }
 };
 
@@ -265,7 +266,7 @@ export const updateCategory = async (
       updatedAt: serverTimestamp(),
     });
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating category:', error);
     return { error: error.message };
   }
@@ -299,7 +300,7 @@ export const deleteCategory = async (
     await batch.commit();
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting category:', error);
     return { error: error.message };
   }
@@ -366,7 +367,7 @@ export const updateCategoriesOrder = async (
     
     await batch.commit();
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating categories order:', error);
     return { error: error.message };
   }
@@ -397,7 +398,7 @@ export const updateChannelsOrder = async (
     
     await batch.commit();
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating channels order:', error);
     return { error: error.message };
   }
@@ -431,7 +432,7 @@ export const createChannel = async (
     const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.CHANNELS), cleanedData);
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating channel:', error);
     return { id: null, error: error.message };
   }
@@ -451,7 +452,7 @@ export const updateChannel = async (
     });
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating channel:', error);
     return { error: error.message };
   }
@@ -491,7 +492,7 @@ export const deleteChannel = async (
     
     await batch.commit();
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting channel:', error);
     return { error: error.message };
   }
@@ -529,7 +530,7 @@ export const addChannelMember = async (
     }
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error adding channel member:', error);
     return { error: error.message };
   }
@@ -556,7 +557,7 @@ export const removeChannelMember = async (
     }
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error removing channel member:', error);
     return { error: error.message };
   }
@@ -586,7 +587,7 @@ export const getChannels = async (
     }
 
     return { data: channels, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting channels:', error);
     return { data: [], error: error.message };
   }
@@ -637,7 +638,7 @@ export const getChannelMembers = async (
     const members = querySnapshot.docs.map(doc => doc.data()) as ChannelMember[];
     
     return { data: members, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting channel members:', error);
     return { data: [], error: error.message };
   }
@@ -724,12 +725,15 @@ export const sendMessage = async (
   try {
     // メンション解析
     const mentionUsernames = parseSimpleMentions(messageData.content);
-    
+
+    // Firestore Timestamp を使用して正確な時刻を設定
+    const currentTime = Timestamp.now();
+
     // メッセージデータにメンション情報を追加
     const messageWithMentions = {
       ...messageData,
       mentions: mentionUsernames.length > 0 ? mentionUsernames : undefined,
-      timestamp: serverTimestamp(),
+      timestamp: currentTime,
       isDeleted: false,
     };
 
@@ -742,9 +746,9 @@ export const sendMessage = async (
       lastMessage: {
         content: messageData.content,
         authorName: messageData.authorName,
-        timestamp: serverTimestamp(),
+        timestamp: currentTime,
       },
-      updatedAt: serverTimestamp(),
+      updatedAt: currentTime,
     });
 
     // メンション通知作成（非同期で実行）
@@ -756,7 +760,7 @@ export const sendMessage = async (
       );
       const usersSnapshot = await getDocs(usersQuery);
       const mentionedUserIds = usersSnapshot.docs.map(doc => doc.id);
-      
+
       if (mentionedUserIds.length > 0) {
         sendMentionNotifications(
           docRef.id,
@@ -770,7 +774,7 @@ export const sendMessage = async (
     }
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error sending message:', error);
     return { id: null, error: error.message };
   }
@@ -827,13 +831,14 @@ export const updateMessage = async (
   content: string
 ): Promise<{ error: string | null }> => {
   try {
+    const currentTime = Timestamp.now();
     await updateDoc(doc(db, CHAT_COLLECTIONS.MESSAGES, messageId), {
       content,
-      editedAt: serverTimestamp(),
+      editedAt: currentTime,
     });
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating message:', error);
     return { error: error.message };
   }
@@ -852,7 +857,7 @@ export const deleteMessage = async (
     });
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting message:', error);
     return { error: error.message };
   }
@@ -901,7 +906,7 @@ export const uploadChatFile = async (
     };
 
     return { url: downloadURL, attachment, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error uploading file:', error);
     return { url: null, attachment: null, error: error.message };
   }
@@ -917,7 +922,7 @@ export const deleteChatFile = async (
     const fileRef = ref(storage, fileUrl);
     await deleteObject(fileRef);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting file:', error);
     return { error: error.message };
   }
@@ -1001,7 +1006,7 @@ export const toggleReaction = async (
 
     await updateDoc(messageRef, { reactions });
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error toggling reaction:', error);
     return { error: error.message };
   }
@@ -1025,7 +1030,7 @@ export const upsertChatUser = async (
     }, { merge: true });
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error upserting user:', error);
     return { error: error.message };
   }
@@ -1064,7 +1069,7 @@ export const updateUserStatus = async (
 
     await updateDoc(doc(db, CHAT_COLLECTIONS.USERS, userId), updateData);
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating user status:', error);
     return { error: error.message };
   }
@@ -1145,7 +1150,7 @@ export const searchMessages = async (
     );
 
     return { data: allMessages.slice(0, messageLimit), error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error searching messages:', error);
     return { data: [], error: error.message };
   }
@@ -1208,7 +1213,7 @@ export const updateUnreadCount = async (
     });
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating unread count:', error);
     return { error: error.message };
   }
@@ -1295,7 +1300,7 @@ export const searchMessagesByDate = async (
     );
 
     return { data: allMessages.slice(0, messageLimit), error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error searching messages by date:', error);
     return { data: [], error: error.message };
   }
@@ -1338,7 +1343,7 @@ export const searchMessagesByUser = async (
     );
 
     return { data: allMessages.slice(0, messageLimit), error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error searching messages by user:', error);
     return { data: [], error: error.message };
   }
@@ -1440,7 +1445,7 @@ export const sendMentionNotifications = async (
     
     await batch.commit();
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error sending mention notifications:', error);
     return { error: error.message };
   }
@@ -1477,7 +1482,7 @@ export const createThread = async (
     });
     
     return { id: parentMessageId, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating thread:', error);
     return { id: null, error: error.message };
   }
@@ -1491,40 +1496,43 @@ export const sendThreadMessage = async (
   messageData: Omit<ChatMessage, 'id' | 'timestamp' | 'isDeleted' | 'threadId'>
 ): Promise<{ id: string | null; error: string | null }> => {
   try {
+    // Firestore Timestamp を使用して正確な時刻を設定
+    const currentTime = Timestamp.now();
+
     // undefinedフィールドを除去してメッセージを作成
     const messageWithThread = {
       ...messageData,
       threadId,
-      timestamp: serverTimestamp(),
+      timestamp: currentTime,
       isDeleted: false,
     };
-    
+
     const cleanedMessage = removeUndefinedFields(messageWithThread);
     const docRef = await addDoc(collection(db, CHAT_COLLECTIONS.MESSAGES), cleanedMessage);
-    
+
     // スレッド情報を更新
     const threadRef = doc(db, CHAT_COLLECTIONS.THREADS, threadId);
     const threadDoc = await getDoc(threadRef);
-    
+
     if (threadDoc.exists()) {
       const threadData = threadDoc.data() as Thread;
       const participants = [...new Set([...threadData.participants, messageData.authorId])];
-      
+
       await updateDoc(threadRef, {
         messageCount: threadData.messageCount + 1,
         participants,
-        lastActivity: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        lastActivity: currentTime,
+        updatedAt: currentTime,
       });
-      
+
       // 親メッセージのスレッド数を更新
       await updateDoc(doc(db, CHAT_COLLECTIONS.MESSAGES, threadId), {
         threadCount: threadData.messageCount + 1,
       });
     }
-    
+
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error sending thread message:', error);
     return { id: null, error: error.message };
   }
@@ -1574,20 +1582,21 @@ export const updateTypingStatus = async (
 ): Promise<{ error: string | null }> => {
   try {
     const typingId = `${userId}_${channelId}`;
-    
+
     if (isTyping) {
+      const currentTime = Timestamp.now();
       await setDoc(doc(db, CHAT_COLLECTIONS.TYPING_STATUS, typingId), {
         userId,
         userName,
         channelId,
-        timestamp: serverTimestamp(),
+        timestamp: currentTime,
       });
     } else {
       await deleteDoc(doc(db, CHAT_COLLECTIONS.TYPING_STATUS, typingId));
     }
-    
+
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating typing status:', error);
     return { error: error.message };
   }
@@ -1646,7 +1655,7 @@ export const updateUserActivity = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating user activity:', error);
     return { error: error.message };
   }
@@ -1678,7 +1687,7 @@ export const getNotifications = async (
     })) as ChatNotification[];
     
     return { data: notifications, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting notifications:', error);
     return { data: [], error: error.message };
   }
@@ -1696,7 +1705,7 @@ export const markNotificationAsRead = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error marking notification as read:', error);
     return { error: error.message };
   }
@@ -1769,7 +1778,7 @@ export const getServerInfo = async (
     } else {
       return { data: null, error: 'Server not found' };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting server info:', error);
     return { data: null, error: error.message };
   }
@@ -1790,7 +1799,7 @@ export const updateServer = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating server:', error);
     return { error: error.message };
   }
@@ -1823,7 +1832,7 @@ export const deleteServer = async (
     await batch.commit();
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting server:', error);
     return { error: error.message };
   }
@@ -1848,7 +1857,7 @@ export const getServerMembers = async (
     })) as ChatUser[];
     
     return { data: members, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting server members:', error);
     return { data: [], error: error.message };
   }

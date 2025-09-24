@@ -214,19 +214,8 @@ export async function createCompany(
 
   const batch = writeBatch(db);
 
-  // undefined値を除去するヘルパー関数
-  const removeUndefined = (obj: any) => {
-    const cleaned: any = {};
-    Object.keys(obj).forEach(key => {
-      if (obj[key] !== undefined) {
-        cleaned[key] = obj[key];
-      }
-    });
-    return cleaned;
-  };
-
-  // 企業を作成
-  batch.set(doc(db, COMPANY_COLLECTIONS.COMPANIES, companyId), removeUndefined({
+  // 企業を作成（undefined値を除去してから送信）
+  batch.set(doc(db, COMPANY_COLLECTIONS.COMPANIES, companyId), removeUndefinedFields({
     ...company,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -244,21 +233,21 @@ export async function createCompany(
     permissions: ROLE_PERMISSIONS.owner,
   };
 
-  batch.set(doc(db, COMPANY_COLLECTIONS.MEMBERS, memberId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.MEMBERS, memberId), removeUndefinedFields({
     ...member,
     joinedAt: serverTimestamp(),
-  });
+  }));
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId,
     action: 'company.created',
     performedBy: userId,
     details: { companyName: data.name },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 
@@ -295,22 +284,22 @@ export async function updateCompany(
 ): Promise<void> {
   const batch = writeBatch(db);
 
-  // 企業情報を更新
-  batch.update(doc(db, COMPANY_COLLECTIONS.COMPANIES, companyId), {
+  // 企業情報を更新（undefined値を除去してから送信）
+  batch.update(doc(db, COMPANY_COLLECTIONS.COMPANIES, companyId), removeUndefinedFields({
     ...updates,
     updatedAt: serverTimestamp(),
-  });
+  }));
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId,
     action: 'company.updated',
     performedBy,
     details: { updates },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 }
@@ -320,7 +309,7 @@ export async function updateCompany(
 // =============================================================================
 
 /**
- * メンバーを招待
+ * メンバーを招待（個別招待対応強化版）
  */
 export async function createInvite(
   companyId: string,
@@ -331,11 +320,18 @@ export async function createInvite(
     department?: string;
     expiresInDays?: number;
     maxUses?: number;
+    // inviteType オプションは削除（個別招待のみサポート）
   } = {}
 ): Promise<CompanyInvite> {
   const inviteId = uuidv4();
-  const inviteCode = generateInviteCode();
-  
+  // 個別招待のみサポート
+  if (!options.email) {
+    throw new Error('メールアドレスは必須です。個別招待のみサポートしています。');
+  }
+
+  // 個別招待のみサポート：常に安全なトークンを生成
+  const inviteCode = generateSecureInviteToken(options.email);
+
   const invite: CompanyInvite = {
     id: inviteId,
     companyId,
@@ -346,16 +342,16 @@ export async function createInvite(
     createdBy,
     createdAt: new Date(),
     expiresAt: new Date(Date.now() + (options.expiresInDays || 7) * 24 * 60 * 60 * 1000),
-    maxUses: options.maxUses || (options.email ? 1 : 100),
+    maxUses: options.maxUses || 1,
     useCount: 0,
     isActive: true,
   };
 
-  await setDoc(doc(db, COMPANY_COLLECTIONS.INVITES, inviteId), {
+  await setDoc(doc(db, COMPANY_COLLECTIONS.INVITES, inviteId), removeUndefinedFields({
     ...invite,
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromDate(invite.expiresAt),
-  });
+  }));
 
   return invite;
 }
@@ -419,10 +415,10 @@ export async function joinCompanyWithInvite(
     permissions: ROLE_PERMISSIONS[invite.role],
   };
 
-  batch.set(doc(db, COMPANY_COLLECTIONS.MEMBERS, memberId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.MEMBERS, memberId), removeUndefinedFields({
     ...member,
     joinedAt: serverTimestamp(),
-  });
+  }));
 
   // 招待コードの使用回数を更新
   batch.update(doc(db, COMPANY_COLLECTIONS.INVITES, inviteDoc.id), {
@@ -433,18 +429,18 @@ export async function joinCompanyWithInvite(
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId: invite.companyId,
     action: 'member.joined',
     performedBy: userId,
-    details: { 
+    details: {
       userName: userInfo.name,
       role: invite.role,
       inviteCode: invite.code,
     },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 
@@ -536,17 +532,17 @@ export async function updateMemberRole(
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId,
     action: 'member.role_changed',
     performedBy,
-    details: { 
+    details: {
       targetUserId,
       newRole,
     },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 }
@@ -585,17 +581,17 @@ export async function transferOwnership(
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId,
     action: 'ownership.transferred',
     performedBy: currentOwnerId,
-    details: { 
+    details: {
       fromUserId: currentOwnerId,
       toUserId: newOwnerId,
     },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 }
@@ -621,14 +617,14 @@ export async function removeMember(
 
   // 監査ログを記録
   const auditLogId = uuidv4();
-  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), {
+  batch.set(doc(db, COMPANY_COLLECTIONS.AUDIT_LOGS, auditLogId), removeUndefinedFields({
     id: auditLogId,
     companyId,
     action: 'member.removed',
     performedBy,
     details: { targetUserId },
     timestamp: serverTimestamp(),
-  });
+  }));
 
   await batch.commit();
 }
@@ -638,45 +634,176 @@ export async function removeMember(
 // =============================================================================
 
 /**
- * 企業の招待コードを取得（なければ作成）
+ * undefined値を除去するヘルパー関数（Firestore用）
+ * Firestoreはundefined値をサポートしていないため、送信前に除去する
  */
-export async function getOrCreateCompanyInviteCode(companyId: string, createdBy: string): Promise<string> {
-  // 既存のアクティブな招待コードを検索
+export function removeUndefinedFields(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedFields(item));
+  }
+
+  if (typeof obj === 'object' && !(obj instanceof Date) && !(obj instanceof Timestamp)) {
+    const cleaned: any = {};
+    Object.keys(obj).forEach(key => {
+      if (obj[key] !== undefined) {
+        if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key]) && !(obj[key] instanceof Date) && !(obj[key] instanceof Timestamp)) {
+          // ネストしたオブジェクトも再帰的に処理
+          cleaned[key] = removeUndefinedFields(obj[key]);
+        } else {
+          cleaned[key] = obj[key];
+        }
+      }
+    });
+    return cleaned;
+  }
+
+  return obj;
+}
+
+/**
+ * 企業の招待リストを取得
+ */
+export async function getCompanyInvites(companyId: string): Promise<CompanyInvite[]> {
   const inviteQuery = query(
     collection(db, COMPANY_COLLECTIONS.INVITES),
     where('companyId', '==', companyId),
     where('isActive', '==', true),
-    where('email', '==', null) // 一般用（メール指定なし）の招待コード
+    orderBy('createdAt', 'desc')
   );
 
-  const inviteSnap = await getDocs(inviteQuery);
+  const snapshot = await getDocs(inviteQuery);
 
-  if (!inviteSnap.empty) {
-    // 既存のコードがあれば返す
-    const existingInvite = inviteSnap.docs[0].data();
-    return existingInvite.code;
-  }
-
-  // なければ新しい招待コードを作成
-  const invite = await createInvite(companyId, createdBy, {
-    expiresInDays: 365, // 1年間有効
-    maxUses: 1000, // 大きめの使用回数
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      ...data,
+      id: doc.id,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      expiresAt: data.expiresAt?.toDate() || new Date(),
+      usedAt: data.usedAt?.toDate(),
+    } as CompanyInvite;
   });
-
-  return invite.code;
 }
 
 /**
- * 招待コードを生成
+ * 招待を無効化
  */
-function generateInviteCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+export async function deactivateInvite(
+  inviteId: string,
+  performedBy: string
+): Promise<void> {
+  const batch = writeBatch(db);
+
+  // 招待を無効化
+  batch.update(doc(db, COMPANY_COLLECTIONS.INVITES, inviteId), {
+    isActive: false,
+    deactivatedAt: serverTimestamp(),
+    deactivatedBy: performedBy,
+  });
+
+  await batch.commit();
 }
+
+/**
+ * 期限切れの招待を一括無効化
+ */
+export async function cleanupExpiredInvites(companyId: string): Promise<number> {
+  const now = new Date();
+  const expiredQuery = query(
+    collection(db, COMPANY_COLLECTIONS.INVITES),
+    where('companyId', '==', companyId),
+    where('isActive', '==', true),
+    where('expiresAt', '<', Timestamp.fromDate(now))
+  );
+
+  const expiredSnap = await getDocs(expiredQuery);
+
+  if (expiredSnap.empty) {
+    return 0;
+  }
+
+  const batch = writeBatch(db);
+  expiredSnap.docs.forEach(docSnap => {
+    batch.update(doc(db, COMPANY_COLLECTIONS.INVITES, docSnap.id), {
+      isActive: false,
+      deactivatedAt: serverTimestamp(),
+      deactivatedBy: 'system',
+    });
+  });
+
+  await batch.commit();
+  return expiredSnap.size;
+}
+
+/**
+ * 危険な固定招待コードを無効化（セキュリティ対策）
+ * 8文字の短い固定コードをすべて無効化します
+ */
+export async function deactivateDangerousFixedInviteCodes(companyId: string): Promise<number> {
+  try {
+    // 8文字以下の短い招待コードを検索
+    const dangerousInviteQuery = query(
+      collection(db, COMPANY_COLLECTIONS.INVITES),
+      where('companyId', '==', companyId),
+      where('isActive', '==', true)
+    );
+
+    const dangerousInvites = await getDocs(dangerousInviteQuery);
+    let deactivatedCount = 0;
+
+    const batch = writeBatch(db);
+
+    dangerousInvites.docs.forEach(docSnap => {
+      const invite = docSnap.data();
+      // 8文字以下の固定コードまたはemailが未設定の招待を無効化
+      if (invite.code && (invite.code.length <= 8 || !invite.email)) {
+        batch.update(doc(db, COMPANY_COLLECTIONS.INVITES, docSnap.id), {
+          isActive: false,
+          deactivatedAt: serverTimestamp(),
+          deactivatedBy: 'system_security_cleanup',
+          deactivationReason: 'セキュリティリスク: 固定招待コード廃止のため無効化'
+        });
+        deactivatedCount++;
+      }
+    });
+
+    if (deactivatedCount > 0) {
+      await batch.commit();
+    }
+
+    return deactivatedCount;
+  } catch (error) {
+    console.error('危険な固定招待コード無効化エラー:', error);
+    return 0;
+  }
+}
+
+/**
+ * 個別招待用の安全なトークンを生成
+ * @param email 招待対象のメールアドレス（個別招待の場合）
+ * @returns 32文字の安全なトークン
+ */
+function generateSecureInviteToken(email?: string): string {
+  // 高いエントロピーを持つ文字セット
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let token = '';
+
+  // 32文字の安全なトークンを生成
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  // タイムスタンプを追加してユニーク性を保証
+  const timestamp = Date.now().toString(36);
+
+  return `${token}${timestamp}`;
+}
+
+// generateInviteCode関数は削除されました（セキュリティリスクのため）
 
 /**
  * ユーザーが特定の権限を持っているかチェック

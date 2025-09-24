@@ -1,5 +1,6 @@
 // セキュリティユーティリティ
-import { AppUser } from '@/lib/firebase/auth';
+import { AppUser } from '@/types';
+import { log } from '@/lib/logger';
 
 // パスワード強度チェック
 export interface PasswordValidation {
@@ -130,7 +131,7 @@ export const updateActivity = (): void => {
   if (typeof window !== 'undefined' && window.localStorage) {
     const saved = localStorage.getItem('lastActivity');
     if (saved === now) {
-      console.log('✅ Activity updated successfully');
+      log.debug('Activity updated successfully', undefined, 'updateActivity');
     }
   }
 };
@@ -140,7 +141,7 @@ export const startSession = (): void => {
   localStorage.setItem('loginTime', now);
   localStorage.setItem('lastActivity', now);
   // セッション開始をログ
-  console.log('🔐 Session started at:', new Date().toISOString());
+  log.auth('Session started', { timestamp: new Date().toISOString() }, 'startSession');
 };
 
 export const endSession = (): void => {
@@ -172,9 +173,7 @@ export const logSecurityEvent = (
   };
   
   // 開発環境ではコンソールに出力
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔒 Security Event:', log);
-  }
+  log.info('Security Event logged', { type: securityLog.type, severity: securityLog.severity }, 'logSecurityEvent');
   
   // 本番環境では外部ログサービスに送信することを検討
   // TODO: 本番環境でのセキュリティログ送信実装

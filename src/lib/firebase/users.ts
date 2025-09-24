@@ -32,7 +32,7 @@ export const getUsers = async () => {
       success: true,
       data: users
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting users:', error);
     return {
       success: false,
@@ -61,7 +61,7 @@ export const createUser = async (userData: Omit<User, 'id' | 'createdAt' | 'upda
       id: docRef.id,
       data: { id: docRef.id, ...newUser }
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating user:', error);
     return {
       success: false,
@@ -88,7 +88,7 @@ export const updateUser = async (id: string, updateData: Partial<User>) => {
       id,
       data: updatedData
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating user:', error);
     return {
       success: false,
@@ -109,7 +109,7 @@ export const deleteUser = async (id: string) => {
       success: true,
       id
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting user:', error);
     return {
       success: false,
@@ -137,7 +137,7 @@ export const getUserById = async (id: string) => {
         error: 'User not found'
       };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting user by ID:', error);
     return {
       success: false,
@@ -166,7 +166,7 @@ export const getUserByEmail = async (email: string) => {
         error: 'User not found'
       };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting user by email:', error);
     return {
       success: false,

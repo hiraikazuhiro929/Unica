@@ -117,9 +117,9 @@ export const InviteModal: React.FC<InviteModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent className="max-w-lg dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white">
             <UserPlus className="w-5 h-5" />
             <span>{server.name} にメンバーを招待</span>
           </DialogTitle>
@@ -166,7 +166,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                     <Input
                       value={showInviteCode ? inviteUrl : '••••••••••••••••••••••••'}
                       readOnly
-                      className="font-mono text-sm"
+                      className="font-mono text-sm dark:bg-slate-800"
                     />
                     <Button
                       variant="ghost"
@@ -186,7 +186,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                     <SelectTrigger className="text-sm">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="dark:bg-slate-800">
                       <SelectItem value="30min">30分後</SelectItem>
                       <SelectItem value="1hour">1時間後</SelectItem>
                       <SelectItem value="6hours">6時間後</SelectItem>
@@ -205,7 +205,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                     <SelectTrigger className="text-sm">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="dark:bg-slate-800">
                       <SelectItem value="guest">ゲスト</SelectItem>
                       <SelectItem value="member">メンバー</SelectItem>
                       <SelectItem value="contributor">コントリビューター</SelectItem>
@@ -256,6 +256,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                   placeholder="user@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
+                  className="dark:bg-slate-800"
                 />
               </div>
 
@@ -265,7 +266,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-800">
                     <SelectItem value="guest">ゲスト</SelectItem>
                     <SelectItem value="member">メンバー</SelectItem>
                     <SelectItem value="contributor">コントリビューター</SelectItem>

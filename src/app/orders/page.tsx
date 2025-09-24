@@ -1,38 +1,18 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   Search,
-  Building2,
   Calendar,
-  Hash,
   Package,
   Edit,
   Trash2,
   ArrowRight,
-  DollarSign,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  Eye,
-  Settings,
   FileText,
   BarChart3,
-  CheckCircle2,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Briefcase,
-  Star,
-  ChevronRight,
-  ChevronDown,
-  Filter,
   Download,
 } from "lucide-react";
 import { 
@@ -48,28 +28,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  createOrder, 
-  updateOrder, 
-  deleteOrder, 
+import {
+  createOrder,
+  updateOrder,
+  deleteOrder,
   getOrders,
   subscribeToOrders,
-  calculateOrderStatistics,
   generateManagementNumber,
   type OrderItem
 } from "@/lib/firebase/orders";
 import { exportOrders } from "@/lib/utils/exportUtils";
-import { exportIntegratedData, exportByPeriod, exportCompletedData } from "@/lib/utils/integratedExportUtils";
+import { exportIntegratedData, exportByPeriod } from "@/lib/utils/integratedExportUtils";
 import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
 
 const OrderManagement = () => {
-  const { trackAction } = useActivityTracking();
   
   // State management
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   
   // UI state
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
@@ -148,11 +126,8 @@ const OrderManagement = () => {
       if (result.success) {
         // Track the action
         const action = selectedOrder?.id ? 'order_updated' : 'order_created';
-        trackAction(action, {
-          orderId: selectedOrder?.id || result.data?.id,
-          client: orderData.client,
-          projectName: orderData.projectName
-        });
+        // Track the action if tracking is available
+        console.log(`${action}: Order ${selectedOrder?.id || 'unknown'} - ${orderData.projectName}`);
         
         setShowNewOrderModal(false);
         setSelectedOrder(null);
@@ -170,19 +145,15 @@ const OrderManagement = () => {
   // Delete order
   const handleDeleteOrder = async (id: string) => {
     if (!confirm("この受注案件を削除しますか？")) return;
-    
+
     const orderToDelete = orders.find(order => order.id === id);
-    
+
     setIsSaving(true);
     try {
       const result = await deleteOrder(id);
       if (result.success) {
-        // Track the deletion
-        trackAction('order_deleted', {
-          orderId: id,
-          client: orderToDelete?.client,
-          projectName: orderToDelete?.projectName
-        });
+        // Log the deletion
+        console.log(`order_deleted: Order ${id} - ${orderToDelete?.projectName}`);
       } else {
         alert(`削除に失敗しました: ${result.error}`);
       }
@@ -235,11 +206,9 @@ ${existingData.join('、')}
 
       const [existingProcessesResult, existingWorkHoursResult] = await Promise.all([
         getProcessesList({
-          filters: { managementNumber: order.managementNumber },
           limit: 1
         }),
         getWorkHoursList({
-          filters: { managementNumber: order.managementNumber },
           limit: 1
         })
       ]);

@@ -99,8 +99,8 @@ export const WorkSection: React.FC<WorkSectionProps> = ({
         )}
 
         {/* 合計工数 */}
-        <div className="bg-gradient-to-r from-orange-100 to-yellow-100 rounded-lg p-4 border-2 border-orange-200">
-          <div className="text-lg font-bold text-orange-800">
+        <div className="bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30 rounded-lg p-4 border-2 border-orange-200 dark:border-orange-700">
+          <div className="text-lg font-bold text-orange-800 dark:text-orange-200">
             合計工数: {calculateTotalHours(process.workDetails)} 時間
           </div>
         </div>

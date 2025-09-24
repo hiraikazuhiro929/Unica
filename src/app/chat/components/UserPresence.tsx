@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Clock, Wifi, WifiOff, Pause, AlertCircle } from "lucide-react";
 import type { ChatUser } from "@/lib/firebase/chat";
-import { formatDistanceToNow } from "date-fns";
-import { ja } from "date-fns/locale";
+import { formatLastActivity } from "@/lib/utils/dateFormatter";
 
 interface UserPresenceProps {
   user: ChatUser;
@@ -73,22 +72,7 @@ export const UserPresence: React.FC<UserPresenceProps> = ({
   };
 
   const formatLastSeen = (lastSeen: any, lastActivity: any) => {
-    const lastSeenDate = lastSeen?.toDate?.() || new Date(lastSeen || 0);
-    const lastActivityDate = lastActivity?.toDate?.() || new Date(lastActivity || 0);
-    const latestDate = lastActivityDate > lastSeenDate ? lastActivityDate : lastSeenDate;
-    
-    if (!latestDate || latestDate.getTime() === 0) {
-      return "不明";
-    }
-
-    try {
-      return formatDistanceToNow(latestDate, { 
-        addSuffix: true, 
-        locale: ja 
-      });
-    } catch {
-      return "不明";
-    }
+    return formatLastActivity(lastSeen, lastActivity);
   };
 
   const sizeClasses = {

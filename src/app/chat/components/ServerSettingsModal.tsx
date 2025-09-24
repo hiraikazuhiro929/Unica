@@ -250,9 +250,9 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white">
             <Server className="w-5 h-5" />
             <span>{server.name} の設定</span>
           </DialogTitle>
@@ -325,6 +325,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                   onChange={(e) => setServerName(e.target.value)}
                   disabled={!isOwner}
                   placeholder="サーバー名を入力"
+                  className="dark:bg-slate-800"
                 />
               </div>
 
@@ -337,6 +338,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                   disabled={!isOwner}
                   placeholder="サーバーの説明を入力"
                   rows={3}
+                  className="dark:bg-slate-800"
                 />
               </div>
 
@@ -507,7 +509,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-800">
                     <SelectItem value="none">なし</SelectItem>
                     <SelectItem value="low">低 - 認証済みメールアドレス</SelectItem>
                     <SelectItem value="medium">中 - 5分以上のアカウント</SelectItem>
@@ -523,7 +525,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-800">
                     <SelectItem value="disabled">無効</SelectItem>
                     <SelectItem value="members_without_roles">ロールなしメンバー</SelectItem>
                     <SelectItem value="all_members">全メンバー</SelectItem>
@@ -549,7 +551,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-slate-800">
                     <SelectItem value="guest">ゲスト</SelectItem>
                     <SelectItem value="member">メンバー</SelectItem>
                     <SelectItem value="contributor">コントリビューター</SelectItem>
@@ -646,7 +648,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                       <Input
                         value={showInviteCode ? inviteCode : "••••••••"}
                         readOnly
-                        className="font-mono text-sm"
+                        className="font-mono text-sm dark:bg-slate-800"
                       />
                       <Button
                         variant="outline"

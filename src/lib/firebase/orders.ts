@@ -96,7 +96,7 @@ export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' 
 
     return result;
     
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Order creation failed:', error);
     return {
       success: false,
@@ -149,7 +149,7 @@ export const deleteOrder = async (id: string) => {
       success: true,
       id
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting order:', error);
     return {
       success: false,
@@ -177,7 +177,7 @@ export const getOrder = async (id: string) => {
         error: '受注案件が見つかりません'
       };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting order:', error);
     return {
       success: false,
@@ -230,7 +230,7 @@ export const getOrders = async (options?: {
       success: true,
       data: orders
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting orders:', error);
     return {
       success: false,
@@ -289,7 +289,7 @@ export const subscribeToOrders = (
     });
     
     return unsubscribe;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error setting up orders subscription:', error);
     return () => {}; // 空の関数を返す
   }
@@ -340,7 +340,7 @@ export const calculateOrderStatistics = async () => {
       success: true,
       data: stats
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error calculating order statistics:', error);
     return {
       success: false,
@@ -366,7 +366,7 @@ export const generateManagementNumber = async (prefix: string = 'ORD') => {
       : 1;
     
     return `${prefix}-${year}-${String(nextNumber).padStart(3, '0')}`;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error generating management number:', error);
     // フォールバック
     return `${prefix}-${new Date().getFullYear()}-001`;
@@ -392,7 +392,7 @@ export const batchUpdateOrders = async (updates: { id: string; data: Partial<Ord
       success: true,
       updatedCount: updates.length
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error batch updating orders:', error);
     return {
       success: false,
@@ -426,7 +426,7 @@ export const searchOrders = async (searchQuery: string, options?: {
       data: filteredOrders,
       count: filteredOrders.length
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error searching orders:', error);
     return {
       success: false,

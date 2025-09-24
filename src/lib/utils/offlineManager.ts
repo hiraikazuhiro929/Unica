@@ -1,6 +1,7 @@
 // オフライン機能管理 - 製造業現場対応
 import React from 'react';
 import { safeFirebaseOperation, saveToLocalStorage, loadFromLocalStorage } from './errorHandling';
+import { log } from '@/lib/logger';
 
 // =============================================================================
 // オフライン状態管理
@@ -58,12 +59,12 @@ export class OfflineManager {
       }
     }, 30000); // 30秒毎
     
-    console.log('🔌 OfflineManager initialized', { isOnline: this.isOnline });
+    log.info('OfflineManager initialized', { isOnline: this.isOnline }, 'OfflineManager');
   }
   
   private handleOnline(): void {
     this.isOnline = true;
-    console.log('🌐 Connection restored - starting sync');
+    log.info('Connection restored - starting sync', undefined, 'OfflineManager');
     this.notifyListeners();
     
     // オンラインに戻ったら自動同期開始
@@ -74,7 +75,7 @@ export class OfflineManager {
   
   private handleOffline(): void {
     this.isOnline = false;
-    console.log('📡 Connection lost - offline mode activated');
+    log.warn('Connection lost - offline mode activated', undefined, 'OfflineManager');
     this.notifyListeners();
   }
   
@@ -134,11 +135,7 @@ export class OfflineManager {
     this.savePendingOperations();
     this.notifyListeners();
     
-    console.log('📝 Operation queued for offline sync:', { 
-      type, 
-      entity, 
-      priority: operation.priority 
-    });
+    log.debug('Operation queued for offline sync', { type, entity, priority: operation.priority }, 'OfflineManager');
     
     // オンライン状態なら即座に同期を試行
     if (this.isOnline && !this.syncInProgress) {
@@ -158,9 +155,7 @@ export class OfflineManager {
     this.syncInProgress = true;
     this.notifyListeners();
     
-    console.log('🔄 Starting offline data sync:', { 
-      pendingCount: this.pendingOperations.length 
-    });
+    log.info('Starting offline data sync', { pendingCount: this.pendingOperations.length }, 'OfflineManager');
     
     // 優先度順にソート
     const sortedOperations = [...this.pendingOperations].sort((a, b) => {
@@ -205,7 +200,7 @@ export class OfflineManager {
     this.savePendingOperations();
     this.notifyListeners();
     
-    console.log('✅ Offline sync completed:', results);
+    log.info('Offline sync completed', results, 'OfflineManager');
     
     if (this.isOnline) {
       localStorage.setItem('lastOnlineAt', new Date().toISOString());
@@ -213,7 +208,7 @@ export class OfflineManager {
   }
   
   private async syncSingleOperation(operation: OfflineData): Promise<boolean> {
-    console.log(`🔄 Syncing ${operation.type} ${operation.entity}:`, operation.id);
+    log.debug(`Syncing ${operation.type} ${operation.entity}`, { id: operation.id }, 'OfflineManager');
     
     try {
       // エンティティタイプに基づいて適切なFirebase操作を実行
@@ -242,7 +237,7 @@ export class OfflineManager {
     // 受注データの同期ロジック
     return await safeFirebaseOperation(async () => {
       // ここで実際のFirebase操作を実行
-      console.log('Syncing order:', operation.data);
+      log.debug('Syncing order', operation.data, 'OfflineManager');
       return true;
     }).then(result => result.success);
   }
@@ -250,7 +245,7 @@ export class OfflineManager {
   private async syncProcessOperation(operation: OfflineData): Promise<boolean> {
     // 工程データの同期ロジック
     return await safeFirebaseOperation(async () => {
-      console.log('Syncing process:', operation.data);
+      log.debug('Syncing process', operation.data, 'OfflineManager');
       return true;
     }).then(result => result.success);
   }
@@ -258,7 +253,7 @@ export class OfflineManager {
   private async syncWorkHoursOperation(operation: OfflineData): Promise<boolean> {
     // 工数データの同期ロジック
     return await safeFirebaseOperation(async () => {
-      console.log('Syncing work hours:', operation.data);
+      log.debug('Syncing work hours', operation.data, 'OfflineManager');
       return true;
     }).then(result => result.success);
   }
@@ -266,7 +261,7 @@ export class OfflineManager {
   private async syncDailyReportOperation(operation: OfflineData): Promise<boolean> {
     // 日報データの同期ロジック
     return await safeFirebaseOperation(async () => {
-      console.log('Syncing daily report:', operation.data);
+      log.debug('Syncing daily report', operation.data, 'OfflineManager');
       return true;
     }).then(result => result.success);
   }
@@ -274,7 +269,7 @@ export class OfflineManager {
   private async syncInventoryOperation(operation: OfflineData): Promise<boolean> {
     // 在庫データの同期ロジック
     return await safeFirebaseOperation(async () => {
-      console.log('Syncing inventory:', operation.data);
+      log.debug('Syncing inventory', operation.data, 'OfflineManager');
       return true;
     }).then(result => result.success);
   }
@@ -356,7 +351,7 @@ export class OfflineManager {
   public async forceSync(): Promise<void> {
     if (this.syncInProgress) return;
     
-    console.log('🔄 Force sync requested');
+    log.info('Force sync requested', undefined, 'OfflineManager');
     await this.syncPendingOperations();
   }
   
@@ -370,7 +365,7 @@ export class OfflineManager {
     
     if (criticalOperations.length === 0) return;
     
-    console.log('🚨 Syncing critical manufacturing data:', criticalOperations.length);
+    log.warn('Syncing critical manufacturing data', { count: criticalOperations.length }, 'OfflineManager');
     
     for (const operation of criticalOperations) {
       try {

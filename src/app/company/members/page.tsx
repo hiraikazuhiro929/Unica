@@ -24,7 +24,11 @@ import {
 } from '@/lib/firebase/auth';
 import {
   createInvite,
-  getOrCreateCompanyInviteCode
+  getCompanyInvites,
+  deactivateInvite,
+  cleanupExpiredInvites,
+  deactivateDangerousFixedInviteCodes,
+  CompanyInvite
 } from '@/lib/firebase/company';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -166,35 +170,29 @@ export default function CompanyMembersPage() {
   const [inviteMessage, setInviteMessage] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showDetailModal, setShowDetailModal] = useState<AppUser | null>(null);
-  const [companyInviteCode, setCompanyInviteCode] = useState<string>('');
-  const [inviteCodeLoading, setInviteCodeLoading] = useState(false);
+  // 固定招待コード機能は削除されました（セキュリティリスク）
+  // 固定招待コード読み込み状態は不要（削除済み）
   const [sendingInvite, setSendingInvite] = useState(false);
+
+  // 招待管理関連の状態
+  const [companyInvites, setCompanyInvites] = useState<CompanyInvite[]>([]);
+  const [showInviteManager, setShowInviteManager] = useState(false);
+  const [loadingInvites, setLoadingInvites] = useState(false);
 
   const canManage = useMemo(() => {
     if (!user) return false;
     return user.role === 'admin' || user.role === 'manager';
   }, [user]);
 
-  // Load members and invite code
+  // Load members and invites
   useEffect(() => {
     loadMembers();
-    loadInviteCode();
-  }, [user, currentCompany]);
-
-  // 招待コードを取得
-  const loadInviteCode = async () => {
-    if (!user || !currentCompany?.id || !canManage) return;
-
-    setInviteCodeLoading(true);
-    try {
-      const code = await getOrCreateCompanyInviteCode(currentCompany.id, user.uid);
-      setCompanyInviteCode(code);
-    } catch (error) {
-      console.error('招待コード取得エラー:', error);
-    } finally {
-      setInviteCodeLoading(false);
+    if (canManage) {
+      loadCompanyInvites();
     }
-  };
+  }, [user, currentCompany, canManage]);
+
+  // loadInviteCode関数は削除されました（固定招待コード廃止のため）
 
   const loadMembers = async () => {
     console.log('🔍 loadMembers called, user:', user);
@@ -456,16 +454,44 @@ export default function CompanyMembersPage() {
     }
   };
 
-  // Copy invite link
-  const copyInviteLink = () => {
-    const inviteLink = `${window.location.origin}/join/${companyInviteCode}`;
-    navigator.clipboard.writeText(inviteLink);
-    alert('招待リンクをコピーしました');
+  // 固定招待コード関連のコピー機能は削除されました
+
+  // 企業の招待一覧を読み込み
+  const loadCompanyInvites = async () => {
+    if (!user || !currentCompany?.id || !canManage) return;
+
+    setLoadingInvites(true);
+    try {
+      // セキュリティ清掃: 危険な固定招待コードを無効化
+      const deactivatedCount = await deactivateDangerousFixedInviteCodes(currentCompany.id);
+      if (deactivatedCount > 0) {
+        console.log(`🛡️ セキュリティ改善: ${deactivatedCount}個の危険な固定招待コードを無効化しました`);
+      }
+
+      const invites = await getCompanyInvites(currentCompany.id);
+      setCompanyInvites(invites);
+
+      // 期限切れの招待を自動クリーンアップ
+      await cleanupExpiredInvites(currentCompany.id);
+    } catch (error) {
+      console.error('招待一覧取得エラー:', error);
+    } finally {
+      setLoadingInvites(false);
+    }
   };
 
-  const copyInviteCode = () => {
-    navigator.clipboard.writeText(companyInviteCode);
-    alert('招待コードをコピーしました');
+  // 招待を無効化
+  const handleDeactivateInvite = async (inviteId: string) => {
+    if (!user) return;
+
+    try {
+      await deactivateInvite(inviteId, user.uid);
+      await loadCompanyInvites(); // 招待一覧を更新
+      alert('招待を無効化しました');
+    } catch (error) {
+      console.error('招待無効化エラー:', error);
+      alert('招待の無効化に失敗しました');
+    }
   };
 
   const handleSendInvite = async () => {
@@ -473,10 +499,11 @@ export default function CompanyMembersPage() {
 
     setSendingInvite(true);
     try {
-      // 1. 招待データを作成
+      // 1. 個別招待データを作成（安全なトークンのみ使用）
       const invite = await createInvite(currentCompany.id, user.uid, {
         email: inviteEmail,
         role: inviteRole as any,
+        expiresInDays: 7, // 7日間の有効期限
       });
 
       // 2. 招待リンクを生成
@@ -494,6 +521,8 @@ export default function CompanyMembersPage() {
           companyName: currentCompany.name,
           inviterName: user.name,
           role: ROLES.find(r => r.value === inviteRole)?.label || inviteRole,
+          message: inviteMessage,
+          expiresAt: invite.expiresAt, // 有効期限を追加
         }),
       });
 
@@ -508,6 +537,9 @@ export default function CompanyMembersPage() {
       setInviteEmail('');
       setInviteRole('worker');
       setInviteMessage('');
+
+      // 招待一覧を更新
+      await loadCompanyInvites();
     } catch (error) {
       console.error('招待送信エラー:', error);
       alert(`招待の送信に失敗しました: ${error.message}`);
@@ -549,35 +581,7 @@ export default function CompanyMembersPage() {
               </div>
             </div>
 
-            {/* 招待コード表示（管理者のみ） */}
-            {canManage && selectedMembers.size === 0 && (
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">企業招待コード</div>
-                    <div className="flex items-center gap-1">
-                      {inviteCodeLoading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      ) : (
-                        <>
-                          <code className="text-sm font-mono text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/40 px-2 py-1 rounded">
-                            {companyInviteCode}
-                          </code>
-                          <Button
-                            onClick={copyInviteCode}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/40"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* 固定招待コード表示は削除されました（セキュリティリスク） */}
 
             {canManage && selectedMembers.size > 0 && (
               <div className="flex items-center gap-2">
@@ -689,14 +693,24 @@ export default function CompanyMembersPage() {
               
               {canManage && (
                 <>
-                  <Button
-                    size="sm"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                    onClick={() => setShowInviteDialog(true)}
-                  >
-                    <Mail className="w-4 h-4 mr-1" />
-                    招待
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      onClick={() => setShowInviteDialog(true)}
+                    >
+                      <Mail className="w-4 h-4 mr-1" />
+                      招待
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowInviteManager(true)}
+                    >
+                      <Settings className="w-4 h-4 mr-1" />
+                      招待管理
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
@@ -1083,7 +1097,7 @@ export default function CompanyMembersPage() {
           <Tabs defaultValue="email" className="mt-4">
             <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-700">
               <TabsTrigger value="email" className="dark:text-slate-300 dark:data-[state=active]:bg-slate-600 dark:data-[state=active]:text-white">メール招待</TabsTrigger>
-              <TabsTrigger value="link" className="dark:text-slate-300 dark:data-[state=active]:bg-slate-600 dark:data-[state=active]:text-white">リンク生成</TabsTrigger>
+              <TabsTrigger value="link" className="dark:text-slate-300 dark:data-[state=active]:bg-slate-600 dark:data-[state=active]:text-white text-red-400" disabled>リンク生成（廃止）</TabsTrigger>
             </TabsList>
             
             <TabsContent value="email" className="space-y-4">
@@ -1157,44 +1171,22 @@ export default function CompanyMembersPage() {
             </TabsContent>
             
             <TabsContent value="link" className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                  初期役職
-                </label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map(role => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                  招待リンク
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={`${window.location.origin}/join/${companyInviteCode}`}
-                    readOnly
-                    className="font-mono text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
-                  />
-                  <Button
-                    onClick={copyInviteLink}
-                    variant="outline"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <h4 className="text-red-800 font-medium">機能廃止のお知らせ</h4>
                 </div>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-sm text-amber-800">
-                  このリンクを共有する際は、信頼できる人にのみ送信してください。
+                <p className="text-sm text-red-700 mb-3">
+                  セキュリティ強化により、固定招待リンクは廃止されました。
+                </p>
+                <ul className="text-xs text-red-600 space-y-1 ml-4">
+                  <li>• セキュアな個別招待のみサポート</li>
+                  <li>• メールアドレス指定必須</li>
+                  <li>• 32文字暗号化トークンによる保護</li>
+                  <li>• 短期間有効期限（7日間）</li>
+                </ul>
+                <p className="text-sm text-red-700 mt-3">
+                  「メール招待」タブをご利用ください。
                 </p>
               </div>
             </TabsContent>
@@ -1308,6 +1300,130 @@ export default function CompanyMembersPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Invite Manager Dialog */}
+      <Dialog open={showInviteManager} onOpenChange={setShowInviteManager}>
+        <DialogContent className="max-w-4xl bg-white dark:bg-slate-800" aria-describedby="invite-manager-description">
+          <DialogHeader>
+            <DialogTitle>招待管理</DialogTitle>
+            <DialogDescription id="invite-manager-description">
+              送信済み招待の確認と管理
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500 dark:text-slate-400">
+                アクティブな招待: {companyInvites.length}件
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={loadCompanyInvites}
+                disabled={loadingInvites}
+              >
+                {loadingInvites ? (
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <History className="w-4 h-4 mr-2" />
+                )}
+                更新
+              </Button>
+            </div>
+
+            {loadingInvites ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-slate-400">招待一覧を読み込み中...</p>
+              </div>
+            ) : companyInvites.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                <Mail className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+                <p>送信済みの招待はありません</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {companyInvites.map((invite) => {
+                  const isExpired = new Date(invite.expiresAt) < new Date();
+                  const isUsed = invite.useCount >= invite.maxUses;
+                  const isIndividual = !!invite.email;
+
+                  return (
+                    <div key={invite.id} className="border rounded-lg p-3 dark:border-slate-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant={isIndividual ? "default" : "secondary"}>
+                              {isIndividual ? '個別招待' : '一般招待'}
+                            </Badge>
+                            <Badge className={`${ROLE_STYLES[invite.role].bg} ${ROLE_STYLES[invite.role].text} border`}>
+                              {ROLE_STYLES[invite.role].label}
+                            </Badge>
+                            {isExpired && (
+                              <Badge variant="destructive">期限切れ</Badge>
+                            )}
+                            {isUsed && (
+                              <Badge variant="outline">使用済み</Badge>
+                            )}
+                          </div>
+
+                          <div className="text-sm">
+                            {invite.email ? (
+                              <span className="font-medium">{invite.email}</span>
+                            ) : (
+                              <span className="text-gray-500">一般招待コード</span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                            作成: {new Date(invite.createdAt).toLocaleDateString('ja-JP')} •
+                            期限: {new Date(invite.expiresAt).toLocaleDateString('ja-JP')} •
+                            使用: {invite.useCount}/{invite.maxUses}回
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {!isExpired && !isUsed && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const inviteLink = `${window.location.origin}/join/${invite.code}`;
+                                navigator.clipboard.writeText(inviteLink);
+                                alert('招待リンクをコピーしました');
+                              }}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              if (confirm('この招待を無効化しますか？')) {
+                                handleDeactivateInvite(invite.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowInviteManager(false)}>
+              閉じる
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>

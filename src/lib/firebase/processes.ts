@@ -89,7 +89,7 @@ export const createProcess = async (
       workHoursId,
       error: null 
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating process:', error);
     return { id: null, error: error.message };
   }
@@ -117,7 +117,7 @@ export const getProcess = async (
     } else {
       return { data: null, error: 'Process not found' };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting process:', error);
     return { data: null, error: error.message };
   }
@@ -243,7 +243,7 @@ export const getProcessesList = async (filters?: {
     }
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting processes list:', error);
     return { data: [], error: error.message };
   }
@@ -265,7 +265,7 @@ export const updateProcess = async (
     });
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating process:', error);
     return { error: error.message };
   }
@@ -290,7 +290,7 @@ export const deleteProcess = async (
     }
     
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting process:', error);
     return { error: error.message };
   }
@@ -344,7 +344,7 @@ export const getOrCreateCompany = async (
       },
       error: null
     };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting or creating company:', error);
     return { data: null, error: error.message };
   }
@@ -416,7 +416,7 @@ export const getCompaniesWithProcesses = async (): Promise<{
     }));
 
     return { data: companiesWithProcesses, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting companies with processes:', error);
     return { data: [], error: error.message };
   }
@@ -626,7 +626,7 @@ export const bulkUpdateProcesses = async (
           ...update.data,
           updatedAt: serverTimestamp()
         });
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         errors.push({ id: update.id, error: error.message });
       }
     }
@@ -636,7 +636,7 @@ export const bulkUpdateProcesses = async (
     }
 
     return { success: errors.length === 0, errors };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error in bulk update processes:', error);
     return { 
       success: false, 
@@ -698,7 +698,7 @@ export const createProcessTemplate = async (
     });
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating process template:', error);
     return { id: null, error: error.message };
   }
@@ -722,7 +722,7 @@ export const getProcessTemplates = async (): Promise<{
     }));
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting process templates:', error);
     return { data: [], error: error.message };
   }

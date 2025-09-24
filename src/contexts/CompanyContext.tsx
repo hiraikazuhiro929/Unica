@@ -110,7 +110,7 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
         // 所属企業がない場合
         setLoading(false);
       }
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Error loading user companies:', err);
       setError('企業情報の読み込みに失敗しました');
       setLoading(false);
@@ -157,7 +157,7 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
       localStorage.setItem('unica-last-company', companyId);
       
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Error switching company:', err);
       setError('企業の切り替えに失敗しました');
       setLoading(false);

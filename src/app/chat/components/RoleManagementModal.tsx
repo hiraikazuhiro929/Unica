@@ -275,9 +275,9 @@ export const RoleManagementModal: React.FC<RoleManagementModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto dark:bg-slate-800">
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 -m-6 mb-6 p-6 rounded-t-lg">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white">
             <Shield className="w-5 h-5" />
             <span>ロール管理 - {server.name}</span>
           </DialogTitle>

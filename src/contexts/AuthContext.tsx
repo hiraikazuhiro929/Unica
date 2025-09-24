@@ -9,13 +9,14 @@ import {
   logOut 
 } from '@/lib/firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { 
-  updateActivity, 
-  getSessionInfo, 
+import {
+  updateActivity,
+  getSessionInfo,
   endSession,
   startSession,
-  logSecurityEvent 
+  logSecurityEvent
 } from '@/lib/utils/securityUtils';
+import { log } from '@/lib/logger';
 
 // =============================================================================
 // TYPES
@@ -58,19 +59,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    console.log('🔐 AuthProvider: Initializing auth state listener');
+    log.auth('Initializing auth state listener', undefined, 'AuthProvider');
     
     const unsubscribe = subscribeToAppUserAuth(async (appUser) => {
       try {
         setError(null);
         
         if (appUser) {
-          console.log('✅ AuthProvider: User logged in:', {
+          log.auth('User logged in', {
             uid: appUser.uid,
             name: appUser.name,
             role: appUser.role,
             department: appUser.department
-          });
+          }, 'AuthProvider');
           
           // Firebase User も設定
           setFirebaseUser(auth.currentUser);
@@ -80,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // アクティブユーザーかチェック
           if (appUser.isActive === false) {
-            console.warn('⚠️ AuthProvider: User account is inactive');
+            log.warn('User account is inactive', undefined, 'AuthProvider');
             await logOut();
             setUser(null);
             setFirebaseUser(null);
@@ -89,11 +90,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(appUser);
           }
         } else {
-          console.log('ℹ️ AuthProvider: User logged out');
+          log.auth('User logged out', undefined, 'AuthProvider');
           setUser(null);
           setFirebaseUser(null);
         }
-      } catch (err: any) {
+      } catch (err: Error | unknown) {
         console.error('❌ AuthProvider: Error in auth state change:', err);
         setError(`認証エラー: ${err.message || 'Unknown error'}`);
         setUser(null);
@@ -115,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const updatedUser = await getAppUserData(firebaseUser.uid);
         setUser(updatedUser);
-      } catch (err: any) {
+      } catch (err: Error | unknown) {
         console.error('Error refreshing user:', err);
         setError('ユーザー情報の更新に失敗しました');
       }
@@ -178,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logSecurityEvent('logout', { userId: user?.uid });
       await logOut();
       endSession();
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Logout error:', err);
       setError('ログアウトに失敗しました');
     }

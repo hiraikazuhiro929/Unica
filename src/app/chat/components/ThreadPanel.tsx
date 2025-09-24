@@ -17,6 +17,7 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import type { ChatMessage, ChatUser, ChatAttachment } from "@/lib/firebase/chat";
+import { formatChatTimestamp } from "@/lib/utils/dateFormatter";
 
 interface ThreadPanelProps {
   isOpen: boolean;
@@ -99,15 +100,9 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
     setUploadingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 時刻フォーマット
+  // 時刻フォーマット（統一されたユーティリティを使用）
   const formatTimestamp = (timestamp: any): string => {
-    const date = timestamp?.toDate?.() || new Date(timestamp);
-    return date.toLocaleString("ja-JP", {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatChatTimestamp(timestamp);
   };
 
   // ユーザーのアバター取得

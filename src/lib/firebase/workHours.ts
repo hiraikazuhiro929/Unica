@@ -148,7 +148,7 @@ export const createWorkHours = async (
     });
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating work hours:', error);
     return { id: null, error: error.message };
   }
@@ -178,7 +178,7 @@ export const getWorkHours = async (
     } else {
       return { data: null, error: 'Work hours record not found' };
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting work hours:', error);
     return { data: null, error: error.message };
   }
@@ -256,7 +256,7 @@ export const getWorkHoursList = async (filters?: {
     });
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting work hours list:', error);
     return { data: [], error: error.message };
   }
@@ -292,12 +292,12 @@ export const updateWorkHours = async (
     // 変更履歴を作成
     const changes = Object.entries(updates)
       .filter(([key, value]) => {
-        const currentValue = (currentData as any)[key];
+        const currentValue = (currentData as Record<string, any>)[key];
         return JSON.stringify(currentValue) !== JSON.stringify(value);
       })
       .map(([field, newValue]) => ({
         field,
-        oldValue: (currentData as any)[field],
+        oldValue: (currentData as Record<string, any>)[field],
         newValue
       }));
 
@@ -334,7 +334,7 @@ export const updateWorkHours = async (
     await batch.commit();
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error updating work hours:', error);
     return { error: error.message };
   }
@@ -370,7 +370,7 @@ export const deleteWorkHours = async (
     await batch.commit();
 
     return { error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error deleting work hours:', error);
     return { error: error.message };
   }
@@ -503,7 +503,7 @@ export const syncWorkHoursFromDailyReport = async (
             );
           }
         }
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         result.errors.push({
           type: 'processing_error',
           message: `製番 ${productionNumber} の処理中にエラーが発生`,
@@ -516,7 +516,7 @@ export const syncWorkHoursFromDailyReport = async (
     result.metadata.totalProcessingTime = Date.now() - startTime;
 
     return result;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     result.errors.push({
       type: 'sync_error',
       message: 'Daily report sync failed',
@@ -583,7 +583,7 @@ export const createWorkHoursHistory = async (
     const docRef = await addDoc(collection(db, WORK_HOURS_COLLECTIONS.WORK_HOURS_HISTORY), sanitizeForFirestore(cleanedData));
 
     return { id: docRef.id, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating work hours history:', error);
     return { id: null, error: error.message };
   }
@@ -618,7 +618,7 @@ export const getWorkHoursHistory = async (
     })) as WorkHoursHistory[];
 
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error getting work hours history:', error);
     return { data: [], error: error.message };
   }
@@ -743,7 +743,7 @@ export const bulkUpdateWorkHours = async (
           }).filter(([_, value]) => value !== undefined)
         );
         batch.update(docRef, sanitizeForFirestore(cleanedData));
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         errors.push({ id: update.id, error: error.message });
       }
     }
@@ -753,7 +753,7 @@ export const bulkUpdateWorkHours = async (
     }
 
     return { success: errors.length === 0, errors };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error in bulk update:', error);
     return { 
       success: false, 
@@ -838,7 +838,7 @@ export const createWorkHoursFromProcess = async (
       };
     }
     
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error('Error creating work hours from process:', error);
     return {
       id: null,

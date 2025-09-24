@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,28 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
   const [processTypes, setProcessTypes] = useState<ProcessType[]>([]);
   
   // 工程マスタを取得
+  // キーボードイベントハンドラ
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      // フォーカストラップ（最初の入力要素にフォーカス）
+      const firstInput = document.querySelector('#project-name') as HTMLElement;
+      if (firstInput) {
+        firstInput.focus();
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   useEffect(() => {
     const loadProcessTypes = async () => {
       const { data, error } = await getProcessTypes();
@@ -119,9 +141,11 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
   }, []);
   
   // 工程テンプレートをprocessTypesから生成
-  const processTemplates = processTypes.length > 0 
-    ? processTypes.map(pt => pt.nameJapanese)
-    : ['検査', '梱包', '組立', '溶接', '塗装', '乾燥', '調整', '品質チェック', '清掃', '運搬', 'その他'];
+  const processTemplates = useMemo(() => {
+    return processTypes.length > 0
+      ? processTypes.map(pt => pt.nameJapanese)
+      : ['検査', '梱包', '組立', '溶接', '塗装', '乾燥', '調整', '品質チェック', '清掃', '運搬', 'その他'];
+  }, [processTypes]);
 
   // 時間入力をパースする関数
   const parseTimeInput = (input: string): number => {
@@ -159,7 +183,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
     return 0;
   };
 
-  const toggleStepExpansion = (stepName: string) => {
+  const toggleStepExpansion = useCallback((stepName: string) => {
     const newExpanded = new Set(expandedSteps);
     if (newExpanded.has(stepName)) {
       newExpanded.delete(stepName);
@@ -167,30 +191,34 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
       newExpanded.add(stepName);
     }
     setExpandedSteps(newExpanded);
-  };
+  }, [expandedSteps]);
 
-  const getStepDifference = (planned: number, actual: number) => {
+  const getStepDifference = useCallback((planned: number, actual: number) => {
     const diff = actual - planned;
     const percentage = planned > 0 ? ((actual / planned) * 100).toFixed(1) : '0';
     return { diff, percentage };
-  };
+  }, []);
 
-  const getDifferenceIcon = (diff: number) => {
+  const getDifferenceIcon = useCallback((diff: number) => {
     if (diff > 0) return <TrendingUp className="w-4 h-4 text-red-500" />;
     if (diff < 0) return <TrendingDown className="w-4 h-4 text-green-500" />;
     return <MinusCircle className="w-4 h-4 text-gray-400" />;
-  };
+  }, []);
 
-  const efficiency = formData.plannedHours?.total && formData.actualHours?.total 
-    ? (formData.plannedHours.total / formData.actualHours.total) * 100 
-    : 0;
+  const efficiency = useMemo(() => {
+    return formData.plannedHours?.total && formData.actualHours?.total
+      ? (formData.plannedHours.total / formData.actualHours.total) * 100
+      : 0;
+  }, [formData.plannedHours?.total, formData.actualHours?.total]);
 
-  const costDiff = (formData.budget?.totalActualCost || 0) - (formData.budget?.totalPlannedCost || 0);
+  const costDiff = useMemo(() => {
+    return (formData.budget?.totalActualCost || 0) - (formData.budget?.totalPlannedCost || 0);
+  }, [formData.budget?.totalActualCost, formData.budget?.totalPlannedCost]);
 
-  const getEfficiencyIcon = (efficiency: number) => {
+  const getEfficiencyIcon = useCallback((efficiency: number) => {
     if (efficiency >= 100) return <TrendingUp className="w-4 h-4 text-green-600" />;
     return <TrendingDown className="w-4 h-4 text-red-600" />;
-  };
+  }, []);
 
   useEffect(() => {
     if (workHours) {
@@ -230,7 +258,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
 
   if (!isOpen) return null;
 
-  const addCustomPlannedStep = () => {
+  const addCustomPlannedStep = useCallback(() => {
     const newStep = {
       id: `custom-${Date.now()}`,
       name: '',
@@ -240,11 +268,11 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
       machineCharge: 0,
       totalRate: baseWorkerCharge
     };
-    setCustomPlannedSteps([...customPlannedSteps, newStep]);
-  };
+    setCustomPlannedSteps(prev => [...prev, newStep]);
+  }, [baseWorkerCharge]);
 
-  const updateCustomPlannedStep = (id: string, field: string, value: any) => {
-    setCustomPlannedSteps(customPlannedSteps.map(step => {
+  const updateCustomPlannedStep = useCallback((id: string, field: string, value: any) => {
+    setCustomPlannedSteps(prev => prev.map(step => {
       if (step.id === id) {
         const updatedStep = { ...step, [field]: value };
         if (field === 'machineId') {
@@ -256,11 +284,11 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
       }
       return step;
     }));
-  };
+  }, [machines]);
 
-  const removeCustomPlannedStep = (id: string) => {
-    setCustomPlannedSteps(customPlannedSteps.filter(step => step.id !== id));
-  };
+  const removeCustomPlannedStep = useCallback((id: string) => {
+    setCustomPlannedSteps(prev => prev.filter(step => step.id !== id));
+  }, []);
 
   const handleSave = () => {
     // 基本工程の合計時間とコストを計算
@@ -313,31 +341,30 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
   const formatHours = (hours: number) => `${hours.toFixed(1)}h`;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-5xl h-[90vh] flex flex-col border border-gray-200 dark:border-gray-600 shadow-xl">
         {/* ヘッダー - 固定 */}
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600">
+        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 id="modal-title" className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 {workHours ? '工数編集' : '工数新規作成'}
               </h2>
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant="default"
-                size="sm"
-                onClick={handleSave}
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                保存
-              </Button>
-              <Button
                 variant="ghost"
+                size="sm"
                 onClick={onClose}
-                className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-slate-700"
+                className="h-9 w-9 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                aria-label="モーダルを閉じる"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -348,10 +375,10 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
         {/* コンテンツ - スクロール可能 */}
         <div className="flex-1 overflow-y-auto p-4">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-white dark:bg-gray-800 z-10">
-              <TabsTrigger value="overview" className="text-sm">基本情報</TabsTrigger>
-              <TabsTrigger value="breakdown" className="text-sm">工数・コスト</TabsTrigger>
-              <TabsTrigger value="daily-reports" className="text-sm">日報連携</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-white dark:bg-gray-800 z-10" role="tablist" aria-label="工数管理タブ">
+              <TabsTrigger value="overview" className="text-sm" role="tab" aria-controls="overview-panel">基本情報</TabsTrigger>
+              <TabsTrigger value="breakdown" className="text-sm" role="tab" aria-controls="breakdown-panel">工数・コスト</TabsTrigger>
+              <TabsTrigger value="daily-reports" className="text-sm" role="tab" aria-controls="daily-reports-panel">日報連携</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-4 space-y-4">
@@ -364,21 +391,25 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                   </h3>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-sm font-medium">プロジェクト名</Label>
+                      <Label htmlFor="project-name" className="text-sm font-medium">プロジェクト名</Label>
                       <Input
+                        id="project-name"
                         value={formData.projectName || ''}
                         onChange={(e) => setFormData({...formData, projectName: e.target.value})}
                         placeholder="プロジェクト名を入力..."
-                        className="mt-1"
+                        className="mt-1 dark:bg-gray-800"
+                        aria-describedby="project-name-help"
                       />
                     </div>
                     <div>
-                      <Label className="text-sm font-medium">クライアント</Label>
+                      <Label htmlFor="client" className="text-sm font-medium">クライアント</Label>
                       <Input
+                        id="client"
                         value={formData.client || ''}
                         onChange={(e) => setFormData({...formData, client: e.target.value})}
                         placeholder="クライアント名を入力..."
-                        className="mt-1"
+                        className="mt-1 dark:bg-gray-800"
+                        aria-describedby="client-help"
                       />
                     </div>
                     <div>
@@ -387,7 +418,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         value={formData.managementNumber || ''}
                         onChange={(e) => setFormData({...formData, managementNumber: e.target.value})}
                         placeholder="管理番号を入力..."
-                        className="mt-1"
+                        className="mt-1 dark:bg-gray-800"
                       />
                     </div>
                     <div>
@@ -399,7 +430,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="dark:bg-gray-800">
                           <SelectItem value="計画中">計画中</SelectItem>
                           <SelectItem value="進行中">進行中</SelectItem>
                           <SelectItem value="完了">完了</SelectItem>
@@ -416,7 +447,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="dark:bg-gray-800">
                           <SelectItem value="低">低</SelectItem>
                           <SelectItem value="中">中</SelectItem>
                           <SelectItem value="高">高</SelectItem>
@@ -430,7 +461,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         value={formData.plannedContent || ''}
                         onChange={(e) => setFormData({...formData, plannedContent: e.target.value})}
                         placeholder="計画内容を入力..."
-                        className="mt-1"
+                        className="mt-1 dark:bg-gray-800"
                         rows={3}
                       />
                     </div>
@@ -447,7 +478,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between py-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600 dark:text-slate-400">工数効率</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">工数効率</span>
                           {getEfficiencyIcon(efficiency)}
                         </div>
                         <span className="text-lg font-bold text-gray-900 dark:text-white">
@@ -458,7 +489,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                       
                       <div className="flex items-center justify-between py-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600 dark:text-slate-400">コスト効率</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">コスト効率</span>
                           <DollarSign className="w-4 h-4 text-green-600" />
                         </div>
                         <div className="text-right">
@@ -489,7 +520,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                   {/* 段取り */}
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">段取り</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200 text-base">段取り</span>
                       <div className={`flex items-center gap-2 text-sm font-medium ${
                         (formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0) > 0 ? 'text-red-600' : 
                         (formData.actualHours?.setup || 0) - (formData.plannedHours?.setup || 0) < 0 ? 'text-green-600' : 'text-gray-600'
@@ -518,7 +549,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 }
                               });
                             }}
-                            className="h-10 text-base"
+                            className="h-10 text-base dark:bg-gray-800"
                             placeholder="2時間30分 または 2.5"
                           />
                           <div className="grid grid-cols-2 gap-2">
@@ -531,7 +562,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">未選択</SelectItem>
                                   {workers.map((worker) => (
                                     <SelectItem key={worker.id} value={worker.id}>
@@ -550,7 +581,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">なし</SelectItem>
                                   {machines.filter(m => m.status === 'available').map((machine) => (
                                     <SelectItem key={machine.id} value={machine.id}>
@@ -581,7 +612,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                               }
                             });
                           }}
-                          className="h-10 text-base"
+                          className="h-10 text-base dark:bg-gray-800"
                           placeholder="日報から自動更新"
                         />
                       </div>
@@ -591,7 +622,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                   {/* 機械加工 */}
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">機械加工</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200 text-base">機械加工</span>
                       <div className={`flex items-center gap-2 text-sm font-medium ${
                         (formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0) > 0 ? 'text-red-600' : 
                         (formData.actualHours?.machining || 0) - (formData.plannedHours?.machining || 0) < 0 ? 'text-green-600' : 'text-gray-600'
@@ -620,7 +651,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 }
                               });
                             }}
-                            className="h-10 text-base"
+                            className="h-10 text-base dark:bg-gray-800"
                             placeholder="2時間30分 または 2.5"
                           />
                           <div className="grid grid-cols-2 gap-2">
@@ -633,7 +664,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">未選択</SelectItem>
                                   {workers.map((worker) => (
                                     <SelectItem key={worker.id} value={worker.id}>
@@ -652,7 +683,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">なし</SelectItem>
                                   {machines.filter(m => m.status === 'available').map((machine) => (
                                     <SelectItem key={machine.id} value={machine.id}>
@@ -683,7 +714,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                               }
                             });
                           }}
-                          className="h-10 text-base"
+                          className="h-10 text-base dark:bg-gray-800"
                           placeholder="日報から自動更新"
                         />
                       </div>
@@ -693,7 +724,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                   {/* 仕上げ */}
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-gray-800 dark:text-slate-200 text-base">仕上げ</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200 text-base">仕上げ</span>
                       <div className={`flex items-center gap-2 text-sm font-medium ${
                         (formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0) > 0 ? 'text-red-600' : 
                         (formData.actualHours?.finishing || 0) - (formData.plannedHours?.finishing || 0) < 0 ? 'text-green-600' : 'text-gray-600'
@@ -722,7 +753,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 }
                               });
                             }}
-                            className="h-10 text-base"
+                            className="h-10 text-base dark:bg-gray-800"
                             placeholder="2時間30分 または 2.5"
                           />
                           <div className="grid grid-cols-2 gap-2">
@@ -735,7 +766,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">未選択</SelectItem>
                                   {workers.map((worker) => (
                                     <SelectItem key={worker.id} value={worker.id}>
@@ -754,7 +785,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">なし</SelectItem>
                                   {machines.filter(m => m.status === 'available').map((machine) => (
                                     <SelectItem key={machine.id} value={machine.id}>
@@ -785,7 +816,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                               }
                             });
                           }}
-                          className="h-10 text-base"
+                          className="h-10 text-base dark:bg-gray-800"
                           placeholder="日報から自動更新"
                         />
                       </div>
@@ -805,7 +836,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                           <SelectTrigger className="h-8 w-32 text-sm font-medium border-green-300 dark:border-green-600">
                             <SelectValue placeholder="工程選択" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="dark:bg-gray-800">
                             {processTemplates.map((template) => (
                               <SelectItem key={template} value={template}>
                                 {template}
@@ -821,6 +852,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                         size="sm"
                         onClick={() => removeCustomPlannedStep(step.id)}
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-800/50"
+                        aria-label={`工程${step.name || '未選択'}を削除`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -836,7 +868,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                               const value = parseTimeInput(e.target.value);
                               updateCustomPlannedStep(step.id, 'hours', value);
                             }}
-                            className="h-10 text-base"
+                            className="h-10 text-base dark:bg-gray-800"
                             placeholder="2時間30分 または 2.5"
                           />
                           <div className="grid grid-cols-2 gap-2">
@@ -849,7 +881,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">未選択</SelectItem>
                                   {workers.map((worker) => (
                                     <SelectItem key={worker.id} value={worker.id}>
@@ -874,7 +906,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                                 <SelectTrigger className="h-8 text-sm">
                                   <SelectValue placeholder="選択" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="dark:bg-gray-800">
                                   <SelectItem value="none">なし</SelectItem>
                                   {machines.filter(m => m.status === 'available').map((machine) => (
                                     <SelectItem key={machine.id} value={machine.id}>
@@ -892,7 +924,7 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">実績工数（日報自動連携）</Label>
-                        <div className="h-10 flex items-center px-3 border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 rounded-md text-base text-gray-500">
+                        <div className="h-10 flex items-center px-3 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-md text-base text-gray-500">
                           日報から自動更新
                         </div>
                         <div className="mt-2 text-xs text-gray-500">
@@ -947,16 +979,18 @@ export const WorkHoursDetailModal: React.FC<WorkHoursDetailModalProps> = ({
         
         {/* フッター - 固定 */}
         <div className="flex-shrink-0 flex items-center justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={onClose}
             className="px-6"
+            aria-label="変更を破棄してモーダルを閉じる"
           >
             キャンセル
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             className="px-6"
+            aria-label="工数情報を保存する"
           >
             <Save className="w-4 h-4 mr-2" />
             保存

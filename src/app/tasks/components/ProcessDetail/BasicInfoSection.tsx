@@ -185,7 +185,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               handleFieldChange("priority", value)
             }
           >
-            <SelectTrigger className="border-2 border-gray-300 focus:border-blue-500">
+            <SelectTrigger className="border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-slate-400 bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -205,7 +205,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
               handleFieldChange("status", value)
             }
           >
-            <SelectTrigger className="border-2 border-gray-300 focus:border-blue-500">
+            <SelectTrigger className="border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-slate-400 bg-white dark:bg-slate-800 text-gray-900 dark:text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -226,7 +226,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             value={process.remarks}
             onChange={(e) => handleFieldChange("remarks", e.target.value)}
             rows={3}
-            className="border-2 border-gray-300 focus:border-blue-500"
+            className="border-2 border-gray-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-slate-400 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400"
             placeholder="備考を入力してください"
           />
         </div>

@@ -18,7 +18,7 @@ export const verifyFirebaseFix = async () => {
       processOperations: false
     },
     errors: [] as string[],
-    details: {} as any
+    details: {} as Record<string, any>
   };
 
   try {
@@ -228,6 +228,6 @@ export const verifyFirebaseFix = async () => {
 
 // ブラウザ環境でのグローバル関数として公開
 if (typeof window !== 'undefined') {
-  (window as any).verifyFirebaseFix = verifyFirebaseFix;
+  (window as Window & { verifyFirebaseFix: typeof verifyFirebaseFix }).verifyFirebaseFix = verifyFirebaseFix;
   console.log('🔧 Firebase修復確認テスト関数が利用可能: window.verifyFirebaseFix()');
 }
