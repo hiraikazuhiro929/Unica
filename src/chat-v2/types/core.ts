@@ -11,7 +11,8 @@ import {
   CategoryId,
   AttachmentId,
   NotificationId,
-  ChatTimestamp
+  ChatTimestamp,
+  DirectMessageId
 } from './brand';
 
 // ===============================
@@ -426,3 +427,23 @@ export const isNotificationType = (value: unknown): value is NotificationType =>
 export const isMessageStatus = (value: unknown): value is MessageStatus => {
   return typeof value === 'string' && Object.values(MessageStatus).includes(value as MessageStatus);
 };
+
+// ===============================
+// ダイレクトメッセージ関連
+// ===============================
+
+/**
+ * ダイレクトメッセージチャンネル
+ */
+export interface DirectMessageChannel {
+  readonly id: DirectMessageId;
+  readonly participants: readonly [UserId, UserId];
+  readonly createdAt: ChatTimestamp;
+  readonly updatedAt: ChatTimestamp;
+  readonly lastMessage?: {
+    readonly content: string;
+    readonly senderId: UserId;
+    readonly timestamp: ChatTimestamp;
+    readonly isRead: boolean;
+  };
+}

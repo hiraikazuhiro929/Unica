@@ -51,6 +51,11 @@ export type NotificationId = Brand<string, 'NotificationId'>;
  */
 export type ChatTimestamp = Brand<number, 'ChatTimestamp'>;
 
+/**
+ * ダイレクトメッセージID - DMチャンネルを一意に特定
+ */
+export type DirectMessageId = Brand<string, 'DirectMessageId'>;
+
 // ===============================
 // ブランド型作成関数
 // ===============================
@@ -135,6 +140,16 @@ export const createChatTimestamp = (timestamp: number): ChatTimestamp => {
   return timestamp as ChatTimestamp;
 };
 
+/**
+ * DirectMessageIdを作成
+ */
+export const createDirectMessageId = (id: string): DirectMessageId => {
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    throw new Error('Invalid DirectMessageId: must be a non-empty string');
+  }
+  return id.trim() as DirectMessageId;
+};
+
 // ===============================
 // ブランド型検証関数
 // ===============================
@@ -195,6 +210,13 @@ export const isChatTimestamp = (value: unknown): value is ChatTimestamp => {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 };
 
+/**
+ * DirectMessageIdかどうか検証
+ */
+export const isDirectMessageId = (value: unknown): value is DirectMessageId => {
+  return typeof value === 'string' && value.trim() !== '';
+};
+
 // ===============================
 // ユーティリティ型
 // ===============================
@@ -202,7 +224,7 @@ export const isChatTimestamp = (value: unknown): value is ChatTimestamp => {
 /**
  * すべてのIDブランド型の組合せ
  */
-export type ChatId = MessageId | ChannelId | UserId | ThreadId | CategoryId | AttachmentId | NotificationId;
+export type ChatId = MessageId | ChannelId | UserId | ThreadId | CategoryId | AttachmentId | NotificationId | DirectMessageId;
 
 /**
  * IDを文字列に変換
@@ -220,5 +242,5 @@ export const unwrapTimestamp = (timestamp: ChatTimestamp): number => timestamp a
 export const isChatId = (value: unknown): value is ChatId => {
   return isMessageId(value) || isChannelId(value) || isUserId(value) ||
          isThreadId(value) || isCategoryId(value) || isAttachmentId(value) ||
-         isNotificationId(value);
+         isNotificationId(value) || isDirectMessageId(value);
 };

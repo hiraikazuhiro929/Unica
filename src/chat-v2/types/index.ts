@@ -13,12 +13,16 @@ export type ChannelId = string & { readonly __brand: 'ChannelId' };
 export type MessageId = string & { readonly __brand: 'MessageId' };
 export type UserId = string & { readonly __brand: 'UserId' };
 export type ThreadId = string & { readonly __brand: 'ThreadId' };
+export type CategoryId = string & { readonly __brand: 'CategoryId' };
+export type DirectMessageId = string & { readonly __brand: 'DirectMessageId' };
 
 // ブランド型のファクトリー関数
 export const createChannelId = (id: string): ChannelId => id as ChannelId;
 export const createMessageId = (id: string): MessageId => id as MessageId;
 export const createUserId = (id: string): UserId => id as UserId;
 export const createThreadId = (id: string): ThreadId => id as ThreadId;
+export const createCategoryId = (id: string): CategoryId => id as CategoryId;
+export const createDirectMessageId = (id: string): DirectMessageId => id as DirectMessageId;
 
 // =============================================================================
 // CORE MESSAGE TYPES
@@ -45,8 +49,12 @@ export interface ChatMessage {
     authorName: string;
   };
   threadId?: ThreadId;
+  parentMessageId?: MessageId; // スレッド返信の場合、親メッセージID
   isThread?: boolean;
   threadCount?: number;
+  isPinned?: boolean; // ピン留めされているか
+  pinnedBy?: UserId; // 誰がピン留めしたか
+  pinnedAt?: Timestamp; // ピン留めした日時
   isDeleted: boolean;
   status?: 'sending' | 'sent' | 'failed';
   localId?: string; // 楽観的UI用のローカルID
@@ -77,7 +85,7 @@ export interface ChatChannel {
   description?: string;
   topic?: string;
   type: 'text' | 'voice' | 'announcement';
-  categoryId?: string;
+  categoryId?: CategoryId;
   position: number;
   isPrivate: boolean;
   createdBy: UserId;
@@ -103,7 +111,7 @@ export interface LastMessage {
 }
 
 export interface ChannelCategory {
-  id: string;
+  id: CategoryId;
   name: string;
   position: number;
   isCollapsed?: boolean;
@@ -203,6 +211,23 @@ export interface TypingStatus {
 }
 
 // =============================================================================
+// DIRECT MESSAGE TYPES
+// =============================================================================
+
+export interface DirectMessageChannel {
+  id: DirectMessageId;
+  participants: [UserId, UserId];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  lastMessage?: {
+    content: string;
+    senderId: UserId;
+    timestamp: Timestamp;
+    isRead: boolean;
+  };
+}
+
+// =============================================================================
 // STATE MANAGEMENT TYPES
 // =============================================================================
 
@@ -247,12 +272,14 @@ export interface MessageResponse {
 
 export interface MessageFormData {
   content: string;
-  attachments?: File[];
+  attachments?: ChatAttachment[];
+  mentions?: UserId[];
   replyTo?: {
     messageId: MessageId;
     content: string;
     authorName: string;
   };
+  parentMessageId?: MessageId; // スレッド返信の場合
 }
 
 export interface ChannelFormData {
