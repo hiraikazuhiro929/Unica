@@ -15,7 +15,6 @@ import {
   limit,
   limitToLast,
   onSnapshot,
-  serverTimestamp,
   getDocs,
   getDoc,
   setDoc,
@@ -55,6 +54,7 @@ const COLLECTIONS = {
   UNREAD_COUNTS: CHAT_COLLECTIONS.UNREAD_COUNTS,
   NOTIFICATIONS: CHAT_COLLECTIONS.NOTIFICATIONS,
   TYPING_STATUS: CHAT_COLLECTIONS.TYPING_STATUS,
+  CATEGORIES: CHAT_COLLECTIONS.CATEGORIES,
 } as const;
 
 // =============================================================================
@@ -62,38 +62,32 @@ const COLLECTIONS = {
 // =============================================================================
 
 /**
- * FirebaseのTimestampをDateに変換する
+ * タイムスタンプをDateに変換する（シンプル版）
  */
 const convertTimestamp = (timestamp: any): Date | null => {
-  console.log('[convertTimestamp] Input:', timestamp, 'Type:', typeof timestamp);
+  if (!timestamp) return null;
 
-  if (!timestamp) {
-    console.log('[convertTimestamp] Null/undefined input, returning null');
-    return null;
-  }
-
-  // Firebaseのタイムスタンプオブジェクト
+  // Firestoreから取得したTimestamp型
   if (timestamp.toDate && typeof timestamp.toDate === 'function') {
-    const converted = timestamp.toDate();
-    console.log('[convertTimestamp] Converted via toDate():', converted);
-    return converted;
+    return timestamp.toDate();
   }
 
-  // 既にDateオブジェクト
+  // 既にDate型（送信時にnew Date()で保存したもの）
   if (timestamp instanceof Date) {
-    console.log('[convertTimestamp] Already Date object:', timestamp);
     return timestamp;
   }
 
-  // Timestamp型のsecondsフィールド
-  if (timestamp.seconds !== undefined) {
-    const converted = new Date(timestamp.seconds * 1000);
-    console.log('[convertTimestamp] Converted via seconds:', converted);
-    return converted;
+  // 壊れたデータ（空オブジェクト）の場合はnullを返す
+  if (typeof timestamp === 'object' && Object.keys(timestamp).length === 0) {
+    return null;
   }
 
-  console.warn('[convertTimestamp] Could not convert timestamp:', timestamp);
-  return null;
+  // その他は文字列やnumberとして扱う
+  const converted = new Date(timestamp);
+  if (isNaN(converted.getTime())) {
+    return null;
+  }
+  return converted;
 };
 
 /**
@@ -104,6 +98,11 @@ const removeUndefinedFields = (obj: any): any => {
     return obj;
   }
 
+  // Date型はそのまま返す（再帰処理しない）
+  if (obj instanceof Date) {
+    return obj;
+  }
+
   if (Array.isArray(obj)) {
     return obj.map(item => removeUndefinedFields(item));
   }
@@ -111,7 +110,10 @@ const removeUndefinedFields = (obj: any): any => {
   const result: any = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
-      if (typeof value === 'object' && value !== null) {
+      // Date型はそのまま保持
+      if (value instanceof Date) {
+        result[key] = value;
+      } else if (typeof value === 'object' && value !== null) {
         result[key] = removeUndefinedFields(value);
       } else {
         result[key] = value;
@@ -126,7 +128,9 @@ const removeUndefinedFields = (obj: any): any => {
  */
 const documentToChatMessage = (doc: any): ChatMessage => {
   const data = doc.data();
-  return {
+
+
+  const msg = {
     id: createMessageId(doc.id),
     channelId: createChannelId(data.channelId),
     content: data.content || '',
@@ -149,55 +153,64 @@ const documentToChatMessage = (doc: any): ChatMessage => {
     status: data.status || 'sent',
     localId: data.localId,
   };
+  return msg;
 };
 
 /**
  * Firebase文書をChatChannelに変換
  */
-const documentToChatChannel = (doc: any): ChatChannel => {
-  const data = doc.data();
-  console.log('[documentToChatChannel] Raw data:', {
-    id: doc.id,
-    createdAt: data.createdAt,
-    updatedAt: data.updatedAt,
-    lastMessage: data.lastMessage
-  });
+const documentToChatChannel = (doc: any): ChatChannel | null => {
+  try {
+    const data = doc.data();
 
-  // lastMessageのタイムスタンプも変換
-  let lastMessage = data.lastMessage;
-  if (lastMessage && lastMessage.timestamp) {
-    lastMessage = {
-      ...lastMessage,
-      timestamp: convertTimestamp(lastMessage.timestamp),
+    console.log('🔍 [documentToChatChannel] 変換開始:', {
+      docId: doc.id,
+      name: data.name,
+      type: data.type,
+      createdBy: data.createdBy,
+      hasCreatedAt: !!data.createdAt,
+      hasUpdatedAt: !!data.updatedAt,
+    });
+
+    // lastMessageのタイムスタンプも変換
+    let lastMessage = data.lastMessage;
+    if (lastMessage && lastMessage.timestamp) {
+      lastMessage = {
+        ...lastMessage,
+        timestamp: convertTimestamp(lastMessage.timestamp),
+      };
+    }
+
+    const convertedCreatedAt = convertTimestamp(data.createdAt) || new Date();
+    const convertedUpdatedAt = convertTimestamp(data.updatedAt) || new Date();
+
+    const channel = {
+      id: createChannelId(doc.id),
+      name: data.name || 'Unknown Channel',
+      description: data.description,
+      topic: data.topic,
+      type: data.type || 'text',
+      categoryId: data.categoryId,
+      position: data.position || 0,
+      isPrivate: data.isPrivate || false,
+      createdBy: createUserId(data.createdBy),
+      createdAt: convertedCreatedAt,
+      updatedAt: convertedUpdatedAt,
+      memberCount: data.memberCount || 0,
+      permissions: data.permissions,
+      lastMessage: lastMessage,
     };
+
+    console.log('✅ [documentToChatChannel] 変換成功:', channel.id, channel.name);
+    return channel;
+  } catch (error) {
+    console.error('❌ [documentToChatChannel] 変換エラー:', {
+      docId: doc.id,
+      error: error instanceof Error ? error.message : error,
+      data: doc.data(),
+    });
+    return null;
   }
-
-  const convertedCreatedAt = convertTimestamp(data.createdAt) || new Date();
-  const convertedUpdatedAt = convertTimestamp(data.updatedAt) || new Date();
-
-  console.log('[documentToChatChannel] Converted timestamps:', {
-    createdAt: convertedCreatedAt,
-    updatedAt: convertedUpdatedAt,
-    createdAtIsDate: convertedCreatedAt instanceof Date,
-    updatedAtIsDate: convertedUpdatedAt instanceof Date
-  });
-
-  return {
-    id: createChannelId(doc.id),
-    name: data.name || 'Unknown Channel',
-    description: data.description,
-    topic: data.topic,
-    type: data.type || 'text',
-    categoryId: data.categoryId,
-    position: data.position || 0,
-    isPrivate: data.isPrivate || false,
-    createdBy: createUserId(data.createdBy),
-    createdAt: convertedCreatedAt,
-    updatedAt: convertedUpdatedAt,
-    memberCount: data.memberCount || 0,
-    permissions: data.permissions,
-    lastMessage: lastMessage,
-  };
 };
 
 // =============================================================================
@@ -215,6 +228,8 @@ export const sendMessage = async (
   authorRole: string
 ): Promise<MessageResponse> => {
   try {
+    console.log('📤', formData.content.substring(0, 15));
+
     // メンション解析
     const mentionPattern = /@(\w+)/g;
     const mentions: string[] = [];
@@ -223,23 +238,52 @@ export const sendMessage = async (
       mentions.push(match[1]);
     }
 
+    // 送信した瞬間の時刻をそのまま保存
+    const now = new Date();
+
     const messageData = {
       channelId: channelId,
       content: formData.content,
       authorId: authorId,
       authorName: authorName,
       authorRole: authorRole,
-      timestamp: serverTimestamp(),
+      timestamp: now,
       type: 'message' as const,
       mentions: mentions.length > 0 ? mentions : undefined,
       replyTo: formData.replyTo,
+      attachments: formData.attachments || [],
+      parentMessageId: formData.parentMessageId, // スレッド返信の場合
       isDeleted: false,
       status: 'sent' as const,
     };
 
     // undefinedフィールドを除去
     const cleanedData = removeUndefinedFields(messageData);
+    console.log('📤 [送信直前] timestamp確認:', {
+      型: typeof cleanedData.timestamp,
+      値: cleanedData.timestamp,
+      isDate: cleanedData.timestamp instanceof Date,
+    });
+
     const docRef = await addDoc(collection(db, COLLECTIONS.MESSAGES), cleanedData);
+    console.log('✅ [保存完了] docId:', docRef.id);
+
+    // スレッド返信の場合、親メッセージのthreadCountを更新
+    if (formData.parentMessageId) {
+      try {
+        const parentRef = doc(db, COLLECTIONS.MESSAGES, formData.parentMessageId);
+        const parentDoc = await getDoc(parentRef);
+        if (parentDoc.exists()) {
+          const currentThreadCount = parentDoc.data().threadCount || 0;
+          await updateDoc(parentRef, {
+            isThread: true,
+            threadCount: currentThreadCount + 1,
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to update parent message thread count:', error);
+      }
+    }
 
     // チャンネルの最終メッセージを更新
     try {
@@ -247,9 +291,9 @@ export const sendMessage = async (
         lastMessage: {
           content: formData.content,
           authorName: authorName,
-          timestamp: serverTimestamp(),
+          timestamp: now,
         },
-        updatedAt: serverTimestamp(),
+        updatedAt: now,
       });
     } catch (error) {
       console.warn('Failed to update channel last message:', error);
@@ -257,7 +301,7 @@ export const sendMessage = async (
 
     return { id: createMessageId(docRef.id), error: null };
   } catch (error: any) {
-    console.error('Error sending message:', error);
+    console.error('❌ 送信エラー:', error);
     return { id: null, error: error.message || 'メッセージの送信に失敗しました' };
   }
 };
@@ -277,21 +321,25 @@ export const subscribeToMessages = (
     return () => {};
   }
 
-  // 最新N件を取得（降順でlimit）
+  // 全メッセージを取得（昇順：古い→新しい）
   const q = query(
     collection(db, COLLECTIONS.MESSAGES),
     where('channelId', '==', channelId),
-    orderBy('timestamp', 'desc'),
-    limit(messageLimit)
+    orderBy('timestamp', 'asc')
   );
 
   return onSnapshot(
     q,
     (querySnapshot) => {
       try {
+        const changes = querySnapshot.docChanges();
+        if (changes.length > 0) {
+          console.log('📥', changes.map(c => `${c.type}:${c.doc.data().content?.substring(0, 10)}`).join(', '));
+        }
+
         const messages = querySnapshot.docs
           .map(doc => documentToChatMessage(doc))
-          .filter(msg => !msg.isDeleted); // 削除されたメッセージを除外
+          .filter(msg => !msg.isDeleted);
 
         // ID による重複除去
         const uniqueMessages = new Map<string, ChatMessage>();
@@ -299,13 +347,13 @@ export const subscribeToMessages = (
           uniqueMessages.set(msg.id, msg);
         });
 
-        // 降順で取得したので、表示用に昇順に並び替え
-        const deduplicatedMessages = Array.from(uniqueMessages.values())
-          .sort((a, b) => {
-            const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-            const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-            return timeA - timeB; // 昇順（古い→新しい）
-          });
+        // 既に昇順で取得済みなので、そのまま配列化
+        const deduplicatedMessages = Array.from(uniqueMessages.values());
+
+        console.log('📊 全', deduplicatedMessages.length, '件');
+        console.log('📍 全順序:', deduplicatedMessages.map((m, i) =>
+          `[${i + 1}] ${m.content.substring(0, 8)} @${m.timestamp.toLocaleTimeString('ja-JP')}`
+        ).join('\n'));
 
         callback(deduplicatedMessages);
       } catch (error) {
@@ -372,7 +420,7 @@ export const updateMessage = async (
   try {
     await updateDoc(doc(db, COLLECTIONS.MESSAGES, messageId), {
       content,
-      editedAt: serverTimestamp(),
+      editedAt: Timestamp.fromDate(new Date()),
     });
     return { error: null };
   } catch (error: any) {
@@ -400,27 +448,320 @@ export const deleteMessage = async (
 };
 
 // =============================================================================
+// NOTIFICATION OPERATIONS
+// =============================================================================
+
+/**
+ * ブラウザ通知の権限をリクエスト
+ */
+export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
+  if (!('Notification' in window)) {
+    console.warn('This browser does not support desktop notifications');
+    return 'denied';
+  }
+
+  if (Notification.permission === 'granted') {
+    return 'granted';
+  }
+
+  if (Notification.permission !== 'denied') {
+    const permission = await Notification.requestPermission();
+    return permission;
+  }
+
+  return Notification.permission;
+};
+
+/**
+ * ブラウザ通知を表示
+ */
+export const showBrowserNotification = (
+  title: string,
+  options?: NotificationOptions
+): Notification | null => {
+  if (!('Notification' in window)) {
+    return null;
+  }
+
+  if (Notification.permission === 'granted') {
+    return new Notification(title, options);
+  }
+
+  return null;
+};
+
+/**
+ * メンション通知を作成
+ */
+export const createMentionNotification = async (
+  messageId: MessageId,
+  mentionedUserId: UserId,
+  channelId: ChannelId,
+  authorName: string,
+  content: string
+): Promise<{ error: string | null }> => {
+  try {
+    await addDoc(collection(db, COLLECTIONS.NOTIFICATIONS), {
+      type: 'mention',
+      messageId,
+      userId: mentionedUserId,
+      channelId,
+      authorName,
+      content: content.substring(0, 100), // 最初の100文字のみ
+      isRead: false,
+      createdAt: Timestamp.fromDate(new Date()),
+    });
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error creating mention notification:', error);
+    return { error: error.message || '通知の作成に失敗しました' };
+  }
+};
+
+/**
+ * 通知を既読にする
+ */
+export const markNotificationAsRead = async (
+  notificationId: string
+): Promise<{ error: string | null }> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notificationId), {
+      isRead: true,
+      readAt: Timestamp.fromDate(new Date()),
+    });
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error marking notification as read:', error);
+    return { error: error.message || '通知の既読処理に失敗しました' };
+  }
+};
+
+/**
+ * ユーザーの未読通知を取得
+ */
+export const getUnreadNotifications = async (
+  userId: UserId
+): Promise<ApiResponse<ChatNotification[]>> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.NOTIFICATIONS),
+      where('userId', '==', userId),
+      where('isRead', '==', false),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    const notifications = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as ChatNotification[];
+    return { data: notifications, error: null };
+  } catch (error: any) {
+    console.error('Error getting unread notifications:', error);
+    return { data: null, error: error.message || '通知の取得に失敗しました' };
+  }
+};
+
+/**
+ * 通知のリアルタイム監視
+ */
+export const subscribeToNotifications = (
+  userId: UserId,
+  callback: (notifications: ChatNotification[]) => void
+): (() => void) => {
+  const q = query(
+    collection(db, COLLECTIONS.NOTIFICATIONS),
+    where('userId', '==', userId),
+    where('isRead', '==', false),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const notifications = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as ChatNotification[];
+    callback(notifications);
+  });
+};
+
+// =============================================================================
+// PIN OPERATIONS
+// =============================================================================
+
+/**
+ * メッセージをピン留め
+ */
+export const pinMessage = async (
+  messageId: MessageId,
+  userId: UserId
+): Promise<{ error: string | null }> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.MESSAGES, messageId), {
+      isPinned: true,
+      pinnedBy: userId,
+      pinnedAt: Timestamp.fromDate(new Date()),
+    });
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error pinning message:', error);
+    return { error: error.message || 'メッセージのピン留めに失敗しました' };
+  }
+};
+
+/**
+ * メッセージのピン留めを解除
+ */
+export const unpinMessage = async (
+  messageId: MessageId
+): Promise<{ error: string | null }> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.MESSAGES, messageId), {
+      isPinned: false,
+      pinnedBy: null,
+      pinnedAt: null,
+    });
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error unpinning message:', error);
+    return { error: error.message || 'ピン留め解除に失敗しました' };
+  }
+};
+
+/**
+ * チャンネルのピン留めメッセージ取得
+ */
+export const getPinnedMessages = async (
+  channelId: ChannelId
+): Promise<ApiResponse<ChatMessage[]>> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.MESSAGES),
+      where('channelId', '==', channelId),
+      where('isPinned', '==', true),
+      orderBy('pinnedAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    const messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: createMessageId(doc.id),
+        channelId: createChannelId(data.channelId),
+        authorId: createUserId(data.authorId),
+        timestamp: data.timestamp || Timestamp.now(),
+      } as ChatMessage;
+    });
+    return { data: messages, error: null };
+  } catch (error: any) {
+    console.error('Error getting pinned messages:', error);
+    return { data: null, error: error.message || 'ピン留めメッセージの取得に失敗しました' };
+  }
+};
+
+// =============================================================================
+// THREAD OPERATIONS
+// =============================================================================
+
+/**
+ * スレッドメッセージ取得
+ */
+export const getThreadMessages = async (
+  parentMessageId: MessageId
+): Promise<ApiResponse<ChatMessage[]>> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.MESSAGES),
+      where('parentMessageId', '==', parentMessageId),
+      orderBy('timestamp', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    const messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: createMessageId(doc.id),
+        channelId: createChannelId(data.channelId),
+        authorId: createUserId(data.authorId),
+        timestamp: data.timestamp || Timestamp.now(),
+      } as ChatMessage;
+    });
+    return { data: messages, error: null };
+  } catch (error: any) {
+    console.error('Error getting thread messages:', error);
+    return { data: null, error: error.message || 'スレッドメッセージの取得に失敗しました' };
+  }
+};
+
+/**
+ * スレッドメッセージリスナー
+ */
+export const subscribeToThread = (
+  parentMessageId: MessageId,
+  callback: (messages: ChatMessage[]) => void
+): (() => void) => {
+  const q = query(
+    collection(db, COLLECTIONS.MESSAGES),
+    where('parentMessageId', '==', parentMessageId),
+    orderBy('timestamp', 'asc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: createMessageId(doc.id),
+        channelId: createChannelId(data.channelId),
+        authorId: createUserId(data.authorId),
+        timestamp: data.timestamp || Timestamp.now(),
+      } as ChatMessage;
+    });
+    callback(messages);
+  });
+};
+
+// =============================================================================
 // CHANNEL OPERATIONS
 // =============================================================================
 
 /**
- * チャンネル一覧取得
+ * チャンネル一覧取得（カテゴリ順にソート）
  */
 export const getChannels = async (
   userId?: UserId
 ): Promise<ApiResponse<ChatChannel[]>> => {
   try {
     const q = query(
-      collection(db, COLLECTIONS.CHANNELS),
-      orderBy('position', 'asc')
+      collection(db, COLLECTIONS.CHANNELS)
     );
 
     const querySnapshot = await getDocs(q);
-    const channels = querySnapshot.docs.map(doc => documentToChatChannel(doc));
+    console.log('📥 [getChannels] Firestoreクエリ結果:', {
+      ドキュメント数: querySnapshot.docs.length,
+      ドキュメントID一覧: querySnapshot.docs.map(doc => doc.id),
+    });
+
+    // 変換エラーが発生してもスキップして他のチャンネルは表示
+    const channels = querySnapshot.docs
+      .map(doc => documentToChatChannel(doc))
+      .filter((channel): channel is ChatChannel => channel !== null)
+      .sort((a, b) => {
+        // カテゴリIDでグループ化、その後position順
+        if (a.categoryId !== b.categoryId) {
+          return (a.categoryId || '').localeCompare(b.categoryId || '');
+        }
+        return a.position - b.position;
+      });
+
+    console.log('📊 [getChannels] 変換結果:', {
+      変換成功: channels.length,
+      変換失敗: querySnapshot.docs.length - channels.length,
+      チャンネル一覧: channels.map(ch => ({ id: ch.id, name: ch.name, categoryId: ch.categoryId })),
+    });
 
     return { data: channels, error: null };
   } catch (error: any) {
-    console.error('Error getting channels:', error);
+    console.error('❌ [getChannels] エラー:', error);
     return { data: [], error: error.message || 'チャンネルの取得に失敗しました' };
   }
 };
@@ -431,25 +772,39 @@ export const getChannels = async (
 export const subscribeToChannels = (
   callback: (channels: ChatChannel[]) => void,
   userId?: UserId
-) => {
+)  => {
   const q = query(
-    collection(db, COLLECTIONS.CHANNELS),
-    orderBy('position', 'asc')
+    collection(db, COLLECTIONS.CHANNELS)
   );
 
   return onSnapshot(
     q,
     (querySnapshot) => {
       try {
-        const channels = querySnapshot.docs.map(doc => documentToChatChannel(doc));
+        console.log('📥 [subscribeToChannels] Firestoreクエリ結果:', {
+          ドキュメント数: querySnapshot.docs.length,
+          ドキュメントID一覧: querySnapshot.docs.map(doc => doc.id),
+        });
+
+        // 変換エラーが発生してもスキップして他のチャンネルは表示
+        const channels = querySnapshot.docs
+          .map(doc => documentToChatChannel(doc))
+          .filter((channel): channel is ChatChannel => channel !== null);
+
+        console.log('📊 [subscribeToChannels] 変換結果:', {
+          変換成功: channels.length,
+          変換失敗: querySnapshot.docs.length - channels.length,
+          チャンネル一覧: channels.map(ch => ({ id: ch.id, name: ch.name })),
+        });
+
         callback(channels);
       } catch (error) {
-        console.error('Error processing channels:', error);
+        console.error('❌ [subscribeToChannels] 処理エラー:', error);
         callback([]);
       }
     },
     (error) => {
-      console.error('Error subscribing to channels:', error);
+      console.error('❌ [subscribeToChannels] 監視エラー:', error);
       callback([]);
     }
   );
@@ -469,12 +824,19 @@ export const createChannel = async (
   createdBy: UserId
 ): Promise<{ id: ChannelId | null; error: string | null }> => {
   try {
+    // categoryIdバリデーション: 必須チェック
+    if (!channelData.categoryId) {
+      console.error('❌ チャンネル作成エラー: categoryIdが必須です');
+      return { id: null, error: 'カテゴリが選択されていません。チャンネルはカテゴリ内に作成する必要があります。' };
+    }
+
+    const now = Timestamp.fromDate(new Date());
     const data = {
       ...channelData,
       position: Date.now(), // 簡易的な位置決め
       createdBy,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: now,
+      updatedAt: now,
       memberCount: 0,
     };
 
@@ -485,6 +847,424 @@ export const createChannel = async (
   } catch (error: any) {
     console.error('Error creating channel:', error);
     return { id: null, error: error.message || 'チャンネルの作成に失敗しました' };
+  }
+};
+
+/**
+ * チャンネル更新
+ */
+export const updateChannel = async (
+  channelId: ChannelId,
+  updates: Partial<ChatChannel>
+): Promise<{ error: string | null }> => {
+  try {
+    const updateData = {
+      ...updates,
+      updatedAt: Timestamp.fromDate(new Date()),
+    };
+
+    // undefinedフィールドを除去
+    const cleanedData = removeUndefinedFields(updateData);
+
+    await updateDoc(doc(db, COLLECTIONS.CHANNELS, channelId), cleanedData);
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating channel:', error);
+    return { error: error.message || 'チャンネルの更新に失敗しました' };
+  }
+};
+
+/**
+ * チャンネル削除
+ * - 権限チェック（admin/managerのみ）
+ * - チャンネル内の全メッセージ削除
+ * - 未読カウント削除
+ * - トランザクション処理で安全に削除
+ */
+export const deleteChannel = async (
+  channelId: ChannelId,
+  userId: UserId
+): Promise<ApiResponse<void>> => {
+  try {
+    // 権限チェック（ユーザー情報取得して権限確認）
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, userId));
+    if (!userDoc.exists()) {
+      return { data: null, error: '権限がありません' };
+    }
+    const userRole = userDoc.data().role;
+    if (!canDeleteChannel(userRole)) {
+      return { data: null, error: 'チャンネル削除権限がありません（管理者またはマネージャーのみ）' };
+    }
+
+    const batch = writeBatch(db);
+
+    // チャンネル内の全メッセージを削除
+    const messagesQuery = query(
+      collection(db, COLLECTIONS.MESSAGES),
+      where('channelId', '==', channelId)
+    );
+    const messagesSnapshot = await getDocs(messagesQuery);
+    messagesSnapshot.docs.forEach(messageDoc => {
+      batch.delete(messageDoc.ref);
+    });
+
+    // 未読カウントを削除
+    const unreadQuery = query(
+      collection(db, COLLECTIONS.UNREAD_COUNTS),
+      where('channelId', '==', channelId)
+    );
+    const unreadSnapshot = await getDocs(unreadQuery);
+    unreadSnapshot.docs.forEach(unreadDoc => {
+      batch.delete(unreadDoc.ref);
+    });
+
+    // 通知を削除
+    const notificationsQuery = query(
+      collection(db, COLLECTIONS.NOTIFICATIONS),
+      where('channelId', '==', channelId)
+    );
+    const notificationsSnapshot = await getDocs(notificationsQuery);
+    notificationsSnapshot.docs.forEach(notifDoc => {
+      batch.delete(notifDoc.ref);
+    });
+
+    // チャンネル自体を削除
+    batch.delete(doc(db, COLLECTIONS.CHANNELS, channelId));
+
+    await batch.commit();
+
+    console.log(`✅ チャンネル削除完了: ${channelId} (メッセージ: ${messagesSnapshot.docs.length}件)`);
+
+    return { data: undefined, error: null };
+  } catch (error: any) {
+    console.error('Error deleting channel:', error);
+    return { data: null, error: error.message || 'チャンネルの削除に失敗しました' };
+  }
+};
+
+/**
+ * チャンネルのメンバー取得
+ * 注: 現在の実装では全ユーザーを返す（簡易版）
+ * 本格実装では channel_members コレクションを作成して管理
+ */
+export const getChannelMembers = async (
+  channelId: ChannelId
+): Promise<ApiResponse<ChatUser[]>> => {
+  try {
+    // 簡易実装: 全ユーザーを取得
+    // TODO: 実際にはchannel_membersコレクションから取得
+    const q = query(
+      collection(db, COLLECTIONS.USERS),
+      orderBy('name', 'asc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const users = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: createUserId(doc.id),
+        name: data.name || 'Unknown',
+        email: data.email || '',
+        role: data.role || 'User',
+        department: data.department || '',
+        avatar: data.avatar,
+        isOnline: data.isOnline || false,
+        lastSeen: data.lastSeen || Timestamp.now(),
+        status: data.status || 'offline',
+        statusMessage: data.statusMessage,
+        lastActivity: data.lastActivity,
+        permissions: data.permissions,
+      } as ChatUser;
+    });
+
+    return { data: users, error: null };
+  } catch (error: any) {
+    console.error('Error getting channel members:', error);
+    return { data: [], error: error.message || 'メンバーの取得に失敗しました' };
+  }
+};
+
+/**
+ * チャンネルから退出
+ * 注: 現在の実装では論理的な退出のみ（簡易版）
+ * 本格実装では channel_members コレクションから削除
+ */
+export const leaveChannel = async (
+  channelId: ChannelId,
+  userId: UserId
+): Promise<{ error: string | null }> => {
+  try {
+    // TODO: channel_membersコレクションから該当ユーザーを削除
+    // 現在は簡易実装のため、何もしない
+    console.log(`User ${userId} left channel ${channelId}`);
+
+    // メンバー数を減らす
+    const channelRef = doc(db, COLLECTIONS.CHANNELS, channelId);
+    const channelDoc = await getDoc(channelRef);
+
+    if (channelDoc.exists()) {
+      const currentCount = channelDoc.data().memberCount || 0;
+      await updateDoc(channelRef, {
+        memberCount: Math.max(0, currentCount - 1),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+    }
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error leaving channel:', error);
+    return { error: error.message || 'チャンネルの退出に失敗しました' };
+  }
+};
+
+// =============================================================================
+// CATEGORY OPERATIONS
+// =============================================================================
+
+/**
+ * カテゴリ一覧取得
+ */
+export const getCategories = async (): Promise<ApiResponse<import('../types').ChannelCategory[]>> => {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.CATEGORIES),
+      orderBy('position', 'asc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const categories = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id as import('../types').CategoryId, // ドキュメントIDを使用
+        createdBy: createUserId(data.createdBy),
+        createdAt: data.createdAt || Timestamp.now(),
+        updatedAt: data.updatedAt || Timestamp.now(),
+      } as import('../types').ChannelCategory;
+    });
+
+    return { data: categories, error: null };
+  } catch (error: any) {
+    console.error('Error getting categories:', error);
+    return { data: [], error: error.message || 'カテゴリの取得に失敗しました' };
+  }
+};
+
+/**
+ * カテゴリリアルタイム監視
+ */
+export const subscribeToCategories = (
+  callback: (categories: import('../types').ChannelCategory[]) => void
+) => {
+  const q = query(
+    collection(db, COLLECTIONS.CATEGORIES),
+    orderBy('position', 'asc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const categories = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id as import('../types').CategoryId, // ドキュメントIDを使用
+        createdBy: createUserId(data.createdBy),
+        createdAt: data.createdAt || Timestamp.now(),
+        updatedAt: data.updatedAt || Timestamp.now(),
+      } as import('../types').ChannelCategory;
+    });
+    callback(categories);
+  });
+};
+
+/**
+ * カテゴリ作成
+ */
+export const createCategory = async (
+  name: string,
+  position: number,
+  userId: UserId,
+  permissions?: {
+    viewRole?: string[];
+    manageRole?: string[];
+  }
+): Promise<ApiResponse<import('../types').CategoryId>> => {
+  try {
+    const categoryRef = doc(collection(db, COLLECTIONS.CATEGORIES));
+    const categoryId = categoryRef.id;
+
+    await setDoc(categoryRef, {
+      id: categoryId,
+      name,
+      position,
+      isCollapsed: false,
+      createdBy: userId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      ...(permissions && { permissions }),
+    });
+
+    return { data: categoryId as import('../types').CategoryId, error: null };
+  } catch (error: any) {
+    console.error('Error creating category:', error);
+    return { data: null, error: error.message || 'カテゴリの作成に失敗しました' };
+  }
+};
+
+/**
+ * カテゴリ名更新
+ */
+export const updateCategoryName = async (
+  categoryId: import('../types').CategoryId,
+  name: string
+): Promise<{ error: string | null }> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.CATEGORIES, categoryId), {
+      name,
+      updatedAt: Timestamp.now(),
+    });
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating category name:', error);
+    return { error: error.message || 'カテゴリ名の更新に失敗しました' };
+  }
+};
+
+/**
+ * カテゴリ更新（名前と権限）
+ */
+export const updateCategory = async (
+  categoryId: import('../types').CategoryId,
+  updates: {
+    name?: string;
+    permissions?: {
+      viewRole?: string[];
+      manageRole?: string[];
+    };
+  }
+): Promise<{ error: string | null }> => {
+  try {
+    const updateData: {
+      name?: string;
+      permissions?: {
+        viewRole?: string[];
+        manageRole?: string[];
+      };
+      updatedAt: Timestamp;
+    } = {
+      updatedAt: Timestamp.now(),
+    };
+
+    if (updates.name !== undefined) {
+      updateData.name = updates.name;
+    }
+
+    if (updates.permissions !== undefined) {
+      updateData.permissions = updates.permissions;
+    }
+
+    await updateDoc(doc(db, COLLECTIONS.CATEGORIES, categoryId), updateData);
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error updating category:', error);
+    return { error: error.message || 'カテゴリの更新に失敗しました' };
+  }
+};
+
+/**
+ * カテゴリ並び替え
+ */
+export const reorderCategories = async (
+  categoryIds: import('../types').CategoryId[]
+): Promise<{ error: string | null }> => {
+  try {
+    const batch = writeBatch(db);
+
+    categoryIds.forEach((categoryId, index) => {
+      const categoryRef = doc(db, COLLECTIONS.CATEGORIES, categoryId);
+      batch.update(categoryRef, {
+        position: index,
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    await batch.commit();
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error reordering categories:', error);
+    return { error: error.message || 'カテゴリの並び替えに失敗しました' };
+  }
+};
+
+/**
+ * カテゴリ削除（カスケード削除）
+ */
+export const deleteCategory = async (
+  categoryId: import('../types').CategoryId
+): Promise<{ error: string | null }> => {
+  try {
+    const batch = writeBatch(db);
+
+    // 1. カテゴリに属するチャンネルを全て取得
+    const channelsQuery = query(
+      collection(db, COLLECTIONS.CHANNELS),
+      where('categoryId', '==', categoryId)
+    );
+    const channelsSnapshot = await getDocs(channelsQuery);
+
+    console.log(`🗑️ カテゴリ削除: ${categoryId} (チャンネル数: ${channelsSnapshot.docs.length}件)`);
+
+    // 2. 各チャンネルのメッセージも削除
+    for (const channelDoc of channelsSnapshot.docs) {
+      const channelId = channelDoc.id;
+
+      // チャンネル内のメッセージを削除
+      const messagesQuery = query(
+        collection(db, COLLECTIONS.MESSAGES),
+        where('channelId', '==', channelId)
+      );
+      const messagesSnapshot = await getDocs(messagesQuery);
+      messagesSnapshot.docs.forEach(messageDoc => {
+        batch.delete(messageDoc.ref);
+      });
+
+      // 未読カウントを削除
+      const unreadQuery = query(
+        collection(db, COLLECTIONS.UNREAD_COUNTS),
+        where('channelId', '==', channelId)
+      );
+      const unreadSnapshot = await getDocs(unreadQuery);
+      unreadSnapshot.docs.forEach(unreadDoc => {
+        batch.delete(unreadDoc.ref);
+      });
+
+      // 通知を削除
+      const notificationsQuery = query(
+        collection(db, COLLECTIONS.NOTIFICATIONS),
+        where('channelId', '==', channelId)
+      );
+      const notificationsSnapshot = await getDocs(notificationsQuery);
+      notificationsSnapshot.docs.forEach(notifDoc => {
+        batch.delete(notifDoc.ref);
+      });
+
+      // チャンネル自体を削除
+      batch.delete(channelDoc.ref);
+    }
+
+    // 3. カテゴリを削除
+    batch.delete(doc(db, COLLECTIONS.CATEGORIES, categoryId));
+
+    await batch.commit();
+
+    console.log(`✅ カテゴリ削除完了: ${categoryId}`);
+    return { error: null };
+  } catch (error: any) {
+    console.error('カテゴリ削除エラー:', error);
+    return { error: error.message || 'カテゴリの削除に失敗しました' };
   }
 };
 
@@ -509,7 +1289,7 @@ export const upsertUser = async (
     const userDataToSave = {
       ...userData,
       isOnline: true,
-      lastSeen: serverTimestamp(),
+      lastSeen: Timestamp.fromDate(new Date()),
       status: 'online' as const,
     };
 
@@ -658,7 +1438,7 @@ export const updateTypingStatus = async (
         userId,
         userName,
         channelId,
-        timestamp: serverTimestamp(),
+        timestamp: Timestamp.fromDate(new Date()),
       });
     } else {
       await deleteDoc(doc(db, COLLECTIONS.TYPING_STATUS, typingId));
@@ -718,6 +1498,269 @@ export const subscribeToTypingStatus = (
 };
 
 // =============================================================================
+// SEARCH OPERATIONS
+// =============================================================================
+
+/**
+ * メッセージ検索（複数チャンネル対応）
+ */
+export const searchMessages = async (
+  channelIds: ChannelId[],
+  searchQuery: string,
+  maxResults: number = 100
+): Promise<{ data: ChatMessage[]; error: string | null }> => {
+  try {
+    if (!searchQuery.trim()) {
+      return { data: [], error: null };
+    }
+
+    const allMessages: ChatMessage[] = [];
+
+    // 各チャンネルを検索
+    for (const channelId of channelIds) {
+      const q = query(
+        collection(db, COLLECTIONS.MESSAGES),
+        where('channelId', '==', channelId),
+        orderBy('timestamp', 'desc'),
+        limit(maxResults)
+      );
+
+      const snapshot = await getDocs(q);
+      const messages = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id as MessageId,
+            channelId: data.channelId,
+            content: data.content,
+            authorId: data.authorId,
+            authorName: data.authorName,
+            authorAvatar: data.authorAvatar,
+            authorRole: data.authorRole,
+            timestamp: convertTimestamp(data.timestamp),
+            mentions: data.mentions || [],
+            attachments: data.attachments || [],
+            reactions: data.reactions || [],
+            editedAt: convertTimestamp(data.editedAt),
+            isDeleted: data.isDeleted || false,
+            type: data.type || 'user',
+          } as ChatMessage;
+        })
+        .filter(msg =>
+          msg.content.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      allMessages.push(...messages);
+    }
+
+    // 時間順にソートして制限
+    const sortedMessages = allMessages
+      .sort((a, b) => {
+        const timeA = a.timestamp?.getTime() || 0;
+        const timeB = b.timestamp?.getTime() || 0;
+        return timeB - timeA;
+      })
+      .slice(0, maxResults);
+
+    return { data: sortedMessages, error: null };
+  } catch (error: any) {
+    console.error('Error searching messages:', error);
+    return { data: [], error: error.message };
+  }
+};
+
+/**
+ * チャンネル内メッセージ検索
+ */
+export const searchChannelMessages = async (
+  channelId: ChannelId,
+  searchQuery: string,
+  maxResults: number = 100
+): Promise<{ data: ChatMessage[]; error: string | null }> => {
+  return searchMessages([channelId], searchQuery, maxResults);
+};
+
+/**
+ * 日付範囲でメッセージ検索
+ */
+export const searchMessagesByDate = async (
+  channelIds: ChannelId[],
+  startDate: Date,
+  endDate: Date,
+  maxResults: number = 100
+): Promise<{ data: ChatMessage[]; error: string | null }> => {
+  try {
+    const allMessages: ChatMessage[] = [];
+
+    for (const channelId of channelIds) {
+      const q = query(
+        collection(db, COLLECTIONS.MESSAGES),
+        where('channelId', '==', channelId),
+        where('timestamp', '>=', startDate),
+        where('timestamp', '<=', endDate),
+        orderBy('timestamp', 'desc'),
+        limit(maxResults)
+      );
+
+      const snapshot = await getDocs(q);
+      const messages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id as MessageId,
+          channelId: data.channelId,
+          content: data.content,
+          authorId: data.authorId,
+          authorName: data.authorName,
+          authorAvatar: data.authorAvatar,
+          authorRole: data.authorRole,
+          timestamp: convertTimestamp(data.timestamp),
+          mentions: data.mentions || [],
+          attachments: data.attachments || [],
+          reactions: data.reactions || [],
+          editedAt: convertTimestamp(data.editedAt),
+          isDeleted: data.isDeleted || false,
+          type: data.type || 'user',
+        } as ChatMessage;
+      });
+
+      allMessages.push(...messages);
+    }
+
+    const sortedMessages = allMessages
+      .sort((a, b) => {
+        const timeA = a.timestamp?.getTime() || 0;
+        const timeB = b.timestamp?.getTime() || 0;
+        return timeB - timeA;
+      })
+      .slice(0, maxResults);
+
+    return { data: sortedMessages, error: null };
+  } catch (error: any) {
+    console.error('Error searching messages by date:', error);
+    return { data: [], error: error.message };
+  }
+};
+
+/**
+ * ユーザー別メッセージ検索
+ */
+export const searchMessagesByUser = async (
+  channelIds: ChannelId[],
+  authorId: UserId,
+  maxResults: number = 100
+): Promise<{ data: ChatMessage[]; error: string | null }> => {
+  try {
+    const allMessages: ChatMessage[] = [];
+
+    for (const channelId of channelIds) {
+      const q = query(
+        collection(db, COLLECTIONS.MESSAGES),
+        where('channelId', '==', channelId),
+        where('authorId', '==', authorId),
+        orderBy('timestamp', 'desc'),
+        limit(maxResults)
+      );
+
+      const snapshot = await getDocs(q);
+      const messages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id as MessageId,
+          channelId: data.channelId,
+          content: data.content,
+          authorId: data.authorId,
+          authorName: data.authorName,
+          authorAvatar: data.authorAvatar,
+          authorRole: data.authorRole,
+          timestamp: convertTimestamp(data.timestamp),
+          mentions: data.mentions || [],
+          attachments: data.attachments || [],
+          reactions: data.reactions || [],
+          editedAt: convertTimestamp(data.editedAt),
+          isDeleted: data.isDeleted || false,
+          type: data.type || 'user',
+        } as ChatMessage;
+      });
+
+      allMessages.push(...messages);
+    }
+
+    const sortedMessages = allMessages
+      .sort((a, b) => {
+        const timeA = a.timestamp?.getTime() || 0;
+        const timeB = b.timestamp?.getTime() || 0;
+        return timeB - timeA;
+      })
+      .slice(0, maxResults);
+
+    return { data: sortedMessages, error: null };
+  } catch (error: any) {
+    console.error('Error searching messages by user:', error);
+    return { data: [], error: error.message };
+  }
+};
+
+// =============================================================================
+// UTILITY OPERATIONS
+// =============================================================================
+
+/**
+ * 重複チャンネルのクリーンアップ（デバッグ用）
+ */
+export const cleanupDuplicateChannels = async (): Promise<void> => {
+  try {
+    const channelsSnapshot = await getDocs(collection(db, COLLECTIONS.CHANNELS));
+    const channelsByName = new Map<string, any[]>();
+
+    // 名前でグループ化
+    channelsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const name = data.name;
+      if (!channelsByName.has(name)) {
+        channelsByName.set(name, []);
+      }
+      channelsByName.get(name)!.push({ id: doc.id, data, createdAt: data.createdAt });
+    });
+
+    // 重複を削除（最古のものを残す）
+    const batch = writeBatch(db);
+    let deleteCount = 0;
+
+    channelsByName.forEach((channels, name) => {
+      if (channels.length > 1) {
+        // 作成日時でソート（最古を残す）
+        channels.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return aTime - bTime;
+        });
+
+        // 最古以外を削除
+        for (let i = 1; i < channels.length; i++) {
+          batch.delete(doc(db, COLLECTIONS.CHANNELS, channels[i].id));
+          deleteCount++;
+          console.log(`🗑️ 重複削除: ${name} (${channels[i].id})`);
+        }
+      }
+    });
+
+    if (deleteCount > 0) {
+      await batch.commit();
+      console.log(`✅ 重複チャンネル ${deleteCount}件を削除しました`);
+    } else {
+      console.log('ℹ️ 重複チャンネルはありませんでした');
+    }
+  } catch (error) {
+    console.error('❌ クリーンアップエラー:', error);
+  }
+};
+
+// グローバル公開（ブラウザコンソールで実行可能）
+if (typeof window !== 'undefined') {
+  (window as any).cleanupDuplicateChannels = cleanupDuplicateChannels;
+}
+
+// =============================================================================
 // UTILITY EXPORTS
 // =============================================================================
 
@@ -730,10 +1773,40 @@ export default {
   updateMessage,
   deleteMessage,
 
+  // Notifications
+  requestNotificationPermission,
+  showBrowserNotification,
+  createMentionNotification,
+  markNotificationAsRead,
+  getUnreadNotifications,
+  subscribeToNotifications,
+
+  // Pins
+  pinMessage,
+  unpinMessage,
+  getPinnedMessages,
+
+  // Threads
+  getThreadMessages,
+  subscribeToThread,
+
   // Channels
   getChannels,
   subscribeToChannels,
   createChannel,
+  updateChannel,
+  deleteChannel,
+  getChannelMembers,
+  leaveChannel,
+
+  // Categories
+  getCategories,
+  subscribeToCategories,
+  createCategory,
+  updateCategoryName,
+  updateCategory,
+  reorderCategories,
+  deleteCategory,
 
   // Users
   upsertUser,
@@ -745,4 +1818,57 @@ export default {
   // Typing
   updateTypingStatus,
   subscribeToTypingStatus,
+
+  // Search
+  searchMessages,
+  searchChannelMessages,
+  searchMessagesByDate,
+  searchMessagesByUser,
+
+  // Permissions
+  canCreateChannel,
+  canDeleteChannel,
+  canDeleteMessage,
+  canManageChannel,
 };
+
+// =============================================================================
+// PERMISSION HELPERS
+// =============================================================================
+
+/**
+ * チャンネル作成権限チェック
+ */
+export function canCreateChannel(userRole: 'admin' | 'manager' | 'leader' | 'worker'): boolean {
+  return userRole === 'admin' || userRole === 'manager';
+}
+
+/**
+ * チャンネル削除権限チェック
+ */
+export function canDeleteChannel(userRole: 'admin' | 'manager' | 'leader' | 'worker'): boolean {
+  return userRole === 'admin';
+}
+
+/**
+ * メッセージ削除権限チェック
+ */
+export function canDeleteMessage(
+  userRole: 'admin' | 'manager' | 'leader' | 'worker',
+  messageAuthorId: string,
+  currentUserId: string
+): boolean {
+  // 管理者またはマネージャーは全て削除可能
+  if (userRole === 'admin' || userRole === 'manager') {
+    return true;
+  }
+  // 自分のメッセージのみ削除可能
+  return messageAuthorId === currentUserId;
+}
+
+/**
+ * チャンネル管理権限チェック（設定変更など）
+ */
+export function canManageChannel(userRole: 'admin' | 'manager' | 'leader' | 'worker'): boolean {
+  return userRole === 'admin' || userRole === 'manager';
+}

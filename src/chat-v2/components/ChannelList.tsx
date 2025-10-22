@@ -262,13 +262,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
   // カテゴリー別にチャンネルをグループ化
   const groupedChannels = channels.reduce((groups, channel) => {
-    // categoryIdが必須（ない場合はデータ不整合なので削除）
+    // categoryIdが必須（ない場合はスキップ - クリーンアップスクリプトで削除済み）
     if (!channel.categoryId) {
-      console.warn('データ不整合: チャンネルにcategoryIdがありません。削除します:', channel);
-      // Firestoreから削除
-      deleteDoc(doc(db, 'chat_channels', channel.id)).catch(err => {
-        console.error('チャンネル削除エラー:', err);
-      });
+      console.warn('⚠️ categoryIdのないチャンネルを発見（表示スキップ）:', channel.name, channel.id);
       return groups;
     }
     const categoryId = channel.categoryId;
@@ -278,6 +274,12 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     groups[categoryId].push(channel);
     return groups;
   }, {} as Record<string, ChatChannel[]>);
+
+  // 実際に表示されるチャンネル数を計算
+  const validChannelsCount = Object.values(groupedChannels).reduce(
+    (total, categoryChannels) => total + categoryChannels.length,
+    0
+  );
 
   // 全カテゴリを表示するため、Firestoreのカテゴリも追加
   categories.forEach(cat => {
@@ -559,7 +561,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
       <div className="p-3 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="text-xs text-gray-500 dark:text-gray-400">
           {activeTab === 'channels' ? (
-            <>{channels.length} チャンネル</>
+            <>{validChannelsCount} チャンネル</>
           ) : (
             <>{dms?.length || 0} DM</>
           )}
