@@ -105,7 +105,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     return () => {
-      console.log('🧹 AuthProvider: Cleaning up auth listener');
       unsubscribe();
     };
   }, []);
@@ -157,7 +156,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const interval = setInterval(() => {
         if (!checkSession()) {
           // セッション期限切れの場合は自動ログアウト
-          console.warn('⚠️ Session expired, logging out...');
           logout();
         }
       }, 300000); // 5分毎にチェック（频度を減らす）

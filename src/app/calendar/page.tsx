@@ -1331,17 +1331,207 @@ const GoogleLikeCalendar = () => {
               </div>
             )}
 
-            {/* 週表示と日表示は簡略化 */}
-            {(viewMode === "week" || viewMode === "day") && (
-              <div className="p-6">
-                <div className="bg-gray-50/50 dark:bg-slate-900/50 p-6">
-                  <div className="text-center text-gray-500 dark:text-slate-400">
-                    <CalendarViewIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-semibold mb-2">
-                      {viewMode === "week" ? "週表示" : "日表示"}
-                    </h3>
-                    <p>この表示モードは開発中です。</p>
-                    <p className="text-sm mt-2">月表示をご利用ください。</p>
+            {/* 週表示 */}
+            {viewMode === "week" && (
+              <div className="flex-1 overflow-auto">
+                <div className="grid grid-cols-8 border-l border-gray-200 dark:border-slate-700 min-w-[1200px]">
+                  {/* 時間列 */}
+                  <div className="col-span-1 bg-gray-50 dark:bg-slate-800">
+                    <div className="h-16 border-b border-r border-gray-200 dark:border-slate-700 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-slate-400">
+                      時間
+                    </div>
+                    {Array.from({length: 24}, (_, i) => (
+                      <div key={i} className="h-20 border-b border-r border-gray-200 dark:border-slate-700 p-2 text-xs text-gray-600 dark:text-slate-400">
+                        {i}:00
+                      </div>
+                    ))}
+                  </div>
+                  {/* 7日分の列 */}
+                  {[0,1,2,3,4,5,6].map(dayOffset => {
+                    const date = new Date(currentDate);
+                    date.setDate(date.getDate() - date.getDay() + dayOffset);
+                    const isToday = date.toDateString() === today.toDateString();
+                    const dayEvents = getEventsForDate(date);
+
+                    return (
+                      <div key={dayOffset} className="col-span-1 border-r border-gray-200 dark:border-slate-700">
+                        <div className={`h-16 border-b border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center ${
+                          isToday ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                        }`}>
+                          <div className="text-xs text-gray-500 dark:text-slate-400">
+                            {date.toLocaleDateString("ja-JP", { weekday: "short" })}
+                          </div>
+                          <div className={`text-lg font-semibold ${
+                            isToday ? "w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center" : "text-gray-900 dark:text-white"
+                          }`}>
+                            {date.getDate()}
+                          </div>
+                        </div>
+                        {/* 時間枠 */}
+                        <div className="relative">
+                          {Array.from({length: 24}, (_, hour) => (
+                            <div
+                              key={hour}
+                              className="h-20 border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
+                              onClick={() => {
+                                const newDate = new Date(date);
+                                newDate.setHours(hour, 0, 0, 0);
+                                handleCreateEvent(newDate);
+                              }}
+                            />
+                          ))}
+                          {/* イベント表示 */}
+                          {dayEvents.map((event, idx) => {
+                            if (event.isAllDay) return null;
+                            const Icon = event.category.icon;
+                            const startHour = event.start.getHours();
+                            const startMinute = event.start.getMinutes();
+                            const endHour = event.end.getHours();
+                            const endMinute = event.end.getMinutes();
+                            const top = startHour * 80 + (startMinute / 60) * 80;
+                            const height = ((endHour - startHour) * 60 + (endMinute - startMinute)) / 60 * 80;
+
+                            return (
+                              <div
+                                key={event.id}
+                                className={`absolute left-1 right-1 rounded px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-shadow z-10 ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
+                                style={{
+                                  top: `${top}px`,
+                                  height: `${Math.max(height, 20)}px`
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditEvent(event);
+                                }}
+                              >
+                                <div className="flex items-center space-x-1">
+                                  <Icon className={`w-3 h-3 ${event.category.color} flex-shrink-0`} />
+                                  <span className="font-medium truncate">{event.title}</span>
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-slate-400 truncate">
+                                  {event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 日表示 */}
+            {viewMode === "day" && (
+              <div className="flex-1 overflow-auto">
+                <div className="grid grid-cols-2 border-l border-gray-200 dark:border-slate-700 min-w-[800px]">
+                  {/* 時間列 */}
+                  <div className="col-span-1 bg-gray-50 dark:bg-slate-800">
+                    <div className="h-20 border-b border-r border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center">
+                      <div className="text-sm text-gray-500 dark:text-slate-400">
+                        {currentDate.toLocaleDateString("ja-JP", { weekday: "long" })}
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {currentDate.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })}
+                      </div>
+                    </div>
+                    {Array.from({length: 24}, (_, i) => (
+                      <div key={i} className="h-24 border-b border-r border-gray-200 dark:border-slate-700 p-3 text-sm font-medium text-gray-700 dark:text-slate-300">
+                        {i}:00
+                      </div>
+                    ))}
+                  </div>
+                  {/* イベント列 */}
+                  <div className="col-span-1 border-r border-gray-200 dark:border-slate-700 relative">
+                    <div className="h-20 border-b border-gray-200 dark:border-slate-700 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-slate-400">
+                      予定
+                    </div>
+                    {/* 時間枠 */}
+                    <div className="relative">
+                      {Array.from({length: 24}, (_, hour) => (
+                        <div
+                          key={hour}
+                          className="h-24 border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
+                          onClick={() => {
+                            const newDate = new Date(currentDate);
+                            newDate.setHours(hour, 0, 0, 0);
+                            handleCreateEvent(newDate);
+                          }}
+                        />
+                      ))}
+                      {/* イベント表示 */}
+                      {getEventsForDate(currentDate).map((event, idx) => {
+                        if (event.isAllDay) {
+                          // 終日イベントは上部に表示
+                          const Icon = event.category.icon;
+                          return (
+                            <div
+                              key={event.id}
+                              className={`absolute top-2 left-2 right-2 rounded-lg p-3 cursor-pointer hover:shadow-lg transition-shadow z-20 ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditEvent(event);
+                              }}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Icon className={`w-4 h-4 ${event.category.color}`} />
+                                <span className="font-semibold text-sm">{event.title}</span>
+                                <Badge variant="outline" className="ml-auto">終日</Badge>
+                              </div>
+                              {event.description && (
+                                <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">
+                                  {event.description}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        const Icon = event.category.icon;
+                        const startHour = event.start.getHours();
+                        const startMinute = event.start.getMinutes();
+                        const endHour = event.end.getHours();
+                        const endMinute = event.end.getMinutes();
+                        const top = startHour * 96 + (startMinute / 60) * 96 + 80; // 80pxはヘッダー分
+                        const height = ((endHour - startHour) * 60 + (endMinute - startMinute)) / 60 * 96;
+
+                        return (
+                          <div
+                            key={event.id}
+                            className={`absolute left-2 right-2 rounded-lg p-3 cursor-pointer hover:shadow-lg transition-shadow z-10 ${event.category.bgColor} ${getPriorityColor(event.priority)}`}
+                            style={{
+                              top: `${top}px`,
+                              height: `${Math.max(height, 40)}px`
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditEvent(event);
+                            }}
+                          >
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Icon className={`w-4 h-4 ${event.category.color} flex-shrink-0`} />
+                              <span className="font-semibold text-sm truncate">{event.title}</span>
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-slate-400">
+                              {event.start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} -
+                              {event.end.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            {event.location && (
+                              <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-slate-500 mt-1">
+                                <MapPin className="w-3 h-3" />
+                                <span className="truncate">{event.location}</span>
+                              </div>
+                            )}
+                            {event.description && height > 60 && (
+                              <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">
+                                {event.description}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

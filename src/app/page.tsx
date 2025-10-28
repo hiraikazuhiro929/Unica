@@ -59,360 +59,8 @@ const MainDashboard = () => {
   // Current user ID from authentication
   const currentUserId = user?.uid || "";
 
-  // デバッグ用：サンプルデータをFirebaseに投入する関数（削除予定）
-  const seedFirebaseData = async () => {
-    console.log('Firebase にサンプルデータを投入中...');
-  };
 
-  // デバッグ用：タスクサンプルデータを削除する関数
-  const clearTaskData = async () => {
-    console.log('Firebase からタスクデータを削除中...');
-    try {
-      const { deleteAllPersonalTasks, deleteAllCompanyTasks } = await import('@/lib/firebase/tasks');
-      
-      const personalResult = await deleteAllPersonalTasks();
-      const companyResult = await deleteAllCompanyTasks();
-      
-      if (personalResult.error) {
-        console.error('個人タスク削除エラー:', personalResult.error);
-      }
-      if (companyResult.error) {
-        console.error('会社タスク削除エラー:', companyResult.error);
-      }
-      
-      console.log('タスクデータの削除が完了しました');
-    } catch (error) {
-      console.error('タスクデータ削除中にエラー:', error);
-    }
-    
-    try {
-      // Firebase functions をインポート
-      const { createProcess } = await import('@/lib/firebase/processes');
-      const { createNotification } = await import('@/lib/firebase/notifications');
-      const { createAnnouncement } = await import('@/lib/firebase/announcements');
-      const { createCalendarEvent } = await import('@/lib/firebase/calendar');
-      const { createNote } = await import('@/lib/firebase/notes');
-      
-      // 工程データを作成
-      const sampleProcesses = [
-        {
-          orderId: 'M-001',
-          orderClient: 'トヨタ自動車',
-          lineNumber: 'L001',
-          projectName: '自動車部品A製造',
-          managementNumber: 'MGT-2024-001',
-          progress: 75,
-          quantity: 100,
-          salesPerson: '山田太郎',
-          assignee: '田中一郎',
-          fieldPerson: '田中一郎',
-          assignedMachines: ['NC旋盤-001'],
-          workDetails: {
-            setup: 6,
-            machining: 12,
-            finishing: 9,
-            useDynamicSteps: false,
-            totalEstimatedHours: 27,
-            totalActualHours: 20.25
-          },
-          orderDate: '2024-03-01',
-          arrivalDate: '2024-03-05',
-          shipmentDate: '2024-03-31',
-          dataWorkDate: '2024-03-03',
-          processingPlanDate: '2024-03-15',
-          remarks: '高精度加工要求',
-          status: 'processing' as const,
-          priority: 'high' as const,
-          dueDate: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          orderId: 'M-002',
-          orderClient: 'ソニー',
-          lineNumber: 'L002',
-          projectName: '精密機器B組立',
-          managementNumber: 'MGT-2024-002',
-          progress: 30,
-          quantity: 50,
-          salesPerson: '鈴木花子',
-          assignee: '高橋三郎',
-          fieldPerson: '高橋三郎',
-          assignedMachines: ['マシニングセンタ-002'],
-          workDetails: {
-            setup: 4,
-            machining: 8,
-            finishing: 6,
-            useDynamicSteps: false,
-            totalEstimatedHours: 18,
-            totalActualHours: 5.4
-          },
-          orderDate: '2024-03-15',
-          arrivalDate: '2024-03-18',
-          shipmentDate: '2024-04-15',
-          dataWorkDate: '2024-03-16',
-          processingPlanDate: '2024-03-20',
-          remarks: '精密加工注意',
-          status: 'processing' as const,
-          priority: 'medium' as const,
-          dueDate: new Date(Date.now() + 10 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          orderId: 'M-003',
-          orderClient: 'パナソニック',
-          lineNumber: 'L003',
-          projectName: '電子部品筐体加工',
-          managementNumber: 'MGT-2024-004',
-          progress: 85,
-          quantity: 300,
-          salesPerson: '田中花子',
-          assignee: '佐藤五郎',
-          fieldPerson: '佐藤五郎',
-          assignedMachines: ['プレス機-001'],
-          workDetails: {
-            setup: 2,
-            machining: 4,
-            finishing: 2,
-            useDynamicSteps: false,
-            totalEstimatedHours: 8,
-            totalActualHours: 6.8
-          },
-          orderDate: '2024-02-20',
-          arrivalDate: '2024-02-25',
-          shipmentDate: '2024-03-20',
-          dataWorkDate: '2024-02-22',
-          processingPlanDate: '2024-02-28',
-          remarks: '量産対応',
-          status: 'finishing' as const,
-          priority: 'medium' as const,
-          dueDate: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-
-      for (const process of sampleProcesses) {
-        const result = await createProcess(process);
-        console.log(`工程 ${process.projectName} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
-
-
-      // 通知データを作成
-      const notificationData = [
-        {
-          type: 'mention' as const,
-          title: 'レビュー依頼',
-          message: '製品Aの仕様書をレビューお願いします',
-          priority: 'high' as const,
-          recipientId: 'user-123',
-          senderId: 'user-yamada',
-          senderName: '山田太郎'
-        },
-        {
-          type: 'system' as const,
-          title: '工程完了',
-          message: '工程A（製品X）が完了しました',
-          priority: 'normal' as const,
-          recipientId: 'user-123'
-        }
-      ];
-
-      for (const notification of notificationData) {
-        const result = await createNotification(notification);
-        console.log(`通知 ${notification.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
-
-      // 全体連絡データを作成
-      const announcementData = [
-        {
-          title: '来週の設備点検について',
-          content: '来週月曜日から水曜日にかけて、第1工場の設備点検を実施します。',
-          priority: 'urgent' as const,
-          category: 'maintenance' as const,
-          authorId: 'admin-123',
-          authorName: '設備管理部',
-          targetAudience: 'all' as const,
-          isActive: true
-        },
-        {
-          title: '新しい安全規則の徹底',
-          content: '労働安全衛生法の改正に伴い、新しい安全規則を導入します。',
-          priority: 'medium' as const,
-          category: 'safety' as const,
-          authorId: 'admin-123',
-          authorName: '安全管理部',
-          targetAudience: 'all' as const,
-          isActive: true
-        }
-      ];
-
-      for (const announcement of announcementData) {
-        const result = await createAnnouncement(announcement);
-        console.log(`全体連絡 ${announcement.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-        
-        // 全体連絡に関連する通知を自動作成
-        if (result.id) {
-          const notificationResult = await createNotification({
-            type: 'system',
-            title: `新しい全体連絡: ${announcement.title}`,
-            message: announcement.content.substring(0, 50) + '...',
-            recipientId: 'all', // 全員への通知
-            senderId: announcement.authorId,
-            senderName: announcement.authorName,
-            priority: announcement.priority === 'medium' ? 'normal' : announcement.priority as 'normal' | 'high' | 'urgent'
-          });
-          console.log(`関連通知作成:`, notificationResult.id ? '成功' : '失敗');
-        }
-      }
-
-      // カレンダーイベントを作成
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const tomorrowStr = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      const calendarEventData = [
-        {
-          title: '朝礼',
-          description: '全体朝礼・安全確認',
-          startTime: '09:00',
-          endTime: '09:15',
-          date: todayStr,
-          location: '会議室A',
-          type: 'meeting' as const,
-          priority: 'medium' as const,
-          color: 'bg-blue-500',
-          createdBy: 'システム管理者',
-          createdById: 'admin-123',
-          isAllDay: false,
-          isRecurring: true,
-          recurringPattern: 'daily' as const,
-          reminderMinutes: 10,
-          isActive: true
-        },
-        {
-          title: '品質管理MTG',
-          description: '品質改善検討会',
-          startTime: '10:30',
-          endTime: '11:30',
-          date: todayStr,
-          location: 'オンライン',
-          type: 'meeting' as const,
-          priority: 'high' as const,
-          color: 'bg-green-500',
-          createdBy: '品質管理部',
-          createdById: 'quality-123',
-          isAllDay: false,
-          isRecurring: false,
-          reminderMinutes: 15,
-          isActive: true
-        },
-        {
-          title: '設備点検',
-          description: 'NC旋盤-001 定期点検',
-          startTime: '14:00',
-          endTime: '15:00',
-          date: todayStr,
-          location: '第1工場',
-          type: 'maintenance' as const,
-          priority: 'high' as const,
-          color: 'bg-orange-500',
-          createdBy: '保全部',
-          createdById: 'maintenance-123',
-          isAllDay: false,
-          isRecurring: false,
-          reminderMinutes: 30,
-          isActive: true
-        },
-        {
-          title: '定例会議',
-          description: '週次進捗確認会議',
-          startTime: '16:30',
-          endTime: '17:30',
-          date: todayStr,
-          location: '会議室B',
-          type: 'meeting' as const,
-          priority: 'medium' as const,
-          color: 'bg-purple-500',
-          createdBy: 'プロジェクト管理部',
-          createdById: 'project-123',
-          isAllDay: false,
-          isRecurring: false,
-          reminderMinutes: 15,
-          isActive: true
-        },
-        {
-          title: '安全パトロール',
-          description: '工場内安全点検',
-          startTime: '13:00',
-          endTime: '14:00',
-          date: tomorrowStr,
-          location: '全工場',
-          type: 'inspection' as const,
-          priority: 'high' as const,
-          color: 'bg-red-500',
-          createdBy: '安全管理部',
-          createdById: 'safety-123',
-          isAllDay: false,
-          isRecurring: false,
-          reminderMinutes: 30,
-          isActive: true
-        }
-      ];
-
-      for (const eventData of calendarEventData) {
-        const result = await createCalendarEvent(eventData);
-        console.log(`カレンダーイベント ${eventData.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
-
-      // メモデータを作成
-      const noteData = [
-        {
-          title: '今日のタスク',
-          content: '・品質管理MTGの資料準備\n・設備点検スケジュール確認\n・新入社員研修計画',
-          category: 'todo' as const,
-          priority: 'high' as const,
-          color: 'bg-yellow-100',
-          createdBy: 'ユーザー',
-          createdById: currentUserId,
-          isPrivate: true,
-          isArchived: false,
-          isActive: true
-        },
-        {
-          title: 'アイデアメモ',
-          content: '製造効率向上のため、IoTセンサーを活用した自動品質チェックシステムを検討',
-          category: 'idea' as const,
-          priority: 'medium' as const,
-          color: 'bg-blue-100',
-          createdBy: 'ユーザー',
-          createdById: currentUserId,
-          isPrivate: true,
-          isArchived: false,
-          isActive: true
-        },
-        {
-          title: '会議メモ - 品質管理MTG',
-          content: '次回の点検スケジュール:\n- 来週火曜日 NC旋盤-001\n- 来週木曜日 マシニングセンタ-002',
-          category: 'meeting' as const,
-          priority: 'medium' as const,
-          color: 'bg-green-100',
-          createdBy: 'ユーザー',
-          createdById: currentUserId,
-          isPrivate: false,
-          isArchived: false,
-          isActive: true
-        }
-      ];
-
-      for (const note of noteData) {
-        const result = await createNote(note);
-        console.log(`メモ ${note.title} 作成:`, result.id ? '成功' : '失敗', result.error);
-      }
-
-      console.log('✅ サンプルデータの投入が完了しました！');
-      alert('サンプルデータをFirebaseに投入しました。ページを更新してください。');
-      
-    } catch (error) {
-      console.error('サンプルデータ投入エラー:', error);
-      alert('データ投入に失敗しました: ' + error);
-    }
-  };
+  // (削除済み: seedFirebaseData関数とclearTaskData関数)
 
   // 現在時刻の更新（1分間隔に変更して負荷軽減）
   useEffect(() => {
@@ -425,9 +73,9 @@ const MainDashboard = () => {
   // Firebase Data Subscriptions
   useEffect(() => {
     if (!user?.uid) return; // ユーザー認証を待つ
-    
+
     const unsubscribes: (() => void)[] = [];
-    
+
     console.log('Firebase接続を開始します...', 'User ID:', user.uid);
 
     // Subscribe to processes
@@ -510,7 +158,7 @@ const MainDashboard = () => {
       // Get current month events for calendar display
       const now = new Date();
       const { data: currentMonthEvents, error: monthError } = await getMonthEvents(
-        now.getFullYear(), 
+        now.getFullYear(),
         now.getMonth()
       );
       if (monthError) {
@@ -528,14 +176,7 @@ const MainDashboard = () => {
     };
   }, [user?.uid]);
 
-  // デバッグ用：Windowオブジェクトに関数を追加（削除予定）
-  useEffect(() => {
-    (window as any).seedFirebaseData = seedFirebaseData;
-    (window as any).clearTaskData = clearTaskData;
-    console.log('🔧 デバッグ用関数を追加しました。');
-    console.log('コンソールで window.seedFirebaseData() を実行してFirebaseにサンプルデータを投入できます。');
-    console.log('コンソールで window.clearTaskData() を実行してタスクデータを削除できます。');
-  }, []);
+  // (削除済み: デバッグ用関数Window登録)
 
   // データ変換関数
   const transformProcessToDisplay = (process: Process) => ({
@@ -551,12 +192,12 @@ const MainDashboard = () => {
   const calculateProgress = (process: Process): number => {
     // 基本的な進捗計算（既存のWorkDetailsを使用）
     if (!process.workDetails) return 0;
-    
+
     if (process.workDetails.useDynamicSteps && process.workDetails.customSteps) {
       const completedSteps = process.workDetails.customSteps.filter(step => step.isCompleted).length;
       return Math.round((completedSteps / process.workDetails.customSteps.length) * 100);
     }
-    
+
     // 従来の固定ステップでの計算
     const total = process.workDetails.setup + process.workDetails.machining + process.workDetails.finishing;
     const actual = process.workDetails.totalActualHours;
@@ -586,7 +227,7 @@ const MainDashboard = () => {
   const mapTaskStatus = (status: string): 'completed' | 'progress' | 'pending' => {
     switch (status) {
       case 'completed': return 'completed';
-      case 'progress': 
+      case 'progress':
       case 'inProgress': return 'progress';
       case 'pending':
       case 'cancelled':
@@ -630,7 +271,7 @@ const MainDashboard = () => {
 
   const formatRelativeTime = (timestamp: any): string => {
     if (!timestamp || !timestamp.seconds) return "--";
-    
+
     const date = new Date(timestamp.seconds * 1000);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -735,7 +376,7 @@ const MainDashboard = () => {
 
   // 表示用データの変換
   const displayProcesses = processes.map(transformProcessToDisplay);
-  
+
   // タスクデータの変換
   const allTasks = companyTasks.map(task => ({
     id: task.id,
@@ -795,7 +436,7 @@ const MainDashboard = () => {
           <div className="px-6 pt-6 pb-4">
             <div className="grid grid-cols-4 gap-6">
               {/* 受注管理 */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-blue-200/30 dark:border-blue-700/30" 
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-blue-200/30 dark:border-blue-700/30"
                    onClick={() => router.push('/orders')}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -809,7 +450,7 @@ const MainDashboard = () => {
               </div>
 
               {/* 進行中タスク */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/30 dark:to-green-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-green-200/30 dark:border-green-700/30" 
+              <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/30 dark:to-green-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-green-200/30 dark:border-green-700/30"
                    onClick={() => router.push('/work-hours')}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -825,7 +466,7 @@ const MainDashboard = () => {
               </div>
 
               {/* 未読通知 */}
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-orange-200/30 dark:border-orange-700/30" 
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-orange-200/30 dark:border-orange-700/30"
                    onClick={() => router.push('/notifications')}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -839,7 +480,7 @@ const MainDashboard = () => {
               </div>
 
               {/* 日報管理 */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-purple-200/30 dark:border-purple-700/30" 
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/30 rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all duration-300 border border-purple-200/30 dark:border-purple-700/30"
                    onClick={() => router.push('/daily-reports')}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -866,14 +507,14 @@ const MainDashboard = () => {
                       <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
                       タスク管理
                     </h3>
-                    <button 
+                    <button
                       onClick={() => router.push('/task')}
                       className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
                       <Target className="w-4 h-4 text-gray-500 dark:text-gray-400 dark:text-gray-400 dark:text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200" />
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">個人タスク</p>
@@ -899,7 +540,7 @@ const MainDashboard = () => {
                         個人タスクなし ({personalTasks.length})
                       </div>
                     )}
-                    
+
                     <div className="flex items-center justify-between mt-6">
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">全体タスク</p>
                       <p className="text-lg font-bold text-gray-800 dark:text-white">
@@ -939,14 +580,14 @@ const MainDashboard = () => {
                       <Bell className="w-5 h-5 text-orange-600 dark:text-orange-400 mr-2" />
                       通知
                     </h3>
-                    <button 
+                    <button
                       onClick={() => router.push('/notifications')}
                       className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     {displayNotifications.slice(0, 3).map((notification) => (
                       <div
@@ -975,7 +616,7 @@ const MainDashboard = () => {
               {/* センターメイン - 工程管理 */}
               <div className="col-span-6">
                 {/* 背景画像付き時刻エリア - おしゃれなデザイン */}
-                <div 
+                <div
                   className="relative h-52 rounded-3xl mb-8 overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex items-center justify-center shadow-xl"
                   style={{
                     backgroundImage: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=300&fit=crop")',
@@ -1013,14 +654,14 @@ const MainDashboard = () => {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">本日の工程</h2>
-                    <button 
+                    <button
                       onClick={() => router.push('/tasks')}
                       className="text-sm bg-blue-500/20 dark:bg-blue-400/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/30 dark:hover:bg-blue-400/30 px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-blue-200/50 dark:border-blue-600/50 hover:border-blue-300/50 dark:hover:border-blue-500/50"
                     >
                       詳細管理
                     </button>
                   </div>
-                  
+
                   {processes.length > 0 ? (
                     <>
                       {processes.slice(0, 3).map((process) => (
@@ -1040,7 +681,7 @@ const MainDashboard = () => {
                           }}
                         />
                       ))}
-                      
+
                       {processes.length > 3 && (
                         <button
                           onClick={() => router.push('/tasks')}
@@ -1074,14 +715,14 @@ const MainDashboard = () => {
                       <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
                       {monthNames[today.getMonth()]} {today.getFullYear()}
                     </h3>
-                    <button 
+                    <button
                       onClick={() => router.push('/calendar')}
                       className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
                       <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
-                  
+
                   <div className="grid grid-cols-7 gap-2 mb-4">
                     {dayNames.map((day) => (
                       <div key={day} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 py-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
@@ -1089,7 +730,7 @@ const MainDashboard = () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className="grid grid-cols-7 gap-2">
                     {[...Array(startingDayOfWeek)].map((_, i) => (
                       <div key={`empty-${i}`} className="h-10"></div>
@@ -1124,14 +765,14 @@ const MainDashboard = () => {
                       <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
                       全体連絡
                     </h3>
-                    <button 
+                    <button
                       onClick={() => router.push('/announcements')}
                       className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:bg-slate-700 rounded-md transition-colors"
                     >
                       <Bell className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300" />
                     </button>
                   </div>
-                  
+
                   <div className="space-y-4">
                     {displayAnnouncements.length > 0 ? (
                       displayAnnouncements.slice(0, 3).map((announcement) => {
@@ -1155,11 +796,11 @@ const MainDashboard = () => {
                                 {announcement.title}
                               </h4>
                               <span className={`px-3 py-1 text-xs font-semibold rounded-full border-2 ${
-                                announcement.priority === 'high' ? 'bg-red-100 text-red-700 border-red-200' : 
-                                announcement.priority === 'medium' ? 'bg-orange-100 text-orange-700 border-orange-200' : 
+                                announcement.priority === 'high' ? 'bg-red-100 text-red-700 border-red-200' :
+                                announcement.priority === 'medium' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                                 'bg-blue-100 text-blue-700 border-blue-200'
                               }`}>
-                                {announcement.priority === 'high' ? '重要' : 
+                                {announcement.priority === 'high' ? '重要' :
                                  announcement.priority === 'medium' ? '通常' : '参考'}
                               </span>
                             </div>

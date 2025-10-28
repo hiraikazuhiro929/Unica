@@ -89,15 +89,12 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
   // 所属企業リストを読み込み
   const loadUserCompanies = async () => {
     if (!user) return;
-    
-    console.log('🔄 CompanyContext: loadUserCompanies started for user:', user.uid);
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const companies = await getUserCompanies(user.uid);
-      console.log('🏢 CompanyContext: Loaded companies:', companies);
       setUserCompanies(companies);
       
       // 保存された最後の企業、または最初の企業を選択
@@ -136,7 +133,6 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
       
       // userCompaniesにない場合は、直接取得を試みる
       if (!membership) {
-        console.log('Membership not found in userCompanies, fetching directly...');
         const freshCompanies = await getUserCompanies(user.uid);
         setUserCompanies(freshCompanies);
         membership = freshCompanies.find(c => c.companyId === companyId);
@@ -166,7 +162,6 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
 
   // 企業データを再読み込み
   const refreshCompanyData = async () => {
-    console.log('🔄 refreshCompanyData called, reloading user companies...');
     await loadUserCompanies();
   };
 

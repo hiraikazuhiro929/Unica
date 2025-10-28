@@ -104,11 +104,16 @@ export default function AuthPage() {
     password: "",
   });
 
-  // 初期データ（実際の実装ではFirebaseから読み込み）
+  // Firebaseからユーザー一覧を取得
   useEffect(() => {
     if (!user?.uid) return;
-    
-    const mockUsers: UserAccount[] = [
+
+    // TODO: Firebaseからユーザー一覧を取得する処理を実装
+    // 例: const unsubscribe = subscribeToUsers((userData) => { setUsers(userData); });
+    // return () => unsubscribe();
+
+    // 暫定: 現在のユーザーのみ表示
+    const currentUserOnly: UserAccount[] = [
       {
         id: user.uid,
         name: user.displayName || user.name || 'ユーザー',
@@ -117,46 +122,13 @@ export default function AuthPage() {
         department: '技術部',
         status: 'active',
         lastLogin: new Date(),
-        createdAt: new Date('2024-01-01'),
+        createdAt: new Date(),
         permissions: ROLES.find(r => r.value === 'admin')?.permissions || [],
-      },
-      {
-        id: '2',
-        name: '田中太郎',
-        email: 'tanaka@company.com',
-        role: 'manager',
-        department: '製造部',
-        status: 'active',
-        lastLogin: new Date(Date.now() - 1000 * 60 * 30), // 30分前
-        createdAt: new Date('2024-01-15'),
-        permissions: ROLES.find(r => r.value === 'manager')?.permissions || [],
-      },
-      {
-        id: '3',
-        name: '佐藤花子',
-        email: 'sato@company.com',
-        role: 'leader',
-        department: '品質管理部',
-        status: 'active',
-        lastLogin: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2時間前
-        createdAt: new Date('2024-02-01'),
-        permissions: ROLES.find(r => r.value === 'leader')?.permissions || [],
-      },
-      {
-        id: '4',
-        name: '山田次郎',
-        email: 'yamada@company.com',
-        role: 'worker',
-        department: '製造部',
-        status: 'inactive',
-        lastLogin: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3日前
-        createdAt: new Date('2024-02-15'),
-        permissions: ROLES.find(r => r.value === 'worker')?.permissions || [],
-      },
+      }
     ];
-    
-    setUsers(mockUsers);
-  }, [user?.uid]);
+
+    setUsers(currentUserOnly);
+  }, [user?.uid, user?.displayName, user?.name, user?.email]);
 
   // フィルタリングされたユーザー
   const filteredUsers = users.filter((userAccount) => {

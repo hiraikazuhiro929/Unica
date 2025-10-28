@@ -125,32 +125,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (email: string) => {
-    setFormData({
-      email,
-      password: "demo123",
-    });
-    
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await signInWithEmail(email, "demo123");
-      
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-
-      console.log("✅ Demo login successful");
-      
-    } catch (err: any) {
-      console.error("Demo login error:", err);
-      setError("デモログインに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 認証状態をチェック中
   if (authLoading) {
@@ -254,44 +228,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">デモアカウント</span>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full text-sm"
-                  onClick={() => handleDemoLogin("tanaka@company.com")}
-                  disabled={loading}
-                >
-                  田中作業員でログイン
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-sm"
-                  onClick={() => handleDemoLogin("sato@company.com")}
-                  disabled={loading}
-                >
-                  佐藤班長でログイン
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full text-sm"
-                  onClick={() => handleDemoLogin("watanabe@company.com")}
-                  disabled={loading}
-                >
-                  渡辺部長でログイン
-                </Button>
-              </div>
-            </div>
 
             <div className="mt-6 text-center">
               <Button

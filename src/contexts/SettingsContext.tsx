@@ -156,7 +156,6 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     
     // 新しいタイマーを設定
     autoLogoutTimerRef.current = setTimeout(() => {
-      console.log('🕐 Auto logout triggered due to inactivity');
       if (logoutCallbackRef.current) {
         logoutCallbackRef.current();
       }
