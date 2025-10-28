@@ -46,7 +46,6 @@ import {
   User,
   MapPin,
   RefreshCcw,
-  Download,
   Upload,
   FileText,
   QrCode,
@@ -59,7 +58,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { exportInventory } from "@/lib/utils/exportUtils";
 import { useInventory } from './hooks/useInventory';
 
 // 型定義
@@ -522,50 +520,6 @@ const InventoryManagement = () => {
 
             <div className="flex-1" />
             
-            {/* エクスポートボタン */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
-                  disabled={filteredItems.length === 0}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  エクスポート
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
-                  エクスポート対象
-                </div>
-                <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
-                  <div>• フィルター適用後の工具データ: {filteredItems.length}件</div>
-                  <div>• カテゴリ: {categoryFilter === 'all' ? 'すべて' : categories.find(c => c.id === categoryFilter)?.name || categoryFilter}</div>
-                  <div>• ステータス: {statusFilter === 'all' ? 'すべて' : 
-                    statusFilter === 'available' ? '利用可能' :
-                    statusFilter === 'in-use' ? '使用中' :
-                    statusFilter === 'maintenance' ? 'メンテナンス' :
-                    statusFilter === 'repair' ? '修理中' :
-                    statusFilter === 'retired' ? '廃棄' : statusFilter}</div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => exportInventory(filteredItems, 'csv', categoryFilter, statusFilter)}
-                  disabled={filteredItems.length === 0}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  CSV形式でエクスポート
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => exportInventory(filteredItems, 'excel', categoryFilter, statusFilter)}
-                  disabled={filteredItems.length === 0}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel形式でエクスポート
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             
             <div className="text-sm text-gray-600 dark:text-slate-300">
               {filteredItems.length} / {items.length} 件表示

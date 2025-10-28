@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,6 @@ import {
   Activity,
   Search,
   Filter,
-  Download,
   User,
   Calendar,
   Clock,
@@ -27,27 +26,30 @@ import {
   LogOut,
   AlertTriangle,
   CheckCircle,
+  RefreshCw,
 } from "lucide-react";
+import {
+  getAuditLogs,
+  subscribeToAuditLogs,
+  AuditLog,
+  AuditLogFilters,
+  ACTION_TYPE_LABELS,
+  RESOURCE_TYPE_LABELS,
+  SEVERITY_LABELS,
+  STATUS_LABELS
+} from "@/lib/firebase/auditLogger";
 
-interface AuditLog {
-  id: string;
-  timestamp: Date;
-  userId: string;
-  userName: string;
-  userRole: string;
-  action: string;
-  actionType: "create" | "read" | "update" | "delete" | "login" | "logout" | "system";
-  resourceType: "order" | "process" | "user" | "file" | "report" | "setting" | "system";
-  resourceId?: string;
-  resourceName?: string;
-  details?: string;
-  ipAddress: string;
-  userAgent?: string;
-  severity: "low" | "medium" | "high" | "critical";
-  status: "success" | "failure" | "warning";
+interface AuditLogDisplay extends AuditLog {
+  // 追加のUI表示用プロパティがあれば定義
 }
 
 const AuditLogsPage = () => {
+  // State管理
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // フィルター状態
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActionType, setFilterActionType] = useState<"all" | AuditLog["actionType"]>("all");
   const [filterResourceType, setFilterResourceType] = useState<"all" | AuditLog["resourceType"]>("all");
@@ -56,102 +58,60 @@ const AuditLogsPage = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // サンプル操作履歴データ
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: "1",
-      timestamp: new Date(Date.now() - 300000),
-      userId: "user001",
-      userName: "田中部長",
-      userRole: "生産部長",
-      action: "工程進捗を更新",
-      actionType: "update",
-      resourceType: "process",
-      resourceId: "proc-123",
-      resourceName: "製品A-001 加工工程",
-      details: "進捗率を75%から85%に更新",
-      ipAddress: "192.168.1.100",
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-      severity: "low",
-      status: "success",
-    },
-    {
-      id: "2",
-      timestamp: new Date(Date.now() - 900000),
-      userId: "user002",
-      userName: "佐藤作業員",
-      userRole: "加工担当",
-      action: "新規受注案件作成",
-      actionType: "create",
-      resourceType: "order",
-      resourceId: "ord-456",
-      resourceName: "精密部品製造",
-      details: "顧客: ABC製作所、納期: 2025-02-15",
-      ipAddress: "192.168.1.105",
-      severity: "medium",
-      status: "success",
-    },
-    {
-      id: "3",
-      timestamp: new Date(Date.now() - 1800000),
-      userId: "admin",
-      userName: "システム管理者",
-      userRole: "管理者",
-      action: "ユーザー権限変更",
-      actionType: "update",
-      resourceType: "user",
-      resourceId: "user003",
-      resourceName: "山田技師",
-      details: "権限レベルを'一般'から'管理者'に変更",
-      ipAddress: "192.168.1.50",
-      severity: "high",
-      status: "success",
-    },
-    {
-      id: "4",
-      timestamp: new Date(Date.now() - 3600000),
-      userId: "user004",
-      userName: "鈴木課長",
-      userRole: "品質管理課長",
-      action: "機密ファイルアクセス試行",
-      actionType: "read",
-      resourceType: "file",
-      resourceId: "file-789",
-      resourceName: "設計仕様書_機密.pdf",
-      details: "アクセス権限不足により拒否",
-      ipAddress: "192.168.1.110",
-      severity: "high",
-      status: "failure",
-    },
-    {
-      id: "5",
-      timestamp: new Date(Date.now() - 7200000),
-      userId: "system",
-      userName: "システム",
-      userRole: "システム",
-      action: "自動バックアップ実行",
-      actionType: "system",
-      resourceType: "system",
-      details: "データベース自動バックアップが正常に完了",
-      ipAddress: "localhost",
-      severity: "low",
-      status: "success",
-    },
-    {
-      id: "6",
-      timestamp: new Date(Date.now() - 10800000),
-      userId: "user005",
-      userName: "伊藤主任",
-      userRole: "安全管理",
-      action: "不正ログイン試行",
-      actionType: "login",
-      resourceType: "system",
-      details: "パスワード5回連続失敗",
-      ipAddress: "203.0.113.100",
-      severity: "critical",
-      status: "failure",
-    },
-  ]);
+  // 一時的な企業ID（実際の実装では認証システムから取得）
+  const [companyId] = useState("demo-company-id");
+
+  // データ取得
+  useEffect(() => {
+    loadAuditLogs();
+  }, [companyId]);
+
+  const loadAuditLogs = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const filters: AuditLogFilters = {
+        companyId,
+        actionType: filterActionType !== 'all' ? filterActionType : undefined,
+        resourceType: filterResourceType !== 'all' ? filterResourceType : undefined,
+        severity: filterSeverity !== 'all' ? filterSeverity : undefined,
+        status: filterStatus !== 'all' ? filterStatus : undefined,
+        searchQuery: searchQuery.trim() || undefined,
+      };
+
+      // 日付範囲フィルタを追加
+      if (dateFrom && dateTo) {
+        filters.dateRange = {
+          start: new Date(dateFrom),
+          end: new Date(dateTo),
+        };
+      }
+
+      const result = await getAuditLogs(filters, 100);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setAuditLogs(result.data);
+      }
+    } catch (err: any) {
+      setError(err.message || '監査ログの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // フィルター変更時の再取得
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!isLoading) {
+        loadAuditLogs();
+      }
+    }, 300); // デバウンス
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, filterActionType, filterResourceType, filterSeverity, filterStatus, dateFrom, dateTo]);
 
   // アイコン取得
   const getActionIcon = (actionType: AuditLog["actionType"]) => {
@@ -183,53 +143,8 @@ const AuditLogsPage = () => {
     }
   };
 
-  // フィルタリング
-  const filteredLogs = auditLogs.filter(log => {
-    const matchesSearch = log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         log.resourceName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         log.details?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesActionType = filterActionType === "all" || log.actionType === filterActionType;
-    const matchesResourceType = filterResourceType === "all" || log.resourceType === filterResourceType;
-    const matchesSeverity = filterSeverity === "all" || log.severity === filterSeverity;
-    const matchesStatus = filterStatus === "all" || log.status === filterStatus;
-
-    return matchesSearch && matchesActionType && matchesResourceType && matchesSeverity && matchesStatus;
-  });
-
-  const actionTypeLabels = {
-    create: "作成",
-    read: "参照",
-    update: "更新",
-    delete: "削除",
-    login: "ログイン",
-    logout: "ログアウト",
-    system: "システム",
-  };
-
-  const resourceTypeLabels = {
-    order: "受注案件",
-    process: "工程",
-    user: "ユーザー",
-    file: "ファイル",
-    report: "レポート",
-    setting: "設定",
-    system: "システム",
-  };
-
-  const severityLabels = {
-    low: "低",
-    medium: "中",
-    high: "高",
-    critical: "重要",
-  };
-
-  const statusLabels = {
-    success: "成功",
-    failure: "失敗",
-    warning: "警告",
-  };
+  // 表示用のフィルタリングされたログ（検索フィルタは既にサーバーサイドで適用済み）
+  const filteredLogs = auditLogs;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
@@ -248,11 +163,6 @@ const AuditLogsPage = () => {
                 </p>
               </div>
             </div>
-            
-            <Button variant="outline" className="text-gray-600 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700">
-              <Download className="w-4 h-4 mr-2" />
-              エクスポート
-            </Button>
           </div>
 
           {/* フィルターバー */}
@@ -279,13 +189,9 @@ const AuditLogsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全て</SelectItem>
-                <SelectItem value="create">作成</SelectItem>
-                <SelectItem value="read">参照</SelectItem>
-                <SelectItem value="update">更新</SelectItem>
-                <SelectItem value="delete">削除</SelectItem>
-                <SelectItem value="login">ログイン</SelectItem>
-                <SelectItem value="logout">ログアウト</SelectItem>
-                <SelectItem value="system">システム</SelectItem>
+                {Object.entries(ACTION_TYPE_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -298,10 +204,9 @@ const AuditLogsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全て</SelectItem>
-                <SelectItem value="low">低</SelectItem>
-                <SelectItem value="medium">中</SelectItem>
-                <SelectItem value="high">高</SelectItem>
-                <SelectItem value="critical">重要</SelectItem>
+                {Object.entries(SEVERITY_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -314,22 +219,56 @@ const AuditLogsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全て</SelectItem>
-                <SelectItem value="success">成功</SelectItem>
-                <SelectItem value="failure">失敗</SelectItem>
-                <SelectItem value="warning">警告</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
+        {/* エラー表示 */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mx-6 mb-4">
+            <div className="flex">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                  データ取得エラー
+                </h3>
+                <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                  {error}
+                </div>
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={loadAuditLogs}
+                    disabled={isLoading}
+                    className="text-red-800 border-red-300 hover:bg-red-100 dark:text-red-200 dark:border-red-700 dark:hover:bg-red-900/20"
+                  >
+                    再試行
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 操作履歴リスト */}
         <div className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900">
           <div className="divide-y divide-gray-200 dark:divide-slate-700">
-            {filteredLogs.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-16">
+                <RefreshCw className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4 animate-spin" />
+                <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">データを読み込み中...</p>
+              </div>
+            ) : filteredLogs.length === 0 ? (
               <div className="text-center py-16">
                 <Activity className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
                 <p className="text-xl text-gray-500 dark:text-slate-400 mb-2">該当する操作履歴がありません</p>
-                <p className="text-gray-400 dark:text-slate-500">検索条件を変更してください</p>
+                <p className="text-gray-400 dark:text-slate-500">検索条件を変更するか、システムの利用を開始してください</p>
               </div>
             ) : (
               filteredLogs.map((log) => (
@@ -352,11 +291,11 @@ const AuditLogsPage = () => {
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(log.status)}
                           <span className="text-xs text-gray-600 dark:text-slate-400">
-                            {statusLabels[log.status]}
+                            {STATUS_LABELS[log.status]}
                           </span>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${getSeverityColor(log.severity)}`}>
-                          {severityLabels[log.severity]}
+                          {SEVERITY_LABELS[log.severity]}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 dark:text-slate-400">
@@ -378,7 +317,7 @@ const AuditLogsPage = () => {
                       </div>
                       <div className="flex items-center space-x-1">
                         <FileText className="w-3 h-3" />
-                        <span>{resourceTypeLabels[log.resourceType]}</span>
+                        <span>{RESOURCE_TYPE_LABELS[log.resourceType]}</span>
                       </div>
                       {log.resourceName && (
                         <div className="flex items-center space-x-1">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Activity,
   Search,
-  Filter,
   Calendar,
   User,
   FileText,
@@ -21,30 +20,16 @@ import {
   Trash2,
   Plus,
   Eye,
-  Download,
   Upload,
   RefreshCw,
   MessageSquare,
   Bell,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface ActivityLog {
-  id: string;
-  timestamp: Date;
-  userId: string;
-  userName: string;
-  action: string;
-  entityType: 'order' | 'task' | 'report' | 'user' | 'system' | 'notification' | 'bookmark';
-  entityId?: string;
-  entityName?: string;
-  description: string;
-  metadata?: Record<string, any>;
-  severity: 'info' | 'warning' | 'error' | 'success';
-  ipAddress?: string;
-  userAgent?: string;
-}
+import { useActivityLogs } from "@/hooks/useActivityLogs";
+import { ActivityLog } from "@/lib/firebase/activityLogs";
 
 const ACTIVITY_TYPES = [
   { value: 'all', label: 'すべて', icon: Activity, color: 'bg-gray-100 text-gray-800' },
@@ -68,7 +53,6 @@ const ACTION_ICONS = {
   updated: Edit3,
   deleted: Trash2,
   viewed: Eye,
-  downloaded: Download,
   uploaded: Upload,
   login: Shield,
   logout: Shield,
@@ -80,149 +64,68 @@ const ACTION_ICONS = {
 
 export default function ActivityPage() {
   const { user } = useAuth();
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
+
+  // 活動ログHookを使用してデータ取得
+  const {
+    logs: activities,
+    loading,
+    error: hookError,
+    hasMore,
+    total,
+    stats,
+    setSearchQuery,
+    setEntityTypeFilter,
+    setSeverityFilter,
+    setDateRangeFilter,
+    setUserFilter,
+    loadMore,
+    refresh,
+    filters
+  } = useActivityLogs({
+    enableRealtime: true,
+    pageSize: 20,
+    initialFilters: {
+      userId: activeTab === 'my' ? user?.uid : undefined
+    }
+  });
+
+  // ローカル状態（UI制御用）
+  const [searchQuery, setLocalSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('week');
-  const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
 
-  // 初期データ（実際の実装ではFirebaseから読み込み）
-  useEffect(() => {
-    if (!user?.uid) return;
-    
-    // モックデータ
-    const now = new Date();
-    const mockActivities: ActivityLog[] = [
-      {
-        id: '1',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 30), // 30分前
-        userId: user.uid,
-        userName: user.displayName || user.name || 'ユーザー',
-        action: 'created',
-        entityType: 'order',
-        entityId: 'order-123',
-        entityName: '新規受注案件A',
-        description: '新規受注案件を作成しました',
-        severity: 'success',
-        metadata: { amount: 1500000 },
-      },
-      {
-        id: '2',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 2), // 2時間前
-        userId: 'other-user',
-        userName: '田中太郎',
-        action: 'updated',
-        entityType: 'task',
-        entityId: 'task-456',
-        entityName: '製造工程タスク',
-        description: 'タスクのステータスを「進行中」に更新',
-        severity: 'info',
-        metadata: { oldStatus: 'pending', newStatus: 'progress' },
-      },
-      {
-        id: '3',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 4), // 4時間前
-        userId: user.uid,
-        userName: user.displayName || user.name || 'ユーザー',
-        action: 'viewed',
-        entityType: 'report',
-        entityId: 'report-789',
-        entityName: '日報 - 2024/01/15',
-        description: '日報を閲覧しました',
-        severity: 'info',
-      },
-      {
-        id: '4',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 6), // 6時間前
-        userId: 'system',
-        userName: 'システム',
-        action: 'sync',
-        entityType: 'system',
-        description: 'データベースの定期同期を実行',
-        severity: 'success',
-        metadata: { syncedTables: ['orders', 'tasks', 'reports'] },
-      },
-      {
-        id: '5',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 8), // 8時間前
-        userId: 'other-user-2',
-        userName: '佐藤花子',
-        action: 'error',
-        entityType: 'order',
-        entityId: 'order-error',
-        entityName: 'エラー受注',
-        description: 'ファイルアップロード時にエラーが発生',
-        severity: 'error',
-        metadata: { error: 'File size exceeds limit' },
-      },
-      {
-        id: '6',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 12), // 12時間前
-        userId: user.uid,
-        userName: user.displayName || user.name || 'ユーザー',
-        action: 'login',
-        entityType: 'user',
-        description: 'システムにログインしました',
-        severity: 'info',
-        ipAddress: '192.168.1.100',
-      },
-      {
-        id: '7',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 24), // 1日前
-        userId: 'other-user',
-        userName: '田中太郎',
-        action: 'downloaded',
-        entityType: 'report',
-        entityId: 'export-001',
-        entityName: '受注データエクスポート',
-        description: 'CSV形式で受注データをダウンロード',
-        severity: 'info',
-        metadata: { format: 'csv', recordCount: 150 },
-      },
-      {
-        id: '8',
-        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 36), // 1.5日前
-        userId: 'system',
-        userName: 'システム',
-        action: 'notification',
-        entityType: 'notification',
-        description: '期限迫るタスクの通知を送信',
-        severity: 'warning',
-        metadata: { notificationCount: 5, targetUsers: 3 },
-      }
-    ];
-    
-    setActivities(mockActivities);
-  }, [user?.uid]);
+  // 検索クエリの反映（デバウンス対応）
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, setSearchQuery]);
 
-  // フィルタリングされたアクティビティ
-  const filteredActivities = activities.filter((activity) => {
-    const matchesSearch = searchQuery === "" || 
-      activity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.entityName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.action.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesType = selectedType === "all" || activity.entityType === selectedType;
-    const matchesSeverity = selectedSeverity === "all" || activity.severity === selectedSeverity;
-    const matchesUser = activeTab === "all" || activity.userId === user?.uid;
-    
-    // 日付範囲フィルター
-    const now = new Date();
-    let matchesDate = true;
-    if (dateRange === 'today') {
-      matchesDate = activity.timestamp.toDateString() === now.toDateString();
-    } else if (dateRange === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      matchesDate = activity.timestamp >= weekAgo;
-    } else if (dateRange === 'month') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      matchesDate = activity.timestamp >= monthAgo;
-    }
-    
-    return matchesSearch && matchesType && matchesSeverity && matchesUser && matchesDate;
-  });
+  // フィルター変更の反映
+  React.useEffect(() => {
+    setEntityTypeFilter(selectedType);
+  }, [selectedType, setEntityTypeFilter]);
+
+  React.useEffect(() => {
+    setSeverityFilter(selectedSeverity);
+  }, [selectedSeverity, setSeverityFilter]);
+
+  React.useEffect(() => {
+    setDateRangeFilter(dateRange);
+  }, [dateRange, setDateRangeFilter]);
+
+  React.useEffect(() => {
+    setUserFilter(activeTab === 'my' ? user?.uid : undefined);
+  }, [activeTab, user?.uid, setUserFilter]);
+
+  // エラー状態の表示用
+  const error = hookError;
+
+  // 統計データの準備
+  const errorCount = stats.bySeverity.error || 0;
 
   // アクション名の日本語化
   const getActionLabel = (action: string) => {
@@ -231,7 +134,6 @@ export default function ActivityPage() {
       updated: '更新',
       deleted: '削除',
       viewed: '閲覧',
-      downloaded: 'ダウンロード',
       uploaded: 'アップロード',
       login: 'ログイン',
       logout: 'ログアウト',
@@ -287,9 +189,10 @@ export default function ActivityPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">アクティビティログ</h1>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-slate-300">
-                  <span>総数: <span className="font-bold text-blue-600">{activities.length}</span></span>
-                  <span>表示中: <span className="font-bold text-cyan-600">{filteredActivities.length}</span></span>
-                  <span>エラー: <span className="font-bold text-red-600">{activities.filter(a => a.severity === 'error').length}</span></span>
+                  <span>総数: <span className="font-bold text-blue-600">{total}</span></span>
+                  <span>表示中: <span className="font-bold text-cyan-600">{activities.length}</span></span>
+                  <span>エラー: <span className="font-bold text-red-600">{errorCount}</span></span>
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 </div>
               </div>
             </div>
@@ -302,7 +205,7 @@ export default function ActivityPage() {
                   type="text"
                   placeholder="アクティビティを検索..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => setLocalSearchQuery(e.target.value)}
                   className="pl-10 w-80"
                 />
               </div>
@@ -341,9 +244,9 @@ export default function ActivityPage() {
                 <div className="space-y-1">
                   {ACTIVITY_TYPES.map((type) => {
                     const Icon = type.icon;
-                    const count = type.value === 'all' 
-                      ? activities.length 
-                      : activities.filter(a => a.entityType === type.value).length;
+                    const count = type.value === 'all'
+                      ? total
+                      : stats.byType[type.value] || 0;
                     return (
                       <button
                         key={type.value}
@@ -375,12 +278,12 @@ export default function ActivityPage() {
                       selectedSeverity === "all" ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     }`}
                   >
-                    すべて ({activities.length})
+                    すべて ({total})
                   </button>
-                  
+
                   {Object.entries(SEVERITY_CONFIG).map(([severity, config]) => {
                     const Icon = config.icon;
-                    const count = activities.filter(a => a.severity === severity).length;
+                    const count = stats.bySeverity[severity] || 0;
                     return (
                       <button
                         key={severity}
@@ -421,8 +324,29 @@ export default function ActivityPage() {
                 </TabsList>
               </Tabs>
 
+              {/* エラー表示 */}
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-6">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <p className="text-red-800 dark:text-red-300">
+                      データの読み込みでエラーが発生しました: {error}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={refresh}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    再試行
+                  </Button>
+                </div>
+              )}
+
               {/* アクティビティ表示 */}
-              {filteredActivities.length === 0 ? (
+              {!loading && activities.length === 0 && !error ? (
                 <div className="text-center py-16">
                   <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-xl text-gray-500 mb-2">
@@ -436,12 +360,13 @@ export default function ActivityPage() {
                       : "システムの利用が開始されるとここにアクティビティが表示されます"}
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredActivities.map((activity) => {
-                    const ActionIcon = getActionIcon(activity.action);
-                    const severityConfig = SEVERITY_CONFIG[activity.severity];
-                    const SeverityIcon = severityConfig.icon;
+              ) : activities.length > 0 ? (
+                <>
+                  <div className="space-y-4">
+                    {activities.map((activity) => {
+                      const ActionIcon = getActionIcon(activity.action);
+                      const severityConfig = SEVERITY_CONFIG[activity.severity];
+                      const SeverityIcon = severityConfig.icon;
                     
                     return (
                       <Card key={activity.id} className="hover:shadow-md transition-shadow">
@@ -532,11 +457,36 @@ export default function ActivityPage() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    );
-                  })}
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* さらに読み込みボタン */}
+                  {hasMore && (
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        onClick={loadMore}
+                        disabled={loading}
+                        variant="outline"
+                        className="w-full max-w-xs"
+                      >
+                        {loading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4 mr-2" />
+                        )}
+                        さらに読み込む
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-3 text-gray-600">読み込み中...</span>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

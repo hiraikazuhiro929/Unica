@@ -57,7 +57,6 @@ import {
   Copy,
   UserCheck,
   History,
-  Download,
   Upload,
   Info,
   Lock,
@@ -376,7 +375,7 @@ export default function CompanyMembersPage() {
   };
 
   // Handle batch operations
-  const handleBatchOperation = async (operation: 'activate' | 'deactivate' | 'export' | 'changeRole') => {
+  const handleBatchOperation = async (operation: 'activate' | 'deactivate' | 'changeRole') => {
     if (!canManage || selectedMembers.size === 0) return;
     
     switch (operation) {
@@ -408,29 +407,6 @@ export default function CompanyMembersPage() {
         }
         break;
         
-      case 'export':
-        const selectedMemberData = members.filter(m => selectedMembers.has(m.uid));
-        const csv = [
-          ['名前', 'メール', '社員番号', '部署', '役職', '状態', '最終ログイン'],
-          ...selectedMemberData.map(m => [
-            m.name,
-            m.email,
-            m.employeeId,
-            m.department,
-            ROLE_STYLES[m.role].label,
-            m.isActive ? 'アクティブ' : '無効',
-            m.lastLogin ? new Date(m.lastLogin).toLocaleString('ja-JP') : '未ログイン'
-          ])
-        ].map(row => row.join(',')).join('\n');
-        
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `members_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        alert('メンバーリストをエクスポートしました');
-        break;
     }
   };
 
@@ -605,11 +581,6 @@ export default function CompanyMembersPage() {
                     <DropdownMenuItem onClick={() => handleBatchOperation('deactivate')}>
                       <EyeOff className="mr-2 h-4 w-4" />
                       無効化
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleBatchOperation('export')}>
-                      <Download className="mr-2 h-4 w-4" />
-                      CSVエクスポート
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { enhancedArchiveManager, type ArchiveSettings } from "@/lib/utils/enhancedArchiveManager";
 import {
   Settings,
   User,
@@ -24,6 +25,11 @@ import {
   Upload,
   HardDrive,
   Wifi,
+  Archive,
+  AlertTriangle,
+  Trash2,
+  Calendar,
+  RefreshCw,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -66,8 +72,72 @@ export default function SettingsPage() {
     autoUpdates: true,
   });
 
+  // アーカイブ設定
+  const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({
+    globalRetentionDays: 180,
+    warningDays: [30, 7, 1],
+    requireExportBeforeDeletion: true,
+    autoExportEnabled: false,
+    exportFormat: 'excel',
+    notificationSettings: {
+      email: true,
+      browser: true,
+      showInDashboard: true
+    }
+  });
+
+  const [archiveSettingsLoading, setArchiveSettingsLoading] = useState(false);
+
   const handleLocalSettingChange = (key: string, value: any) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  // アーカイブ設定の初期読み込み
+  React.useEffect(() => {
+    const loadArchiveSettings = async () => {
+      try {
+        const settings = await enhancedArchiveManager.getArchiveSettings();
+        if (settings) {
+          setArchiveSettings(settings);
+        }
+      } catch (error) {
+        console.error('アーカイブ設定読み込みエラー:', error);
+      }
+    };
+    loadArchiveSettings();
+  }, []);
+
+  // アーカイブ設定の変更処理
+  const handleArchiveSettingChange = (key: keyof ArchiveSettings, value: any) => {
+    setArchiveSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleArchiveNotificationChange = (key: string, value: boolean) => {
+    setArchiveSettings(prev => ({
+      ...prev,
+      notificationSettings: {
+        ...prev.notificationSettings,
+        [key]: value
+      }
+    }));
+  };
+
+  // アーカイブ設定の保存
+  const saveArchiveSettings = async () => {
+    setArchiveSettingsLoading(true);
+    try {
+      const success = await enhancedArchiveManager.saveArchiveSettings(archiveSettings);
+      if (success) {
+        alert('✅ アーカイブ設定を保存しました');
+      } else {
+        alert('❌ アーカイブ設定の保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('アーカイブ設定保存エラー:', error);
+      alert('❌ アーカイブ設定の保存中にエラーが発生しました');
+    } finally {
+      setArchiveSettingsLoading(false);
+    }
   };
 
   return (
@@ -150,6 +220,20 @@ export default function SettingsPage() {
             </div>
           </button>
           
+          <button
+            onClick={() => setActiveSection('archive')}
+            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeSection === 'archive'
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-l-2 border-blue-700 dark:border-blue-400'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+            }`}
+          >
+            <div className="flex items-center">
+              <Archive className="w-4 h-4 mr-3" />
+              アーカイブ設定
+            </div>
+          </button>
+
           <button
             onClick={() => setActiveSection('advanced')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -616,6 +700,248 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* アーカイブ設定セクション */}
+        {activeSection === 'archive' && (
+          <div className="max-w-4xl">
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">アーカイブ設定</h2>
+              <p className="text-gray-600 dark:text-slate-400">データ保持期間とエクスポートに関する設定</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* データ保持設定 */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">データ保持設定</h3>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                    グローバル保持期間（日数）
+                  </Label>
+                  <Select
+                    value={archiveSettings.globalRetentionDays.toString()}
+                    onValueChange={(value) => handleArchiveSettingChange('globalRetentionDays', parseInt(value))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30日</SelectItem>
+                      <SelectItem value="60">60日</SelectItem>
+                      <SelectItem value="90">90日</SelectItem>
+                      <SelectItem value="180">180日</SelectItem>
+                      <SelectItem value="365">365日</SelectItem>
+                      <SelectItem value="730">2年</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                    完了済みデータの自動削除までの期間を設定します
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                    警告タイミング
+                  </Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[30, 7, 1].map(days => (
+                      <div key={days} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`warning-${days}`}
+                          checked={archiveSettings.warningDays.includes(days)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleArchiveSettingChange('warningDays', [...archiveSettings.warningDays, days]);
+                            } else {
+                              handleArchiveSettingChange('warningDays', archiveSettings.warningDays.filter(d => d !== days));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`warning-${days}`} className="text-sm">
+                          {days}日前
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                    削除前に警告を表示するタイミング
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      削除前の必須エクスポート
+                    </Label>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                      データ削除前にエクスポートを必須とする
+                    </p>
+                  </div>
+                  <Switch
+                    checked={archiveSettings.requireExportBeforeDeletion}
+                    onCheckedChange={(checked) => handleArchiveSettingChange('requireExportBeforeDeletion', checked)}
+                  />
+                </div>
+              </div>
+
+              {/* エクスポート設定 */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">エクスポート設定</h3>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                      自動エクスポート
+                    </Label>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                      削除対象データを自動的にエクスポート
+                    </p>
+                  </div>
+                  <Switch
+                    checked={archiveSettings.autoExportEnabled}
+                    onCheckedChange={(checked) => handleArchiveSettingChange('autoExportEnabled', checked)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                    エクスポート形式
+                  </Label>
+                  <Select
+                    value={archiveSettings.exportFormat}
+                    onValueChange={(value: 'csv' | 'excel' | 'zip') => handleArchiveSettingChange('exportFormat', value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="excel">Excel形式 (.xlsx)</SelectItem>
+                      <SelectItem value="csv">CSV形式 (.csv)</SelectItem>
+                      <SelectItem value="zip">ZIP圧縮 (複数ファイル)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white">通知設定</h4>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        メール通知
+                      </Label>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">
+                        アーカイブ警告をメールで受信
+                      </p>
+                    </div>
+                    <Switch
+                      checked={archiveSettings.notificationSettings.email}
+                      onCheckedChange={(checked) => handleArchiveNotificationChange('email', checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        ブラウザ通知
+                      </Label>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">
+                        ブラウザプッシュ通知で警告を表示
+                      </p>
+                    </div>
+                    <Switch
+                      checked={archiveSettings.notificationSettings.browser}
+                      onCheckedChange={(checked) => handleArchiveNotificationChange('browser', checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                        ダッシュボード表示
+                      </Label>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">
+                        ダッシュボードに警告を表示
+                      </p>
+                    </div>
+                    <Switch
+                      checked={archiveSettings.notificationSettings.showInDashboard}
+                      onCheckedChange={(checked) => handleArchiveNotificationChange('showInDashboard', checked)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 危険な操作 */}
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-slate-700">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">
+                      アーカイブ管理について
+                    </h4>
+                    <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
+                      <p>
+                        • 削除されたデータは復旧できません。重要なデータは事前にエクスポートしてください。
+                      </p>
+                      <p>
+                        • 保持期間の短縮は既存の警告スケジュールに影響する場合があります。
+                      </p>
+                      <p>
+                        • 自動エクスポートを有効にすると、システムリソースを消費する場合があります。
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        onClick={() => window.open('/archives', '_blank')}
+                        variant="outline"
+                        size="sm"
+                        className="text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        アーカイブ状況を確認
+                      </Button>
+                      <Button
+                        onClick={() => window.open('/archive-management', '_blank')}
+                        variant="outline"
+                        size="sm"
+                        className="text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700"
+                      >
+                        <Archive className="w-4 h-4 mr-2" />
+                        詳細管理画面
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+              <Button
+                onClick={saveArchiveSettings}
+                disabled={archiveSettingsLoading}
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                {archiveSettingsLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    アーカイブ設定を保存
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         )}

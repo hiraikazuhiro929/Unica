@@ -308,10 +308,23 @@ export const updateWorkHours = async (
     // バージョン更新
     const newVersion = (currentData.version || 1) + 1;
 
+    // 🔒 安全性対策: ステータス変更時のcompletedAt管理
+    const processedUpdates = { ...updates };
+
+    if ('status' in processedUpdates) {
+      if (processedUpdates.status === 'completed') {
+        // 完了時: completedAtを設定
+        processedUpdates.completedAt = new Date().toISOString();
+      } else {
+        // 未完了時: completedAtをクリア（アーカイブ誤実行防止）
+        processedUpdates.completedAt = null;
+      }
+    }
+
     // メインドキュメントを更新（undefined値を除去）
     const cleanedUpdates = Object.fromEntries(
       Object.entries({
-        ...updates,
+        ...processedUpdates,
         version: newVersion,
         updatedAt: serverTimestamp()
       }).filter(([_, value]) => value !== undefined)

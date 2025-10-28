@@ -1,0 +1,167 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions for role-based access control
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isManager() {
+      return isAuthenticated() && getUserRole() in ['admin', 'manager'];
+    }
+    
+    function isLeader() {
+      return isAuthenticated() && getUserRole() in ['admin', 'manager', 'leader'];
+    }
+    
+    function isActiveUser() {
+      return isAuthenticated() && get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // User profiles - users can only modify their own profile, admins can read all
+    match /appUsers/{userId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin(); // Only admins can create new users
+      allow delete: if isAdmin(); // Only admins can delete users
+    }
+    
+    // Company data - only admins can modify
+    match /companies/{companyId} {
+      allow read: if isActiveUser();
+      allow write: if isAdmin();
+    }
+    
+    // Orders - managers and above can create/modify, all can read
+    match /orders/{orderId} {
+      allow read: if isActiveUser();
+      allow write: if isLeader();
+      allow create: if isLeader();
+      allow delete: if isManager();
+    }
+    
+    // Processes/Tasks - workers can read, leaders can modify
+    match /processes/{processId} {
+      allow read: if isActiveUser();
+      allow write: if isLeader();
+      allow create: if isLeader();
+      allow delete: if isManager();
+    }
+    
+    // Work Hours - users can modify their own, managers can view all
+    match /work-hours/{workHourId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(resource.data.userId) || isManager();
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId) || isManager();
+    }
+    
+    // Daily Reports - users can modify their own, managers can view all
+    match /daily-reports/{reportId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(resource.data.userId) || isManager();
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId) || isManager();
+    }
+    
+    // Notes - users can only access their own notes
+    match /notes/{noteId} {
+      allow read, write: if isActiveUser() && isOwner(resource.data.userId);
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Calendar events - users can modify their own, managers can view all
+    match /calendar-events/{eventId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(resource.data.userId) || isManager();
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId) || isManager();
+    }
+    
+    // Inventory - leaders can modify, all can read
+    match /inventory/{itemId} {
+      allow read: if isActiveUser();
+      allow write: if isLeader();
+      allow create: if isLeader();
+      allow delete: if isManager();
+    }
+    
+    // Partners - leaders can modify, all can read
+    match /partners/{partnerId} {
+      allow read: if isActiveUser();
+      allow write: if isLeader();
+      allow create: if isLeader();
+      allow delete: if isManager();
+    }
+    
+    // Defect Reports - all can create and read, leaders can modify
+    match /defect-reports/{reportId} {
+      allow read: if isActiveUser();
+      allow write: if isLeader();
+      allow create: if isActiveUser();
+      allow delete: if isManager();
+    }
+    
+    // Bookmarks - users can only access their own
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if isActiveUser() && isOwner(resource.data.userId);
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Activity logs - read only for active users, write only by system
+    match /activity-logs/{logId} {
+      allow read: if isActiveUser();
+      allow write: if false; // Only server-side functions should write logs
+    }
+    
+    // Chat functionality
+    match /chatChannels/{channelId} {
+      allow read: if isActiveUser();
+      allow write: if isActiveUser();
+      allow create: if isActiveUser();
+      allow delete: if isManager();
+    }
+    
+    match /chatMessages/{messageId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(resource.data.userId) || isManager();
+      allow create: if isActiveUser();
+      allow delete: if isOwner(resource.data.userId) || isManager();
+    }
+    
+    match /chatUsers/{userId} {
+      allow read: if isActiveUser();
+      allow write: if isOwner(userId) || isManager();
+    }
+    
+    match /unreadCounts/{userId} {
+      allow read, write: if isOwner(userId) || isManager();
+    }
+    
+    // System configuration - admin only
+    match /system-config/{configId} {
+      allow read: if isManager();
+      allow write: if isAdmin();
+    }
+    
+    // Fallback: deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

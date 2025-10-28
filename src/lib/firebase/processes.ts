@@ -75,9 +75,11 @@ export const createProcess = async (
       if (workHoursResult.id) {
         workHoursId = workHoursResult.id;
         console.log('✅ Auto-created work hours:', workHoursId);
-        
+
         // 製番管理に工数IDを関連付け
-        await managementNumberManager.linkRelatedId(managementNumber, 'workHoursId', workHoursResult.id);
+        if (processData.managementNumber) {
+          await managementNumberManager.linkRelatedId(processData.managementNumber, 'workHoursId', workHoursResult.id);
+        }
       }
     } catch (workHoursError) {
       console.warn('⚠️ Failed to auto-create work hours:', workHoursError);
@@ -258,12 +260,25 @@ export const updateProcess = async (
 ): Promise<{ error: string | null }> => {
   try {
     const docRef = doc(db, COLLECTIONS.PROCESSES, processId);
-    
+
+    // 🔒 安全性対策: ステータス変更時のcompletedAt管理
+    const processedUpdates = { ...updates };
+
+    if ('status' in processedUpdates) {
+      if (processedUpdates.status === 'completed') {
+        // 完了時: completedAtを設定
+        processedUpdates.completedAt = new Date().toISOString();
+      } else {
+        // 未完了時: completedAtをクリア（アーカイブ誤実行防止）
+        processedUpdates.completedAt = null;
+      }
+    }
+
     await updateDoc(docRef, {
-      ...updates,
+      ...processedUpdates,
       updatedAt: serverTimestamp()
     });
-    
+
     return { error: null };
   } catch (error: Error | unknown) {
     console.error('Error updating process:', error);
@@ -726,6 +741,17 @@ export const getProcessTemplates = async (): Promise<{
     console.error('Error getting process templates:', error);
     return { data: [], error: error.message };
   }
+};
+
+// =============================================================================
+// PERMISSION MANAGEMENT
+// =============================================================================
+
+/**
+ * 工程管理の権限チェック - admin/manager/leaderが作成・編集・削除可能、workerは閲覧のみ
+ */
+export const canManageProcesses = (userRole: 'admin' | 'manager' | 'leader' | 'worker'): boolean => {
+  return userRole === 'admin' || userRole === 'manager' || userRole === 'leader';
 };
 
 export {

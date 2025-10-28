@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { evaluateFormulaSafely } from '@/lib/utils/secureFormulaEvaluator';
 import {
   Plus,
   Minus,
@@ -200,9 +201,13 @@ const ExcelLikeTable: React.FC<ExcelLikeTableProps> = ({
         return new Date().toISOString().split('T')[0];
       }
 
-      // 基本的な算術式の評価（簡易版）
+      // 安全な算術式の評価（math.jsを使用）
       if (/^[\d+\-*/().\s]+$/.test(formula)) {
-        return Function('"use strict"; return (' + formula + ')')();
+        const result = evaluateFormulaSafely(formula);
+        if (typeof result === 'string' && result.startsWith('#')) {
+          return '#ERROR';
+        }
+        return result;
       }
 
       return `#ERROR: ${formula}`;

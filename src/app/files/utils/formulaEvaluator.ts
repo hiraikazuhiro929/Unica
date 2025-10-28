@@ -1,4 +1,6 @@
 // 計算式評価関数
+import { evaluateFormulaSafely, evaluateConditionalFormula, isValidFormula } from '@/lib/utils/secureFormulaEvaluator';
+
 export interface TableRow {
   id: string;
   data: { [key: string]: any };
@@ -124,10 +126,14 @@ export const evaluateFormula = (formula: string, rowData: { [key: string]: any }
       });
     }
 
-    // 安全な計算実行（限定的な数式のみ）
+    // 安全な計算実行（math.jsを使用）
     if (/^[\d+\-*/().\s]+$/.test(processedFormula)) {
-      const func = new Function('"use strict"; return (' + processedFormula + ')');
-      return func();
+      const result = evaluateFormulaSafely(processedFormula);
+      // エラーの場合は適切なメッセージを返す
+      if (typeof result === 'string' && result.startsWith('#')) {
+        return '計算エラー';
+      }
+      return result;
     }
 
     return '計算エラー';

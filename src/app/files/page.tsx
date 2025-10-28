@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { evaluateFormulaSafely } from '@/lib/utils/secureFormulaEvaluator';
 import {
   Select,
   SelectContent,
@@ -1594,9 +1595,14 @@ const FileManagementSystem = () => {
         });
       }
 
-      // 安全な計算実行（限定的な数式のみ）
+      // 安全な計算実行（math.jsを使用）
       if (/^[\d+\-*/().\s]+$/.test(processedFormula)) {
-        return Function('"use strict"; return (' + processedFormula + ')')();
+        const result = evaluateFormulaSafely(processedFormula);
+        // エラーの場合は適切なメッセージを返す
+        if (typeof result === 'string' && result.startsWith('#')) {
+          return '計算エラー';
+        }
+        return result;
       }
 
       return '計算エラー';

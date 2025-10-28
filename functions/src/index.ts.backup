@@ -1,0 +1,22 @@
+// Unica製造業務管理システム Cloud Functions
+// データ自動削除とメンテナンス機能
+
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+
+// Firebase Admin初期化
+admin.initializeApp();
+
+// サブモジュールのインポート
+import { scheduledDataDeletion } from './scheduledDeletion';
+import { maintenanceTasks } from './maintenanceTasks';
+
+// =============================================================================
+// 定期実行関数のエクスポート
+// =============================================================================
+
+// 毎日午前2時に実行される自動削除処理
+export const dailyDataDeletion = scheduledDataDeletion;
+
+// 毎週日曜日午前3時に実行されるメンテナンス処理
+export const weeklyMaintenance = maintenanceTasks;

@@ -176,22 +176,7 @@ export default function ModernSidebar() {
     setHoveredItem("sidebar");
   };
 
-  // サイドバー外クリックでピン解除
-  useEffect(() => {
-    if (!pinned) return;
-    const handleClick = (e: MouseEvent) => {
-      if (
-        sidebarRef.current &&
-        e.target instanceof Node &&
-        !sidebarRef.current.contains(e.target)
-      ) {
-        setPinned(false);
-        setHoveredItem(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [pinned]);
+  // ピン留め時は外クリックで閉じない（ホバー時のみ handleMouseLeave で閉じる）
 
   // ユーザーメニュー外クリックで閉じる
   useEffect(() => {

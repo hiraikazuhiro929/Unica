@@ -40,9 +40,13 @@ import {
 import { exportOrders } from "@/lib/utils/exportUtils";
 import { exportIntegratedData, exportByPeriod } from "@/lib/utils/integratedExportUtils";
 import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 
 const OrderManagement = () => {
-  
+
+  // Activity logging
+  const { logOrderActivity, logSystemActivity, logError } = useActivityLogger();
+
   // State management
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);

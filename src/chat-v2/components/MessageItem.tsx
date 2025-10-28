@@ -5,6 +5,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, UserId } from '../types';
 import UnifiedTimestamp from '../core/UnifiedTimestamp';
+import { MessageContent } from './MessageContent';
+import type { ChatUser } from '@/lib/firebase/chat';
 import {
   User,
   MoreHorizontal,
@@ -15,7 +17,8 @@ import {
   ThumbsUp,
   Smile,
   Copy,
-  Pin
+  Pin,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +31,11 @@ interface MessageItemProps {
   onEdit?: (message: ChatMessage) => void;
   onDelete?: (messageId: string) => void;
   onReaction?: (messageId: string, emoji: string) => void;
+  onUserClick?: (userId: string) => void;
+  onOpenThread?: (message: ChatMessage) => void;
+  onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
+  users?: ChatUser[];
   showAvatar?: boolean;
   isCompact?: boolean;
 }
@@ -41,12 +49,29 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onEdit,
   onDelete,
   onReaction,
+  onUserClick,
+  onOpenThread,
+  onPin,
+  onUnpin,
+  users = [],
   showAvatar = true,
   isCompact = false,
 }) => {
   const [showActions, setShowActions] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null);
   const messageRef = useRef<HTMLDivElement>(null);
+
+  // 1分ごとに時刻表示を更新
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // 1分ごと
+
+    return () => clearInterval(interval);
+  }, []);
 
   // 同じユーザーの連続メッセージかどうか
   const isContinuation = previousMessage?.authorId === message.authorId &&
@@ -54,7 +79,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     previousMessage &&
     UnifiedTimestamp.compare(message.timestamp, previousMessage.timestamp) < 5 * 60 * 1000; // 5分以内
 
-  // 時刻表示
+  // 時刻表示（currentTimeが変わるたびに再計算される）
   const timeString = UnifiedTimestamp.formatMessageTime(message.timestamp);
   const detailTimeString = UnifiedTimestamp.formatDetailTime(message.timestamp);
 
@@ -88,29 +113,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     setShowReactionPicker(false);
   };
 
-  // メンション表示の処理
-  const renderMessageContent = (content: string) => {
-    if (!message.mentions || message.mentions.length === 0) {
-      return content;
-    }
-
-    let formattedContent = content;
-    message.mentions.forEach(mention => {
-      if (mention === 'everyone' || mention === 'here') {
-        formattedContent = formattedContent.replace(
-          new RegExp(`@${mention}`, 'g'),
-          `<span class="bg-blue-100 text-blue-800 px-1 rounded font-medium">@${mention}</span>`
-        );
-      } else {
-        // ユーザー名のメンションも同様に処理
-        formattedContent = formattedContent.replace(
-          new RegExp(`@${mention}`, 'g'),
-          `<span class="bg-blue-100 text-blue-800 px-1 rounded font-medium">@${mention}</span>`
-        );
-      }
-    });
-
-    return <span dangerouslySetInnerHTML={{ __html: formattedContent }} />;
+  // ユーザークリックハンドラー（MessageContent用）
+  const handleUserClickFromContent = (user: ChatUser) => {
+    onUserClick?.(user.id);
   };
 
   const commonReactions = ['👍', '❤️', '😄', '😮', '😢', '😡'];
@@ -120,7 +125,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       ref={messageRef}
       className={cn(
         'group relative flex gap-3 px-4 py-0 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors',
-        isContinuation && !isCompact ? 'mt-0' : 'mt-0',
+        isContinuation && !isCompact ? 'mt-0.5' : 'mt-4',
         getMessageStyle()
       )}
       onMouseEnter={() => setShowActions(true)}
@@ -132,7 +137,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* アバター */}
       <div className="flex-shrink-0 w-10 self-start pt-0.5">
         {showAvatar && !isContinuation ? (
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+          <button
+            onClick={() => onUserClick?.(message.authorId)}
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm cursor-pointer hover:opacity-80 transition-opacity"
+          >
             {message.authorAvatar ? (
               <img
                 src={message.authorAvatar}
@@ -142,7 +150,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             ) : (
               message.authorName.charAt(0).toUpperCase()
             )}
-          </div>
+          </button>
         ) : (
           <div className="w-10 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="text-xs text-gray-400 dark:text-gray-500">{timeString}</span>
@@ -191,7 +199,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {message.isDeleted ? (
             <span className="text-gray-500 dark:text-gray-400 italic">削除されたメッセージ</span>
           ) : (
-            renderMessageContent(message.content)
+            <MessageContent
+              content={message.content}
+              mentions={message.mentions}
+              users={users}
+              currentUserId={currentUserId}
+              onUserClick={handleUserClickFromContent}
+            />
           )}
 
           {/* ステータスインジケーター */}
@@ -206,20 +220,40 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-2 space-y-2">
             {message.attachments.map((attachment) => (
-              <div key={attachment.id} className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-slate-700 rounded-md">
-                <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
-                    {attachment.type === 'image' ? '🖼️' : '📎'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {attachment.name}
+              <div key={attachment.id}>
+                {attachment.type === 'image' ? (
+                  // 画像の場合はBase64データを<img>で表示（クリックでモーダル拡大）
+                  <div className="max-w-md">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={attachment.url}
+                      alt={attachment.name}
+                      className="rounded-lg max-h-96 w-auto cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setSelectedImage({ url: attachment.url, name: attachment.name });
+                        setImageModalOpen(true);
+                      }}
+                    />
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {attachment.name} ({(attachment.size / 1024).toFixed(1)} KB)
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {(attachment.size / 1024).toFixed(1)} KB
+                ) : (
+                  // 画像以外のファイルは従来通りの表示
+                  <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-slate-700 rounded-md">
+                    <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-medium">📎</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {attachment.name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {(attachment.size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
@@ -248,9 +282,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
         {/* スレッド情報 */}
         {message.isThread && message.threadCount && message.threadCount > 0 && (
-          <div className="mt-2 text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-            {message.threadCount}件の返信
-          </div>
+          <button
+            onClick={() => onOpenThread?.(message)}
+            className="mt-2 flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>{message.threadCount}件の返信</span>
+          </button>
         )}
       </div>
 
@@ -275,6 +313,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             </button>
           )}
 
+          {onOpenThread && (
+            <button
+              onClick={() => onOpenThread(message)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              title="スレッドで返信"
+            >
+              <MessageSquare className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
           <button
             onClick={() => setShowReactionPicker(!showReactionPicker)}
             className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -283,16 +331,56 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             <Smile className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           </button>
 
-          <div className="relative">
-            <button
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-              title="その他"
-            >
-              <MoreHorizontal className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-            </button>
+          {/* ピン留めボタン */}
+          {message.isPinned ? (
+            onUnpin && (
+              <button
+                onClick={() => onUnpin(message.id)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                title="ピン留め解除"
+              >
+                <Pin className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-current" />
+              </button>
+            )
+          ) : (
+            onPin && (
+              <button
+                onClick={() => onPin(message.id)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                title="ピン留め"
+              >
+                <Pin className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              </button>
+            )
+          )}
 
-            {/* ドロップダウンメニュー（実装予定） */}
-          </div>
+          {/* 自分のメッセージの場合のみ編集・削除を表示 */}
+          {currentUserId === message.authorId && (
+            <>
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(message)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  title="編集"
+                >
+                  <Edit3 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    if (confirm('このメッセージを削除しますか？')) {
+                      onDelete(message.id);
+                    }
+                  }}
+                  className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+                  title="削除"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -309,6 +397,32 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               <span className="text-lg">{emoji}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* 画像モーダル */}
+      {imageModalOpen && selectedImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          onClick={() => setImageModalOpen(false)}
+        >
+          <div className="max-w-[90vw] max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            />
+            <button
+              onClick={() => setImageModalOpen(false)}
+              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-colors"
+            >
+              <span className="text-xl">✕</span>
+            </button>
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+              {selectedImage.name}
+            </div>
+          </div>
         </div>
       )}
     </div>

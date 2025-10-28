@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { evaluateFormulaSafely, evaluateConditionalFormula } from '@/lib/utils/secureFormulaEvaluator';
 import {
   Select,
   SelectContent,
@@ -131,8 +132,12 @@ class ExcelFormula {
         return this.handleCONCATENATE(processedFormula, data, currentRowIndex, columns);
       }
       
-      // 単純な算術式の評価
-      return Function(`"use strict"; return (${processedFormula})`)();
+      // 安全な算術式の評価（math.jsを使用）
+      const result = evaluateFormulaSafely(processedFormula);
+      if (typeof result === 'string' && result.startsWith('#')) {
+        return '#ERROR';
+      }
+      return result;
     } catch (error) {
       return '#ERROR';
     }
@@ -171,8 +176,11 @@ class ExcelFormula {
     if (!match) return '#ERROR';
     
     const [, condition, trueValue, falseValue] = match;
-    // 簡単な条件評価の実装（実際の実装ではより複雑な解析が必要）
-    const result = Function(`"use strict"; return (${condition})`)();
+    // 安全な条件評価（math.jsを使用）
+    const result = evaluateFormulaSafely(condition);
+    if (typeof result === 'string' && result.startsWith('#')) {
+      return '#ERROR';
+    }
     return result ? trueValue.replace(/"/g, '') : falseValue.replace(/"/g, '');
   }
 

@@ -67,10 +67,25 @@ function toSafeDate(timestamp: any): Date | null {
 /**
  * チャットメッセージ用の標準日時フォーマット
  * 例: "12月25日 14:30"
+ * 🔧 チャットメッセージオブジェクトとclientTimestampフォールバックに対応
  */
-export function formatChatTimestamp(timestamp: any): string {
-  // nullやundefinedの場合は現在時刻を使用
+export function formatChatTimestamp(timestamp: any, clientTimestamp?: any): string {
+  // 🔧 チャットメッセージオブジェクトの場合、適切なタイムスタンプを選択
+  if (timestamp && typeof timestamp === 'object' && 'timestamp' in timestamp) {
+    const msg = timestamp;
+    // timestampがnull/undefinedの場合、clientTimestampを使用
+    const actualTimestamp = msg.timestamp || msg.clientTimestamp;
+    if (actualTimestamp) {
+      return formatChatTimestamp(actualTimestamp);
+    }
+  }
+
+  // nullやundefinedの場合はフォールバックタイムスタンプを確認
   if (!timestamp) {
+    if (clientTimestamp) {
+      return formatChatTimestamp(clientTimestamp);
+    }
+    // 最後のフォールバック: 現在時刻
     return new Date().toLocaleString("ja-JP", {
       month: 'short',
       day: 'numeric',

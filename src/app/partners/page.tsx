@@ -35,7 +35,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { exportPartners } from "@/lib/utils/exportUtils";
 import { usePartners } from './hooks/usePartners';
 import {
   Users,
@@ -62,7 +61,6 @@ import {
   UserPlus,
   MessageSquare,
   Share2,
-  Download,
   Upload,
   Briefcase,
   Target,
@@ -918,53 +916,6 @@ const PartnersPage = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* エクスポートボタン */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
-                    disabled={filteredPartners.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    エクスポート
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
-                    エクスポート対象
-                  </div>
-                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
-                    <div>• フィルター適用後の取引先データ: {filteredPartners.length}件</div>
-                    <div>• タイプ: {filterType === 'all' ? 'すべて' : 
-                      filterType === 'customer' ? '顧客' :
-                      filterType === 'supplier' ? '仕入先' :
-                      filterType === 'both' ? '顧客・仕入先' : filterType}</div>
-                    <div>• ステータス: {filterStatus === 'all' ? 'すべて' : 
-                      filterStatus === 'active' ? 'アクティブ' :
-                      filterStatus === 'potential' ? '見込み' :
-                      filterStatus === 'inactive' ? '非アクティブ' :
-                      filterStatus === 'suspended' ? '停止中' : filterStatus}</div>
-                    <div>• 業界: {filterCategory === 'all' ? 'すべて' : categories.find(c => c.id === filterCategory)?.name || filterCategory}</div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => exportPartners(filteredPartners, 'csv', filterType)}
-                    disabled={filteredPartners.length === 0}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    CSV形式でエクスポート
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => exportPartners(filteredPartners, 'excel', filterType)}
-                    disabled={filteredPartners.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Excel形式でエクスポート
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
               <Button
                 onClick={() => setShowCreateDialog(true)}

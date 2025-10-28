@@ -41,6 +41,7 @@ import {
   markNotificationAsRead,
   createThread,
 } from '@/lib/firebase/chat';
+import { sanitizeMessageContent, detectXssAttempt } from '@/lib/utils/sanitization';
 
 interface UseChatOptions {
   userId: string;
@@ -93,6 +94,9 @@ interface UseChatReturn {
   getOnlineUsers: () => ChatUser[];
   getCurrentUser: () => ChatUser | null;
   getUnreadNotificationCount: () => number;
+
+  // Sending state
+  isSending: boolean;
 }
 
 export const useChat = (options: UseChatOptions): UseChatReturn => {
@@ -111,7 +115,7 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   if (!isValidUserId) {
     // userIdが無効な場合は、何もしないダミーオブジェクトを返す
     return {
-      categories: [],
+      // State
       channels: [],
       messages: [],
       users: [],
@@ -119,47 +123,42 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       notifications: [],
       typingUsers: [],
       threadMessages: [],
-      collapsedCategories: new Set<string>(),
-      selectedCategoryId: '',
-      selectedChannelId: '',
-      selectedThread: null,
+      currentChannel: null,
+      currentThread: null,
       isLoading: false,
       error: null,
-      newChannelName: '',
-      newChannelDescription: '',
-      newChannelCategory: '',
+
+      // Actions
+      selectChannel: () => {},
+      selectThread: () => {},
+      sendNewMessage: async () => false,
+      sendReply: async () => false,
+      editMessage: async () => false,
+      removeMessage: async () => false,
+      uploadFile: async () => null,
+      addReaction: async () => false,
+      updateStatus: async () => false,
+      setTyping: () => {},
+      markAsRead: async () => false,
+      markNotificationRead: async () => false,
+      createNewChannel: async () => null,
+      editChannel: async () => false,
+      removeChannel: async () => false,
+      createNewThread: async () => null,
+      searchAllMessages: async () => [],
+      searchCurrentChannel: async () => [],
+      searchByDate: async () => [],
+      searchByUser: async () => [],
+
+      // Utilities
       getUnreadCount: () => 0,
-      refreshData: async () => {},
-      createCategory: async () => ({ success: false, error: 'Invalid userId' }),
-      updateCategory: async () => ({ success: false, error: 'Invalid userId' }),
-      deleteCategory: async () => ({ success: false, error: 'Invalid userId' }),
-      toggleCategoryCollapse: () => {},
-      setSelectedCategory: () => {},
-      createChannel: async () => ({ success: false, error: 'Invalid userId' }),
-      updateChannel: async () => ({ success: false, error: 'Invalid userId' }),
-      deleteChannel: async () => ({ success: false, error: 'Invalid userId' }),
-      setSelectedChannel: () => {},
-      setNewChannelName: () => {},
-      setNewChannelDescription: () => {},
-      setNewChannelCategory: () => {},
-      addMessage: async () => ({ success: false, error: 'Invalid userId' }),
-      updateMessage: async () => ({ success: false, error: 'Invalid userId' }),
-      deleteMessage: async () => ({ success: false, error: 'Invalid userId' }),
-      addReaction: async () => ({ success: false, error: 'Invalid userId' }),
-      removeReaction: async () => ({ success: false, error: 'Invalid userId' }),
-      startThread: async () => ({ success: false, error: 'Invalid userId' }),
-      addThreadMessage: async () => ({ success: false, error: 'Invalid userId' }),
-      clearThread: () => {},
-      markAsRead: async () => ({ success: false, error: 'Invalid userId' }),
-      markAllAsRead: async () => ({ success: false, error: 'Invalid userId' }),
-      clearAllNotifications: async () => ({ success: false, error: 'Invalid userId' }),
-      startTyping: () => {},
-      stopTyping: () => {},
-    };
+      getOnlineUsers: () => [],
+      getCurrentUser: () => null,
+      getUnreadNotificationCount: () => 0,
+    } as UseChatReturn;
   }
 
-  // State
-  const [categories, setCategories] = useState<ChannelCategory[]>([]);
+  // Core State（必要最小限に簡素化）
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<ChatUser[]>([]);
@@ -167,33 +166,15 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   const [notifications, setNotifications] = useState<ChatNotification[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
-    // ローカルストレージから折りたたみ状態を復元
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chat_collapsed_categories');
-      return new Set(saved ? JSON.parse(saved) : []);
-    }
-    return new Set();
-  });
-  const [selectedChannelId, setSelectedChannelIdState] = useState<string>(() => {
-    // ローカルストレージから前回のチャンネルIDを復元
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('chat_selected_channel_id') || '';
-    }
-    return '';
-  });
-  
-  // selectedChannelIdの設定時にローカルストレージにも保存
-  const setSelectedChannelId = useCallback((channelId: string) => {
-    setSelectedChannelIdState(channelId);
-    if (typeof window !== 'undefined' && channelId) {
-      localStorage.setItem('chat_selected_channel_id', channelId);
-    }
-  }, []);
-  
+
+  // UI State（シンプル化）
+  const [selectedChannelId, setSelectedChannelId] = useState<string>('');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 送信中メッセージのID追跡（シンプルなフィードバック用）
+  const [sendingMessages, setSendingMessages] = useState<Set<string>>(new Set());
 
   // Refs for cleanup
   const unsubscribeChannels = useRef<(() => void) | null>(null);
@@ -236,30 +217,18 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
         });
 
         if (enableRealtime) {
-          // チャンネル監視
+          // チャンネル監視（簡素化）
           unsubscribeChannels.current = subscribeToChannels((channelsData) => {
             setChannels(channelsData);
-            // 最初のチャンネルを自動選択（ただし、既に選択されているチャンネルがある場合はスキップ）
+            // 最初のチャンネルを自動選択
             if (channelsData.length > 0 && !selectedChannelId) {
-              // ローカルストレージに保存されているチャンネルIDが有効か確認
-              const savedChannelId = localStorage.getItem('chat_selected_channel_id');
-              const validChannel = savedChannelId && channelsData.find(ch => ch.id === savedChannelId);
-              
-              if (validChannel) {
-                setSelectedChannelId(savedChannelId);
-              } else {
-                setSelectedChannelId(channelsData[0].id);
-              }
+              setSelectedChannelId(channelsData[0].id);
             }
           });
 
-          // ユーザー監視
+          // その他の監視設定
           unsubscribeUsers.current = subscribeToUsers(setUsers);
-
-          // 未読数監視
           unsubscribeUnreadCounts.current = subscribeToUnreadCounts(userId, setUnreadCounts);
-          
-          // 通知監視
           unsubscribeNotifications.current = subscribeToNotifications(userId, setNotifications);
         }
 
@@ -282,34 +251,91 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
       unsubscribeNotifications.current?.();
       unsubscribeTypingStatus.current?.();
       unsubscribeThreadMessages.current?.();
-      
+
       // タイピング状態をクリア
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      
+
+      // 送信中メッセージをクリア
+      setSendingMessages(new Set());
+
       // ユーザーをオフラインに
       if (userId) {
         updateUserStatus(userId, 'offline').catch(console.error);
       }
     };
-  }, [isValidUserId, userId, userName, userEmail, userRole, userDepartment, enableRealtime, selectedChannelId]);
+  }, [isValidUserId, userId, userName, userEmail, userRole, userDepartment, enableRealtime]);
 
   // メッセージ監視（選択されたチャンネルが変更された時）
   useEffect(() => {
-    if (!selectedChannelId || !enableRealtime) return;
+    console.log('🔄 [useChat] useEffect実行:', {
+      チャンネル: selectedChannelId,
+      リアルタイム: enableRealtime,
+      条件チェック: !selectedChannelId || !enableRealtime ? 'スキップ' : '実行',
+    });
+
+    if (!selectedChannelId || !enableRealtime) {
+      console.warn('⚠️ [useChat] メッセージ監視がスキップされました');
+      return;
+    }
 
     // 既存の監視を停止
     unsubscribeMessages.current?.();
     unsubscribeTypingStatus.current?.();
 
-    // 新しいチャンネルのメッセージを監視
+    // チャンネル変更時に送信中メッセージをクリア
+    setSendingMessages(new Set());
+
+    console.log('🔌 [useChat] メッセージ監視を開始します:', {
+      チャンネル: selectedChannelId,
+      リアルタイム有効: enableRealtime,
+    });
+
+    // 新しいチャンネルのメッセージを監視（シンプルな実装）
     unsubscribeMessages.current = subscribeToMessages(
       selectedChannelId,
-      setMessages,
-      100 // 最大100件
+      (newMessages) => {
+        console.log('🔔 受信:', newMessages.length, '件');
+
+        // ソート前の最後5件を記録
+        const beforeSort = newMessages.slice(-5).map(m => ({
+          内容: m.content.substring(0, 10),
+          時刻: m.timestamp instanceof Date ? m.timestamp.toLocaleTimeString('ja-JP') : 'Invalid',
+          ミリ秒: m.timestamp instanceof Date ? m.timestamp.getTime() : 0,
+        }));
+
+        const sorted = newMessages.sort((a, b) => {
+          // 時系列順にソート（古い → 新しい、下からプッシュ表示用）
+          const getTime = (msg: ChatMessage) => {
+            if (!msg.timestamp) return 0;
+            if (typeof msg.timestamp === 'object' && 'toDate' in msg.timestamp) {
+              return (msg.timestamp as any).toDate().getTime();
+            }
+            if (msg.timestamp instanceof Date) {
+              return msg.timestamp.getTime();
+            }
+            return new Date(msg.timestamp).getTime();
+          };
+          return getTime(a) - getTime(b);
+        });
+
+        // ソート後の最後5件を記録
+        const afterSort = sorted.slice(-5).map(m => ({
+          内容: m.content.substring(0, 10),
+          時刻: m.timestamp instanceof Date ? m.timestamp.toLocaleTimeString('ja-JP') : 'Invalid',
+        }));
+
+        console.log('📊 ソート前:', beforeSort);
+        console.log('📊 ソート後:', afterSort);
+
+        setMessages(sorted);
+      },
+      50
     );
-    
+
+    console.log('✅ [useChat] メッセージ監視設定完了');
+
     // タイピング状態を監視
     unsubscribeTypingStatus.current = subscribeToTypingStatus(
       selectedChannelId,
@@ -408,10 +434,28 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
   ): Promise<boolean> => {
     if (!selectedChannelId) return false;
 
+    // コンテンツをサニタイズ（XSS対策）
+    const sanitizedContent = sanitizeMessageContent(content);
+
+    // XSS攻撃を検知した場合は送信を拒否
+    if (detectXssAttempt(content)) {
+      setError('メッセージに不正なコンテンツが含まれています。');
+      return false;
+    }
+
+    // 空のメッセージは送信しない
+    if (!sanitizedContent.trim()) {
+      return false;
+    }
+
+    // 送信中状態の管理（シンプルなフィードバック）
+    const sendingId = `${selectedChannelId}_${Date.now()}`;
+    setSendingMessages(prev => new Set(prev).add(sendingId));
+
     try {
       const result = await sendMessage({
         channelId: selectedChannelId,
-        content,
+        content: sanitizedContent,
         authorId: userId,
         authorName: userName,
         authorRole: userRole,
@@ -419,7 +463,7 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
         priority: 'normal',
         attachments: attachments || [],
         reactions: [],
-      }); // メッセージ送信
+      });
 
       if (result.error) {
         setError(result.error);
@@ -430,8 +474,15 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     } catch (err: any) {
       setError(err.message);
       return false;
+    } finally {
+      // 送信中状態を解除
+      setSendingMessages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(sendingId);
+        return newSet;
+      });
     }
-  }, [selectedChannelId, userId, userName, userRole, users]);
+  }, [selectedChannelId, userId, userName, userRole]);
 
   const editMessage = useCallback(async (
     messageId: string,
@@ -769,5 +820,8 @@ export const useChat = (options: UseChatOptions): UseChatReturn => {
     getOnlineUsers,
     getCurrentUser,
     getUnreadNotificationCount,
+
+    // Sending state
+    isSending: sendingMessages.size > 0,
   };
 };

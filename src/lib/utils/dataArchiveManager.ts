@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { exportComprehensiveProjectData } from './comprehensiveExportUtils';
-import { logSecurityEvent } from './securityUtils';
+import { log } from '@/lib/logger';
 
 // =============================================================================
 // 型定義
@@ -103,7 +103,7 @@ class DataArchiveManagerImpl implements DataArchiveManager {
 
     const docRef = await addDoc(collection(db, 'archive-policies'), newPolicy);
 
-    logSecurityEvent('archive_policy_created', {
+    log.auth('Archive policy created', {
       policyId: docRef.id,
       collectionName: policy.collectionName,
       retentionDays: policy.retentionDays
@@ -120,7 +120,7 @@ class DataArchiveManagerImpl implements DataArchiveManager {
         updatedAt: new Date().toISOString()
       });
 
-      logSecurityEvent('archive_policy_updated', {
+      log.auth('Archive policy updated', {
         policyId,
         updates: Object.keys(updates)
       });
@@ -158,10 +158,11 @@ class DataArchiveManagerImpl implements DataArchiveManager {
     console.log(`🔍 期限切れレコード検索: ${collectionName}, 基準日: ${cutoffDate.toLocaleDateString()}`);
 
     try {
-      // 完了済みかつ期限切れのレコードを検索
+      // 完了済みかつ期限切れのレコードを検索（安全性向上）
       const expiredQuery = query(
         collection(db, collectionName),
         where('status', '==', 'completed'),
+        where('completedAt', '!=', null),        // 🔒 完了日が存在することを確認
         where('completedAt', '<', cutoffDate.toISOString()),
         orderBy('completedAt', 'asc'),
         limit(100) // 一度に処理する件数制限
@@ -242,7 +243,7 @@ class DataArchiveManagerImpl implements DataArchiveManager {
         .filter(Boolean)
         .slice(0, 10); // 最初の10件のみログ
 
-      logSecurityEvent('data_backup_created', {
+      log.auth('Data backup created', {
         backupId: backupRef.id,
         collectionName,
         recordCount: records.length,
@@ -267,14 +268,31 @@ class DataArchiveManagerImpl implements DataArchiveManager {
       return 0;
     }
 
-    console.log(`🗑️ レコード削除開始: ${collectionName}, ${records.length}件`);
+    // 🔒 安全性チェック: 削除前に再度ステータス確認
+    const safeRecords = records.filter(record =>
+      record.status === 'completed' &&
+      record.completedAt &&
+      record.completedAt !== null
+    );
+
+    if (safeRecords.length < records.length) {
+      const unsafeCount = records.length - safeRecords.length;
+      console.warn(`⚠️ 安全性チェック: ${unsafeCount}件のレコードをアーカイブ対象から除外`);
+      log.auth('Unsafe records excluded from archive', {
+        collectionName,
+        excludedCount: unsafeCount,
+        totalRecords: records.length
+      });
+    }
+
+    console.log(`🗑️ レコード削除開始: ${collectionName}, ${safeRecords.length}件`);
 
     const batch = writeBatch(db);
     let deletedCount = 0;
 
     try {
-      // バッチ削除の準備
-      for (const record of records) {
+      // バッチ削除の準備（安全性チェック済みレコードのみ）
+      for (const record of safeRecords) {
         if (record.id) {
           const docRef = doc(db, collectionName, record.id);
           batch.delete(docRef);
@@ -285,13 +303,13 @@ class DataArchiveManagerImpl implements DataArchiveManager {
       // バッチ実行
       await batch.commit();
 
-      // 統計情報ログ
-      const managementNumbers = records
+      // 統計情報ログ（安全性チェック済みレコードベース）
+      const managementNumbers = safeRecords
         .map(r => r.managementNumber)
         .filter(Boolean)
         .slice(0, 5); // 最初の5件のみログ
 
-      logSecurityEvent('expired_records_deleted', {
+      log.auth('Expired records deleted', {
         collectionName,
         deletedCount,
         sampleManagementNumbers: managementNumbers
@@ -437,7 +455,7 @@ class DataArchiveManagerImpl implements DataArchiveManager {
       }
     }
 
-    logSecurityEvent('archive_policies_batch_executed', {
+    log.auth('Archive policies batch executed', {
       executedPolicies: policies.length,
       successfulOperations: results.filter(r => r.status === 'completed').length,
       failedOperations: results.filter(r => r.status === 'failed').length

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,11 +54,13 @@ import { KanbanBoard } from "@/app/tasks/components/kanban/KanbanBoard";
 import { exportProcesses } from "@/lib/utils/exportUtils";
 import { exportIntegratedData, exportByPeriod } from "@/lib/utils/integratedExportUtils";
 import { exportComprehensiveProjectData } from "@/lib/utils/comprehensiveExportUtils";
+import { canManageProcesses } from "@/lib/firebase/processes";
 
 const ProcessList = () => {
   const searchParams = useSearchParams();
   const fromOrderId = searchParams.get('fromOrder');
   const { trackAction } = useActivityTracking();
+  const { user } = useAuth();
   
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -106,9 +109,16 @@ const ProcessList = () => {
     getStatistics,
   } = useProcessManagement();
 
+  // 権限チェック
+  const hasManagePermission = user ? canManageProcesses(user.role as 'admin' | 'manager' | 'leader' | 'worker') : false;
+
   // キーボードショートカット
   useKeyboardShortcuts({
     onNewProcess: () => {
+      if (!hasManagePermission) {
+        alert('工程の作成権限がありません（admin/managerのみ）');
+        return;
+      }
       setSelectedProcess(createNewProcess());
       setShowNewProcessModal(true);
     },
@@ -171,13 +181,37 @@ const ProcessList = () => {
   };
 
   const handleProcessUpdate = (updatedProcess: Process) => {
+    if (!hasManagePermission) {
+      alert('工程の編集権限がありません（admin/managerのみ）');
+      return;
+    }
     updateProcess(updatedProcess);
     setSelectedProcess(updatedProcess);
   };
 
   const handleNewProcessSave = (newProcess: Process) => {
+    if (!hasManagePermission) {
+      alert('工程の作成権限がありません（admin/managerのみ）');
+      return;
+    }
     addProcess(newProcess);
     setShowNewProcessModal(false);
+  };
+
+  const handleProcessDelete = (companyId: string, processId: string) => {
+    if (!hasManagePermission) {
+      alert('工程の削除権限がありません（admin/managerのみ）');
+      return;
+    }
+    deleteProcess(companyId, processId);
+  };
+
+  const handleProcessDuplicate = (companyId: string, process: Process) => {
+    if (!hasManagePermission) {
+      alert('工程の複製権限がありません（admin/managerのみ）');
+      return;
+    }
+    duplicateProcess(companyId, process);
   };
 
   const openDetail = (process: Process) => {
@@ -740,17 +774,23 @@ const ProcessList = () => {
                   </div>
                 </div>
 
-                {/* 新規工程ボタン */}
-                <Button
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium px-4 shadow-sm hover:shadow-md transition-all duration-200"
-                  onClick={() => {
-                    setSelectedProcess(createNewProcess());
-                    setShowNewProcessModal(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  新規工程
-                </Button>
+                {/* 新規工程ボタン - 権限制御 */}
+                {hasManagePermission ? (
+                  <Button
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium px-4 shadow-sm hover:shadow-md transition-all duration-200"
+                    onClick={() => {
+                      setSelectedProcess(createNewProcess());
+                      setShowNewProcessModal(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    新規工程
+                  </Button>
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-slate-400 italic">
+                    閲覧のみ（作業員は編集不可）
+                  </div>
+                )}
               </div>
             </div>
 
@@ -841,13 +881,29 @@ const ProcessList = () => {
                                       process={process}
                                       companyId={company.id}
                                       onProcessClick={openDetail}
-                                      onDateChange={(processId, key, date) =>
-                                        updateDate(company.id, processId, key, date)
-                                      }
-                                      onDuplicate={duplicateProcess}
-                                      onDelete={deleteProcess}
-                                      onReorder={reorderProcesses}
-                                      onProgressChange={updateProgress}
+                                      onDateChange={(processId, key, date) => {
+                                        if (!hasManagePermission) {
+                                          alert('工程の編集権限がありません（admin/managerのみ）');
+                                          return;
+                                        }
+                                        updateDate(company.id, processId, key, date);
+                                      }}
+                                      onDuplicate={handleProcessDuplicate}
+                                      onDelete={handleProcessDelete}
+                                      onReorder={(companyId, processIds) => {
+                                        if (!hasManagePermission) {
+                                          alert('工程の並び替え権限がありません（admin/managerのみ）');
+                                          return;
+                                        }
+                                        reorderProcesses(companyId, processIds);
+                                      }}
+                                      onProgressChange={(companyId, processId, progress) => {
+                                        if (!hasManagePermission) {
+                                          alert('工程の編集権限がありません（admin/managerのみ）');
+                                          return;
+                                        }
+                                        updateProgress(companyId, processId, progress);
+                                      }}
                                     />
                                   </div>
                                 ))}

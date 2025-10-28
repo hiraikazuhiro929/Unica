@@ -164,17 +164,22 @@ export const logSecurityEvent = (
   details: any,
   userId?: string
 ): void => {
-  const log: SecurityLog = {
+  const securityLog: SecurityLog = {
     timestamp: new Date().toISOString(),
     userId,
     action,
     details,
-    userAgent: navigator.userAgent
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server'
   };
-  
-  // 開発環境ではコンソールに出力
-  log.info('Security Event logged', { type: securityLog.type, severity: securityLog.severity }, 'logSecurityEvent');
-  
+
+  // 開発環境ではコンソールに出力（機密情報をフィルタリング）
+  const filteredDetails = filterSensitiveData(details);
+  log.info('Security Event logged', {
+    action: securityLog.action,
+    timestamp: securityLog.timestamp,
+    details: filteredDetails
+  }, 'logSecurityEvent');
+
   // 本番環境では外部ログサービスに送信することを検討
   // TODO: 本番環境でのセキュリティログ送信実装
 };

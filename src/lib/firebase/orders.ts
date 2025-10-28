@@ -1,23 +1,24 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDocs, 
-  getDoc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  orderBy,
   limit,
   onSnapshot,
   Timestamp,
-  writeBatch 
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
 import { safeFirebaseOperation, retryOperation } from '../utils/errorHandling';
 import { validateOrderData } from '../utils/validation';
 import { managementNumberManager } from '../utils/managementNumber';
+import { logBusinessAction } from './auditLogger';
 
 // 受注案件の型定義
 export interface OrderItem {
@@ -45,7 +46,15 @@ const COLLECTION_NAME = 'orders';
 /**
  * 新しい受注案件を作成（製番管理統合版）
  */
-export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt' | 'managementNumber'>) => {
+export const createOrder = async (
+  orderData: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt' | 'managementNumber'>,
+  userInfo: {
+    companyId: string;
+    userId: string;
+    userName: string;
+    userRole: string;
+  }
+) => {
   // バリデーション
   const validation = validateOrderData(orderData);
   if (!validation.isValid) {
@@ -83,7 +92,30 @@ export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' 
         
         // 3. 製番管理に受注IDを関連付け
         await managementNumberManager.linkRelatedId(managementNumber, 'orderId', docRef.id);
-        
+
+        // 4. 監査ログを記録
+        await logBusinessAction({
+          companyId: userInfo.companyId,
+          userId: userInfo.userId,
+          userName: userInfo.userName,
+          userRole: userInfo.userRole,
+          action: 'created',
+          actionType: 'create',
+          resourceType: 'order',
+          resourceId: docRef.id,
+          resourceName: `${managementNumber} - ${orderData.projectName}`,
+          details: `受注案件「${managementNumber} - ${orderData.projectName}」を作成しました（顧客: ${orderData.client}）`,
+          metadata: {
+            managementNumber,
+            client: orderData.client,
+            quantity: orderData.quantity,
+            orderDate: orderData.orderDate,
+            deliveryDate: orderData.deliveryDate
+          },
+          severity: 'medium',
+          status: 'success'
+        });
+
         return {
           success: true,
           id: docRef.id,
@@ -98,6 +130,26 @@ export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' 
     
   } catch (error: Error | unknown) {
     console.error('Order creation failed:', error);
+
+    // 失敗時の監査ログを記録
+    await logBusinessAction({
+      companyId: userInfo.companyId,
+      userId: userInfo.userId,
+      userName: userInfo.userName,
+      userRole: userInfo.userRole,
+      action: 'create_failed',
+      actionType: 'create',
+      resourceType: 'order',
+      resourceName: orderData.projectName,
+      details: `受注案件「${orderData.projectName}」の作成に失敗しました（エラー: ${error.message || '不明なエラー'}）`,
+      metadata: {
+        error: error.message || '不明なエラー',
+        client: orderData.client
+      },
+      severity: 'high',
+      status: 'failure'
+    });
+
     return {
       success: false,
       error: error.message || '受注作成に失敗しました'
@@ -108,7 +160,16 @@ export const createOrder = async (orderData: Omit<OrderItem, 'id' | 'createdAt' 
 /**
  * 受注案件を更新（バリデーション・エラーハンドリング付き）
  */
-export const updateOrder = async (id: string, updateData: Partial<OrderItem>) => {
+export const updateOrder = async (
+  id: string,
+  updateData: Partial<OrderItem>,
+  userInfo: {
+    companyId: string;
+    userId: string;
+    userName: string;
+    userRole: string;
+  }
+) => {
   // 部分的なバリデーション（更新時は全項目必須ではない）
   if (updateData.quantity !== undefined && updateData.quantity <= 0) {
     return {
@@ -118,15 +179,63 @@ export const updateOrder = async (id: string, updateData: Partial<OrderItem>) =>
   }
   
   const docRef = doc(db, COLLECTION_NAME, id);
+
+  // 🔒 安全性対策: ステータス変更時のcompletedAt管理
+  const processedUpdateData = { ...updateData };
+
+  if ('status' in processedUpdateData) {
+    if (processedUpdateData.status === 'completed') {
+      // 完了時: completedAtを設定
+      processedUpdateData.completedAt = new Date().toISOString();
+    } else {
+      // 未完了時: completedAtをクリア（アーカイブ誤実行防止）
+      processedUpdateData.completedAt = null;
+    }
+  }
+
   const updatedData = {
-    ...updateData,
+    ...processedUpdateData,
     updatedAt: new Date().toISOString()
   };
 
   // リトライ機能付きで実行
   return await safeFirebaseOperation(
     async () => {
+      // 既存データを取得（監査ログ用）
+      const docSnap = await getDoc(docRef);
+      const existingData = docSnap.exists() ? docSnap.data() as OrderItem : null;
+
       await updateDoc(docRef, updatedData);
+
+      // 監査ログを記録
+      const resourceName = existingData
+        ? `${existingData.managementNumber} - ${existingData.projectName}`
+        : `案件ID: ${id}`;
+
+      await logBusinessAction({
+        companyId: userInfo.companyId,
+        userId: userInfo.userId,
+        userName: userInfo.userName,
+        userRole: userInfo.userRole,
+        action: 'updated',
+        actionType: 'update',
+        resourceType: 'order',
+        resourceId: id,
+        resourceName,
+        details: `受注案件「${resourceName}」を更新しました`,
+        metadata: {
+          updatedFields: Object.keys(updateData),
+          oldData: existingData ? {
+            status: existingData.status,
+            priority: existingData.priority,
+            progress: existingData.progress
+          } : null,
+          newData: updateData
+        },
+        severity: 'low',
+        status: 'success'
+      });
+
       return {
         success: true,
         id,
@@ -140,17 +249,79 @@ export const updateOrder = async (id: string, updateData: Partial<OrderItem>) =>
 /**
  * 受注案件を削除
  */
-export const deleteOrder = async (id: string) => {
+export const deleteOrder = async (
+  id: string,
+  userInfo: {
+    companyId: string;
+    userId: string;
+    userName: string;
+    userRole: string;
+  }
+) => {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
+
+    // 削除前にデータを取得（監査ログ用）
+    const docSnap = await getDoc(docRef);
+    const existingData = docSnap.exists() ? docSnap.data() as OrderItem : null;
+
     await deleteDoc(docRef);
-    
+
+    // 監査ログを記録
+    const resourceName = existingData
+      ? `${existingData.managementNumber} - ${existingData.projectName}`
+      : `案件ID: ${id}`;
+
+    await logBusinessAction({
+      companyId: userInfo.companyId,
+      userId: userInfo.userId,
+      userName: userInfo.userName,
+      userRole: userInfo.userRole,
+      action: 'deleted',
+      actionType: 'delete',
+      resourceType: 'order',
+      resourceId: id,
+      resourceName,
+      details: `受注案件「${resourceName}」を削除しました`,
+      metadata: {
+        deletedData: existingData ? {
+          managementNumber: existingData.managementNumber,
+          client: existingData.client,
+          projectName: existingData.projectName,
+          status: existingData.status,
+          orderDate: existingData.orderDate,
+          deliveryDate: existingData.deliveryDate
+        } : null
+      },
+      severity: 'high',
+      status: 'success'
+    });
+
     return {
       success: true,
       id
     };
   } catch (error: Error | unknown) {
     console.error('Error deleting order:', error);
+
+    // 失敗時の監査ログを記録
+    await logBusinessAction({
+      companyId: userInfo.companyId,
+      userId: userInfo.userId,
+      userName: userInfo.userName,
+      userRole: userInfo.userRole,
+      action: 'delete_failed',
+      actionType: 'delete',
+      resourceType: 'order',
+      resourceId: id,
+      details: `受注案件（ID: ${id}）の削除に失敗しました（エラー: ${error.message || '不明なエラー'}）`,
+      metadata: {
+        error: error.message || '不明なエラー'
+      },
+      severity: 'critical',
+      status: 'failure'
+    });
+
     return {
       success: false,
       error: error.message

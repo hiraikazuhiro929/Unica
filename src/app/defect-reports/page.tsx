@@ -27,7 +27,6 @@ import {
   Building2,
   User,
   Calendar,
-  Download,
   ChevronDown,
   FileText,
   RefreshCcw,
@@ -51,7 +50,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { exportDefectReports } from "@/lib/utils/exportUtils";
 import { useDefectReports } from './hooks/useDefectReports';
 
 // 型定義
@@ -409,46 +407,6 @@ const DefectReportsPage = () => {
                 </SelectContent>
               </Select>
 
-              {/* エクスポートボタン */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600"
-                    disabled={filteredReports.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    エクスポート
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-slate-300 border-b border-gray-200 dark:border-slate-600">
-                    エクスポート対象
-                  </div>
-                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-slate-400">
-                    <div>• フィルター適用後の不具合報告: {filteredReports.length}件</div>
-                    <div>• 重要度: {filterSeverity === 'all' ? 'すべて' : severityLabels[filterSeverity as keyof typeof severityLabels]}</div>
-                    <div>• 状態: {filterStatus === 'all' ? 'すべて' : statusLabels[filterStatus as keyof typeof statusLabels]}</div>
-                    <div>• 分類: {filterCategory === 'all' ? 'すべて' : categoryLabels[filterCategory as keyof typeof categoryLabels]}</div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => exportDefectReports(filteredReports, 'csv', filterStatus, filterSeverity)}
-                    disabled={filteredReports.length === 0}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    CSV形式でエクスポート
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => exportDefectReports(filteredReports, 'excel', filterStatus, filterSeverity)}
-                    disabled={filteredReports.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Excel形式でエクスポート
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
             </div>
           </div>

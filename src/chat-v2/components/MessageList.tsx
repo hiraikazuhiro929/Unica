@@ -4,6 +4,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ChatMessage, UserId } from '../types';
+import type { ChatUser } from '@/lib/firebase/chat';
 import MessageItem from './MessageItem';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,12 +12,17 @@ import { cn } from '@/lib/utils';
 interface MessageListProps {
   messages: ChatMessage[];
   currentUserId?: UserId;
+  users?: ChatUser[];
   loading?: boolean;
   error?: string | null;
   onReply?: (message: ChatMessage) => void;
   onEdit?: (message: ChatMessage) => void;
   onDelete?: (messageId: string) => void;
   onReaction?: (messageId: string, emoji: string) => void;
+  onUserClick?: (userId: string) => void;
+  onOpenThread?: (message: ChatMessage) => void;
+  onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   className?: string;
@@ -27,12 +33,17 @@ interface MessageListProps {
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
+  users = [],
   loading = false,
   error = null,
   onReply,
   onEdit,
   onDelete,
   onReaction,
+  onUserClick,
+  onOpenThread,
+  onPin,
+  onUnpin,
   onLoadMore,
   hasMore = false,
   className,
@@ -169,7 +180,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-8 min-h-[200px]">
         <div className="text-center">
           <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">💬</span>
@@ -186,7 +197,8 @@ export const MessageList: React.FC<MessageListProps> = ({
       {/* メッセージリスト */}
       <div
         ref={listRef}
-        className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+        className="h-full"
+        onScroll={handleScroll}
       >
         {/* 上部読み込み中 */}
         {loading && hasMore && (
@@ -199,7 +211,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         <div ref={topRef} />
 
         {/* メッセージ */}
-        <div className="py-0">
+        <div className="py-0 pb-4">
           {messages.map((message, index) => {
             const previousMessage = index > 0 ? messages[index - 1] : undefined;
             const nextMessage = index < messages.length - 1 ? messages[index + 1] : undefined;
@@ -226,6 +238,11 @@ export const MessageList: React.FC<MessageListProps> = ({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onReaction={onReaction}
+                  onUserClick={onUserClick}
+                  onOpenThread={onOpenThread}
+                  onPin={onPin}
+                  onUnpin={onUnpin}
+                  users={users}
                   showAvatar={showAvatars}
                   isCompact={isCompact}
                 />
