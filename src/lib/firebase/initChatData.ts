@@ -113,10 +113,6 @@ const INITIAL_USERS = [
 export const checkChannelsExist = async (): Promise<boolean> => {
   try {
     const querySnapshot = await getDocs(collection(db, CHAT_COLLECTIONS.CHANNELS));
-    console.log('🔍 [checkChannelsExist] チャンネル存在確認:', {
-      exists: !querySnapshot.empty,
-      count: querySnapshot.docs.length,
-    });
     // 空でない場合のみtrueを返す（ドキュメント数もチェック）
     return !querySnapshot.empty && querySnapshot.docs.length > 0;
   } catch (error) {
@@ -143,19 +139,15 @@ export const checkUsersExist = async (): Promise<boolean> => {
  */
 export const createInitialChannels = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🏗️ 初期チャンネルを作成中...');
-
     // カテゴリIDマップを取得
     const categoryMap = (window as any).__categoryIdMap as Map<string, string>;
     if (!categoryMap || categoryMap.size === 0) {
-      console.error('❌ カテゴリIDマップが見つかりません。先にカテゴリを作成してください。');
       return { success: false, error: 'カテゴリが存在しません' };
     }
 
     const channelPromises = INITIAL_CHANNELS.map(async (channelData) => {
       const categoryId = categoryMap.get(channelData.categoryName);
       if (!categoryId) {
-        console.error(`❌ カテゴリIDが見つかりません: ${channelData.categoryName}`);
         return null;
       }
 
@@ -169,14 +161,12 @@ export const createInitialChannels = async (): Promise<{ success: boolean; error
         console.error(`チャンネル作成エラー (${channelData.name}):`, result.error);
         return null;
       }
-      console.log(`✅ チャンネル作成成功: ${channelData.name} (ID: ${result.id}, CategoryID: ${categoryId})`);
       return result.id;
     });
 
     const results = await Promise.all(channelPromises);
     const successCount = results.filter(id => id !== null).length;
 
-    console.log(`📋 ${successCount}/${INITIAL_CHANNELS.length} チャンネルを作成しました`);
     return { success: true };
   } catch (error: any) {
     console.error('初期チャンネル作成エラー:', error);
@@ -189,22 +179,18 @@ export const createInitialChannels = async (): Promise<{ success: boolean; error
  */
 export const createInitialUsers = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('👥 初期ユーザーを作成中...');
-    
     const userPromises = INITIAL_USERS.map(async (userData) => {
       const result = await upsertChatUser(userData);
       if (result.error) {
         console.error(`ユーザー作成エラー (${userData.name}):`, result.error);
         return false;
       }
-      console.log(`✅ ユーザー作成成功: ${userData.name}`);
       return true;
     });
 
     const results = await Promise.all(userPromises);
     const successCount = results.filter(success => success).length;
-    
-    console.log(`👤 ${successCount}/${INITIAL_USERS.length} ユーザーを作成しました`);
+
     return { success: true };
   } catch (error: any) {
     console.error('初期ユーザー作成エラー:', error);
@@ -217,14 +203,12 @@ export const createInitialUsers = async (): Promise<{ success: boolean; error?: 
  */
 export const sendWelcomeMessages = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('💬 ウェルカムメッセージを送信中...');
-    
     // 全体連絡チャンネルを取得
     const channelsSnapshot = await getDocs(collection(db, CHAT_COLLECTIONS.CHANNELS));
-    const generalChannel = channelsSnapshot.docs.find(doc => 
+    const generalChannel = channelsSnapshot.docs.find(doc =>
       doc.data().name === "全体連絡"
     );
-    
+
     if (!generalChannel) {
       return { success: false, error: "全体連絡チャンネルが見つかりません" };
     }
@@ -247,7 +231,6 @@ export const sendWelcomeMessages = async (): Promise<{ success: boolean; error?:
       return { success: false, error: result.error };
     }
 
-    console.log('✅ ウェルカムメッセージを送信しました');
     return { success: true };
   } catch (error: any) {
     console.error('ウェルカムメッセージ送信エラー:', error);
@@ -261,10 +244,6 @@ export const sendWelcomeMessages = async (): Promise<{ success: boolean; error?:
 export const checkCategoriesExist = async (): Promise<boolean> => {
   try {
     const querySnapshot = await getDocs(collection(db, CHAT_COLLECTIONS.CATEGORIES));
-    console.log('🔍 [checkCategoriesExist] カテゴリ存在確認:', {
-      exists: !querySnapshot.empty,
-      count: querySnapshot.docs.length,
-    });
     return !querySnapshot.empty && querySnapshot.docs.length > 0;
   } catch (error) {
     console.error('Error checking categories:', error);
@@ -277,8 +256,6 @@ export const checkCategoriesExist = async (): Promise<boolean> => {
  */
 export const createInitialCategories = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('📁 初期カテゴリを作成中...');
-
     const categories = [
       { name: '全社', position: 0, order: 0, createdBy: 'system' },
       { name: '生産部', position: 1, order: 1, createdBy: 'system' },
@@ -299,7 +276,6 @@ export const createInitialCategories = async (): Promise<{ success: boolean; err
       }
       if (result.id) {
         categoryMap.set(category.name, result.id);
-        console.log(`✅ カテゴリ作成成功: ${category.name} (ID: ${result.id})`);
       }
     }
 
@@ -318,13 +294,10 @@ export const createInitialCategories = async (): Promise<{ success: boolean; err
  */
 export const initializeChatData = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🚀 チャット初期化を開始...');
-
     // 1. カテゴリの存在確認
     const categoriesExist = await checkCategoriesExist();
 
     if (!categoriesExist) {
-      console.log('📁 カテゴリを作成します...');
       const categoryResult = await createInitialCategories();
       if (!categoryResult.success) {
         return { success: false, error: 'カテゴリ作成に失敗' };
@@ -335,7 +308,6 @@ export const initializeChatData = async (): Promise<{ success: boolean; error?: 
     const channelsExist = await checkChannelsExist();
 
     if (!channelsExist) {
-      console.log('📺 チャンネルを作成します...');
       const channelResult = await createInitialChannels();
       if (!channelResult.success) {
         return { success: false, error: 'チャンネル作成に失敗' };
@@ -351,7 +323,6 @@ export const initializeChatData = async (): Promise<{ success: boolean; error?: 
       await createInitialUsers();
     }
 
-    console.log('🎉 チャット初期化が完了しました');
     return { success: true };
   } catch (error: any) {
     console.error('チャット初期化エラー:', error);
@@ -364,8 +335,6 @@ export const initializeChatData = async (): Promise<{ success: boolean; error?: 
  */
 export const forceRecreateChannels = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔄 チャンネルを強制再作成します...');
-
     // 既存のチャンネルを削除
     const channelsSnapshot = await getDocs(collection(db, CHAT_COLLECTIONS.CHANNELS));
     const batch = writeBatch(db);
@@ -378,14 +347,13 @@ export const forceRecreateChannels = async (): Promise<{ success: boolean; error
     const result = await createInitialChannels();
 
     if (result.success) {
-      console.log('✅ チャンネル再作成完了');
       // ウェルカムメッセージ送信
       await sendWelcomeMessages();
     }
 
     return result;
   } catch (error: any) {
-    console.error('❌ チャンネル再作成エラー:', error);
+    console.error('チャンネル再作成エラー:', error);
     return { success: false, error: error.message };
   }
 };

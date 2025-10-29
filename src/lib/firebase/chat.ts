@@ -608,7 +608,6 @@ const filterChannelsByPermissions = async (
   userId: string
 ): Promise<ChatChannel[]> => {
   // 一時的にパーミッションチェックをスキップして、すべてのチャンネルを返す
-  console.warn('Warning: Permission check temporarily disabled');
   return channels;
 
   /* 元のコード（一時的に無効化）
@@ -809,14 +808,12 @@ export const subscribeToMessages = (
 ) => {
   // channelIdの検証 - より安全な方法
   if (!channelId || typeof channelId !== 'string') {
-    console.warn('Invalid channelId provided to subscribeToMessages:', channelId);
     callback([]);
     return () => {}; // 空のunsubscribe関数を返す
   }
 
   const trimmedChannelId = String(channelId).trim();
   if (trimmedChannelId === '') {
-    console.warn('Empty channelId provided to subscribeToMessages:', channelId);
     callback([]);
     return () => {}; // 空のunsubscribe関数を返す
   }
@@ -982,24 +979,20 @@ export const toggleReaction = async (
   try {
     // userIdの検証 - より安全な方法
     if (!userId || typeof userId !== 'string') {
-      console.warn('Invalid userId provided to toggleReaction:', userId);
       return { error: 'Invalid user ID' };
     }
-    
+
     const trimmedUserId = String(userId).trim();
     if (trimmedUserId === '') {
-      console.warn('Empty userId provided to toggleReaction:', userId);
       return { error: 'Empty user ID' };
     }
 
     // messageIdとemojiの検証も追加
     if (!messageId || typeof messageId !== 'string' || messageId.trim() === '') {
-      console.warn('Invalid messageId provided to toggleReaction:', messageId);
       return { error: 'Invalid message ID' };
     }
 
     if (!emoji || typeof emoji !== 'string' || emoji.trim() === '') {
-      console.warn('Invalid emoji provided to toggleReaction:', emoji);
       return { error: 'Invalid emoji' };
     }
     const messageRef = doc(db, CHAT_COLLECTIONS.MESSAGES, messageId);
@@ -1086,13 +1079,11 @@ export const updateUserStatus = async (
   try {
     // userIdの検証 - より安全な方法
     if (!userId || typeof userId !== 'string') {
-      console.warn('Invalid userId provided to updateUserStatus:', userId);
       return { error: 'Invalid user ID' };
     }
-    
+
     const trimmedUserId = String(userId).trim();
     if (trimmedUserId === '') {
-      console.warn('Empty userId provided to updateUserStatus:', userId);
       return { error: 'Empty user ID' };
     }
 
@@ -1220,24 +1211,20 @@ export const updateUnreadCount = async (
   try {
     // パラメータの検証 - より安全な方法
     if (!userId || typeof userId !== 'string') {
-      console.warn('Invalid userId provided to updateUnreadCount:', userId);
       return { error: 'Invalid user ID' };
     }
-    
+
     const trimmedUserId = String(userId).trim();
     if (trimmedUserId === '') {
-      console.warn('Empty userId provided to updateUnreadCount:', userId);
       return { error: 'Empty user ID' };
     }
-    
+
     if (!channelId || typeof channelId !== 'string') {
-      console.warn('Invalid channelId provided to updateUnreadCount:', channelId);
       return { error: 'Invalid channel ID' };
     }
-    
+
     const trimmedChannelId = String(channelId).trim();
     if (trimmedChannelId === '') {
-      console.warn('Empty channelId provided to updateUnreadCount:', channelId);
       return { error: 'Empty channel ID' };
     }
 
@@ -1266,14 +1253,12 @@ export const subscribeToUnreadCounts = (
 ) => {
   // userIdの検証 - より安全な方法
   if (!userId || typeof userId !== 'string') {
-    console.warn('Invalid userId provided to subscribeToUnreadCounts:', userId);
     callback([]);
     return () => {}; // 空のunsubscribe関数を返す
   }
-  
+
   const trimmedUserId = String(userId).trim();
   if (trimmedUserId === '') {
-    console.warn('Empty userId provided to subscribeToUnreadCounts:', userId);
     callback([]);
     return () => {}; // 空のunsubscribe関数を返す
   }
@@ -1688,13 +1673,11 @@ export const updateUserActivity = async (
   try {
     // userIdの検証 - より安全な方法
     if (!userId || typeof userId !== 'string') {
-      console.warn('Invalid userId provided to updateUserActivity:', userId);
       return { error: 'Invalid user ID' };
     }
-    
+
     const trimmedUserId = String(userId).trim();
     if (trimmedUserId === '') {
-      console.warn('Empty userId provided to updateUserActivity:', userId);
       return { error: 'Empty user ID' };
     }
 

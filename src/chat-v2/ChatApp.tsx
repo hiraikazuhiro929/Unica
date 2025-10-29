@@ -65,11 +65,7 @@ const ChatMain: React.FC = () => {
 
   // デバッグ: Reduxから取得したchannelsを確認
   useEffect(() => {
-    console.log('🔍 [DEBUG] Redux state.chat.channels:', {
-      channelsCount: channels?.length || 0,
-      channels: channels,
-      isEmpty: !channels || channels.length === 0,
-    });
+    // Debug logging removed for production
   }, [channels]);
 
   const [initialized, setInitialized] = useState(false);
@@ -137,7 +133,6 @@ const ChatMain: React.FC = () => {
       try {
         // 認証済みユーザーがいない場合は初期化しない
         if (!authUser.user) {
-          console.warn('No authenticated user, skipping chat initialization');
           return;
         }
 
@@ -155,7 +150,6 @@ const ChatMain: React.FC = () => {
         const hasChannels = await checkChannelsExist();
 
         if (!hasChannels) {
-          console.warn('⚠️ 初期化後もチャンネルが存在しません。強制再作成を実行します。');
           const { forceRecreateChannels } = await import('@/lib/firebase/initChatData');
           await forceRecreateChannels();
         }
@@ -188,10 +182,6 @@ const ChatMain: React.FC = () => {
         if (categoriesResult.error) {
           console.error('❌ [ChatApp 初期化] カテゴリ取得エラー:', categoriesResult.error);
         } else {
-          console.log('✅ [ChatApp 初期化] カテゴリ取得成功:', {
-            カテゴリ数: categoriesResult.data.length,
-            カテゴリ一覧: categoriesResult.data.map(cat => ({ id: cat.id, name: cat.name })),
-          });
           setCategories(categoriesResult.data);
         }
 
@@ -201,22 +191,13 @@ const ChatMain: React.FC = () => {
           if (channelsResult.error) {
             console.error('❌ [ChatApp 初期化] チャンネル取得エラー:', channelsResult.error);
           } else {
-            console.log('✅ [ChatApp 初期化] チャンネル取得成功:', {
-              チャンネル数: channelsResult.data.length,
-              チャンネル一覧: channelsResult.data.map(ch => ({ id: ch.id, name: ch.name, categoryId: ch.categoryId })),
-            });
             dispatch(setChannels(channelsResult.data));
 
             // 最初のチャンネルを選択（カテゴリ順にソート済み）
             if (channelsResult.data.length > 0) {
-              console.log('📍 [ChatApp 初期化] 最初のチャンネルを選択:', channelsResult.data[0].name);
               dispatch(setCurrentChannel(channelsResult.data[0].id));
-            } else {
-              console.warn('⚠️ [ChatApp 初期化] チャンネルが0件のため、選択できませんでした');
             }
           }
-        } else {
-          console.warn('⚠️ [ChatApp 初期化] カテゴリが存在しないため、チャンネルを作成できません');
         }
 
         setInitialized(true);
@@ -238,10 +219,6 @@ const ChatMain: React.FC = () => {
 
     // チャンネル監視
     const unsubscribeChannels = chatService.subscribeToChannels((channels) => {
-      console.log('📡 [ChatApp] チャンネル更新受信:', {
-        受信チャンネル数: channels.length,
-        チャンネル一覧: channels.map(ch => ({ id: ch.id, name: ch.name })),
-      });
       dispatch(setChannels(channels));
     });
     unsubscribes.push(unsubscribeChannels);
@@ -420,7 +397,6 @@ const ChatMain: React.FC = () => {
   // メッセージ返信
   const handleReply = useCallback((message: ChatMessage) => {
     // 返信情報をメッセージ入力に設定（実装は省略）
-    console.log('Reply to message:', message);
   }, []);
 
   // メッセージ編集
@@ -837,10 +813,8 @@ const ChatMain: React.FC = () => {
       if (result.error) {
         console.error('Failed to update channel:', result.error);
         // TODO: ユーザーにエラー通知
-      } else {
-        // 成功 - subscribeToChannelsが自動的に更新を反映
-        console.log('Channel updated successfully');
       }
+      // 成功 - subscribeToChannelsが自動的に更新を反映
     } catch (error) {
       console.error('Error updating channel:', error);
     }

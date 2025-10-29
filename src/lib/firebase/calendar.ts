@@ -288,16 +288,9 @@ export interface GoogleCalendarConfig {
  */
 export const initializeGoogleCalendarAuth = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔧 Google API初期化開始...');
-    
     const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
-    
-    console.log('📋 環境変数チェック:', {
-      clientId: GOOGLE_CLIENT_ID ? '設定済み' : '未設定',
-      apiKey: GOOGLE_API_KEY ? '設定済み' : '未設定'
-    });
-    
+
     if (!GOOGLE_CLIENT_ID || !GOOGLE_API_KEY) {
       throw new Error(`Google Calendar API credentials not configured: clientId=${!!GOOGLE_CLIENT_ID}, apiKey=${!!GOOGLE_API_KEY}`);
     }
@@ -307,68 +300,55 @@ export const initializeGoogleCalendarAuth = async (): Promise<{ success: boolean
       throw new Error('Google Calendar auth can only be initialized in browser');
     }
 
-    console.log('🌐 Google APIスクリプト読み込み確認...');
     // Google API ライブラリが読み込まれているかチェック
     if (typeof window.gapi === 'undefined') {
-      console.log('📥 Google APIスクリプトを動的読み込み中...');
       await loadGoogleAPIScript();
-      console.log('✅ Google APIスクリプト読み込み完了');
     }
 
-    console.log('🔗 Google API client読み込み中...');
     // Google API初期化（auth2は使わない）
     await new Promise<void>((resolve, reject) => {
       window.gapi.load('client', {
         callback: () => {
-          console.log('✅ client 読み込み完了');
           resolve();
         },
         onerror: (error) => {
-          console.error('❌ client 読み込み失敗:', error);
+          console.error('client 読み込み失敗:', error);
           reject(new Error('Failed to load Google API client'));
         }
       });
     });
 
-    console.log('⚙️ Google API client初期化中...');
     await window.gapi.client.init({
       apiKey: GOOGLE_API_KEY,
       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
     });
 
-    console.log('🔐 Google Identity Services初期化中...');
     // 新しいGoogle Identity Servicesを初期化
     if (typeof window.google?.accounts?.oauth2 === 'undefined') {
       throw new Error('Google Identity Services not loaded');
     }
 
     // 保存されたアクセストークンを復元
-    console.log('💾 保存されたトークンをチェック中...');
     const savedToken = localStorage.getItem('google_access_token');
     const tokenTimestamp = localStorage.getItem('google_token_timestamp');
-    
+
     if (savedToken && tokenTimestamp) {
       const tokenAge = Date.now() - parseInt(tokenTimestamp);
       const oneHour = 60 * 60 * 1000; // 1時間をミリ秒で
-      
+
       if (tokenAge < oneHour) {
         // トークンが1時間以内なら復元
-        console.log('✅ 保存されたトークンを復元しました');
         window.gapi.client.setToken({ access_token: savedToken });
       } else {
         // 古いトークンは削除
-        console.log('⏰ 保存されたトークンが期限切れのため削除');
         localStorage.removeItem('google_access_token');
         localStorage.removeItem('google_token_timestamp');
       }
-    } else {
-      console.log('ℹ️ 保存されたトークンはありません');
     }
 
-    console.log('🎉 Google Calendar API初期化完了');
     return { success: true };
   } catch (error: any) {
-    console.error('💥 Google Calendar auth initialization failed:', error);
+    console.error('Google Calendar auth initialization failed:', error);
     return { success: false, error: error.message };
   }
 };
@@ -416,8 +396,6 @@ export const syncGoogleCalendarEvents = async (
       throw new Error('Not signed in to Google - please click the "連携" button first');
     }
 
-    console.log('Google Calendar同期開始:', calendarId);
-
     // 今後30日間のイベントを取得
     const timeMin = new Date().toISOString();
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -431,17 +409,16 @@ export const syncGoogleCalendarEvents = async (
     });
 
     const googleEvents = response.result.items || [];
-    console.log(`${googleEvents.length}件のイベントを取得`);
 
     // Firebaseに保存
     let syncedCount = 0;
     for (const googleEvent of googleEvents) {
       // 既存のGoogleイベントかチェック（重複回避）
-      const existingEvents = await getCalendarEvents({ 
-        createdBy: 'Google Calendar' 
+      const existingEvents = await getCalendarEvents({
+        createdBy: 'Google Calendar'
       });
-      
-      const isDuplicate = existingEvents.data.some(event => 
+
+      const isDuplicate = existingEvents.data.some(event =>
         event.title === googleEvent.summary &&
         event.date === (googleEvent.start.date || googleEvent.start.dateTime?.split('T')[0])
       );
@@ -449,14 +426,14 @@ export const syncGoogleCalendarEvents = async (
       if (isDuplicate) continue;
 
       const isAllDay = !!googleEvent.start.date; // 終日イベントは date プロパティを持つ
-      const startDate = isAllDay ? 
-        googleEvent.start.date : 
+      const startDate = isAllDay ?
+        googleEvent.start.date :
         new Date(googleEvent.start.dateTime).toISOString().split('T')[0];
-      
+
       const eventData: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'> = {
         title: googleEvent.summary || '(タイトルなし)',
         description: googleEvent.description ? `${googleEvent.description}\n\n(Google Calendar同期)` : '(Google Calendar同期)',
-        startTime: isAllDay ? '00:00' : 
+        startTime: isAllDay ? '00:00' :
           new Date(googleEvent.start.dateTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
         endTime: isAllDay ? '23:59' :
           new Date(googleEvent.end.dateTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
@@ -476,9 +453,6 @@ export const syncGoogleCalendarEvents = async (
       const result = await createCalendarEvent(eventData);
       if (result.id) {
         syncedCount++;
-        console.log(`✅ イベント保存成功: ${googleEvent.summary} (ID: ${result.id})`);
-      } else {
-        console.log(`❌ イベント保存失敗: ${googleEvent.summary}`, result.error);
       }
     }
 
@@ -504,21 +478,19 @@ export const createGoogleCalendarEvent = async (
   try {
     // Google Calendar API でイベントを作成
     // 実際の実装では gapi.client.calendar.events.insert() を使用
-    
-    console.log('Google Calendarにイベント作成:', event.title);
-    
+
     // 模擬的な作成処理
     const mockGoogleEventId = `google_${Date.now()}`;
-    
-    return { 
-      success: true, 
-      googleEventId: mockGoogleEventId 
+
+    return {
+      success: true,
+      googleEventId: mockGoogleEventId
     };
   } catch (error: any) {
     console.error('Google Calendar event creation failed:', error);
-    return { 
-      success: false, 
-      error: error.message 
+    return {
+      success: false,
+      error: error.message
     };
   }
 };
@@ -541,36 +513,33 @@ export const signInToGoogle = async (): Promise<{
       throw new Error('Google Client ID not configured');
     }
 
-    console.log('🔐 Google OAuth2認証開始...');
-    
     return new Promise((resolve) => {
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: 'https://www.googleapis.com/auth/calendar',
         callback: (response: any) => {
           if (response.error) {
-            console.error('❌ OAuth2 認証失敗:', response.error);
-            resolve({ 
-              success: false, 
-              error: response.error 
+            console.error('OAuth2 認証失敗:', response.error);
+            resolve({
+              success: false,
+              error: response.error
             });
           } else {
-            console.log('✅ OAuth2 認証成功');
             // アクセストークンをローカルストレージに保存（永続化）
             localStorage.setItem('google_access_token', response.access_token);
             localStorage.setItem('google_token_timestamp', Date.now().toString());
-            
+
             // gapiクライアントにもトークンを設定
             window.gapi.client.setToken({ access_token: response.access_token });
-            
-            resolve({ 
-              success: true, 
+
+            resolve({
+              success: true,
               userEmail: 'authenticated@user.com' // 実際のメールアドレスは別途取得が必要
             });
           }
         },
       });
-      
+
       client.requestAccessToken();
     });
   } catch (error: any) {
@@ -595,11 +564,10 @@ export const signOutFromGoogle = async (): Promise<{ success: boolean; error?: s
     if (window.gapi?.client) {
       window.gapi.client.setToken(null);
     }
-    
-    console.log('✅ Google sign-out successful');
+
     return { success: true };
   } catch (error: any) {
-    console.error('❌ Google sign-out failed:', error);
+    console.error('Google sign-out failed:', error);
     return { success: false, error: error.message };
   }
 };

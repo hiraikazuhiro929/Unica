@@ -269,8 +269,6 @@ class EnhancedArchiveManagerImpl {
     reason: 'retention_policy' | 'user_request' = 'retention_policy',
     userId: string = 'system'
   ): Promise<{ success: number; failed: number; errors: string[] }> {
-    console.log(`📦 アーカイブ開始: ${collectionName} (${recordIds.length}件)`);
-
     let success = 0;
     let failed = 0;
     const errors: string[] = [];
@@ -332,7 +330,6 @@ class EnhancedArchiveManagerImpl {
         // バッチを実行
         try {
           await batch.commit();
-          console.log(`✅ バッチアーカイブ完了: ${Math.min(batchSize, recordIds.length - i)}件`);
         } catch (error) {
           console.error('❌ バッチアーカイブエラー:', error);
           failed += Math.min(batchSize, recordIds.length - i);
@@ -349,8 +346,6 @@ class EnhancedArchiveManagerImpl {
         reason,
         archivedBy: userId
       });
-
-      console.log(`🎯 アーカイブ完了: 成功 ${success}件, 失敗 ${failed}件`);
 
       return { success, failed, errors };
 
@@ -370,8 +365,6 @@ class EnhancedArchiveManagerImpl {
     reason: 'retention_policy' | 'user_request' = 'retention_policy',
     userId: string = 'system'
   ): Promise<{ success: number; failed: number; errors: string[] }> {
-    console.log(`🗑️ レコード削除開始: ${collectionName} (${recordIds.length}件)`);
-
     let success = 0;
     let failed = 0;
     const errors: string[] = [];
@@ -408,7 +401,6 @@ class EnhancedArchiveManagerImpl {
         try {
           await batch.commit();
           success += batchIds.length;
-          console.log(`✅ バッチ削除完了: ${batchIds.length}件`);
         } catch (error) {
           failed += batchIds.length;
           errors.push(`バッチ削除エラー: ${error instanceof Error ? error.message : '不明'}`);
@@ -424,8 +416,6 @@ class EnhancedArchiveManagerImpl {
         deletedBy: userId
       });
 
-      console.log(`🎯 削除完了: 成功 ${success}件, 失敗 ${failed}件`);
-
       return { success, failed, errors };
 
     } catch (error) {
@@ -439,8 +429,6 @@ class EnhancedArchiveManagerImpl {
   }
 
   async generateWarningsForCollection(collectionName: string): Promise<ArchiveWarning[]> {
-    console.log(`🔍 警告生成開始: ${collectionName}`);
-
     const settings = await this.getArchiveSettings();
     const now = new Date();
     const warnings: ArchiveWarning[] = [];
@@ -451,7 +439,6 @@ class EnhancedArchiveManagerImpl {
       const isChatData = settings.chatDataPolicy.collections.includes(collectionName);
 
       if (!isBusinessData && !isChatData) {
-        console.log(`⏭️ スキップ: ${collectionName} (対象外)`);
         return [];
       }
 
@@ -482,8 +469,6 @@ class EnhancedArchiveManagerImpl {
         id: doc.id,
         ...doc.data()
       })) as DataRecord[];
-
-      console.log(`📊 対象レコード: ${records.length}件`);
 
       for (const record of records) {
         const baseDate = isBusinessData
@@ -581,7 +566,6 @@ class EnhancedArchiveManagerImpl {
         infoCount: warnings.filter(w => w.warningLevel === 'info').length
       });
 
-      console.log(`✅ 警告生成完了: ${warnings.length}件`);
       return warnings;
 
     } catch (error) {
@@ -730,8 +714,6 @@ class EnhancedArchiveManagerImpl {
   // =============================================================================
 
   async generateAllWarnings(): Promise<ArchiveWarning[]> {
-    console.log('🔄 全コレクション警告生成開始');
-
     const settings = await this.getArchiveSettings();
     const allCollections = [
       ...settings.businessDataPolicy.collections,
@@ -762,7 +744,6 @@ class EnhancedArchiveManagerImpl {
       }
     }
 
-    console.log(`✅ 全警告生成完了: ${allWarnings.length}件`);
     return allWarnings;
   }
 
@@ -775,8 +756,6 @@ class EnhancedArchiveManagerImpl {
     browser: { sent: number; failed: number };
     dashboard: { sent: number; failed: number };
   }> {
-    console.log(`📨 通知送信開始: ${warnings.length}件の警告`);
-
     const settings = await this.getArchiveSettings();
     const results = {
       email: { sent: 0, failed: 0 },
@@ -807,7 +786,6 @@ class EnhancedArchiveManagerImpl {
       results
     });
 
-    console.log(`✅ 通知送信完了:`, results);
     return results;
   }
 
@@ -843,7 +821,6 @@ class EnhancedArchiveManagerImpl {
         });
 
         sent++;
-        console.log(`✅ メール送信成功: ${recipient}`);
       } catch (error) {
         failed++;
         console.error(`❌ メール送信エラー (${recipient}):`, error);
@@ -989,7 +966,6 @@ class EnhancedArchiveManagerImpl {
 
       await batch.commit();
 
-      console.log(`🧹 古い警告をクリーンアップ: ${querySnapshot.size}件`);
       return querySnapshot.size;
     } catch (error) {
       console.error('クリーンアップエラー:', error);
@@ -1182,8 +1158,6 @@ export const DEFAULT_ARCHIVE_SETTINGS: ArchiveSettings = {
 // =============================================================================
 
 export const initializeEnhancedArchive = async (): Promise<void> => {
-  console.log('🔧 強化版アーカイブシステム初期化中...');
-
   try {
     // デフォルト設定を作成
     await enhancedArchiveManager.updateArchiveSettings(DEFAULT_ARCHIVE_SETTINGS);
@@ -1195,8 +1169,6 @@ export const initializeEnhancedArchive = async (): Promise<void> => {
     if (warnings.length > 0) {
       await enhancedArchiveManager.sendNotifications(warnings);
     }
-
-    console.log('✅ 強化版アーカイブシステム初期化完了');
   } catch (error) {
     console.error('❌ 初期化エラー:', error);
   }
@@ -1211,8 +1183,6 @@ export const processArchiveAndDeletion = async (): Promise<{
   deleted: { success: number; failed: number };
   warnings: ArchiveWarning[];
 }> => {
-  console.log('🔄 メインアーカイブ処理開始');
-
   const settings = await enhancedArchiveManager.getArchiveSettings();
   let totalArchived = { success: 0, failed: 0 };
   let totalDeleted = { success: 0, failed: 0 };
@@ -1277,7 +1247,6 @@ export const processArchiveAndDeletion = async (): Promise<{
 
   logSecurityEvent('archive_deletion_process_completed', result);
 
-  console.log('🎆 メインアーカイブ処理完了:', result);
   return result;
 };
 

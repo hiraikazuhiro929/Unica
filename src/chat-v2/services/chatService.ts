@@ -129,7 +129,6 @@ const removeUndefinedFields = (obj: any): any => {
 const documentToChatMessage = (doc: any): ChatMessage => {
   const data = doc.data();
 
-
   const msg = {
     id: createMessageId(doc.id),
     channelId: createChannelId(data.channelId),
@@ -163,15 +162,6 @@ const documentToChatChannel = (doc: any): ChatChannel | null => {
   try {
     const data = doc.data();
 
-    console.log('🔍 [documentToChatChannel] 変換開始:', {
-      docId: doc.id,
-      name: data.name,
-      type: data.type,
-      createdBy: data.createdBy,
-      hasCreatedAt: !!data.createdAt,
-      hasUpdatedAt: !!data.updatedAt,
-    });
-
     // lastMessageのタイムスタンプも変換
     let lastMessage = data.lastMessage;
     if (lastMessage && lastMessage.timestamp) {
@@ -201,14 +191,8 @@ const documentToChatChannel = (doc: any): ChatChannel | null => {
       lastMessage: lastMessage,
     };
 
-    console.log('✅ [documentToChatChannel] 変換成功:', channel.id, channel.name);
     return channel;
   } catch (error) {
-    console.error('❌ [documentToChatChannel] 変換エラー:', {
-      docId: doc.id,
-      error: error instanceof Error ? error.message : error,
-      data: doc.data(),
-    });
     return null;
   }
 };
@@ -228,8 +212,6 @@ export const sendMessage = async (
   authorRole: string
 ): Promise<MessageResponse> => {
   try {
-    console.log('📤', formData.content.substring(0, 15));
-
     // メンション解析
     const mentionPattern = /@(\w+)/g;
     const mentions: string[] = [];
@@ -259,14 +241,8 @@ export const sendMessage = async (
 
     // undefinedフィールドを除去
     const cleanedData = removeUndefinedFields(messageData);
-    console.log('📤 [送信直前] timestamp確認:', {
-      型: typeof cleanedData.timestamp,
-      値: cleanedData.timestamp,
-      isDate: cleanedData.timestamp instanceof Date,
-    });
 
     const docRef = await addDoc(collection(db, COLLECTIONS.MESSAGES), cleanedData);
-    console.log('✅ [保存完了] docId:', docRef.id);
 
     // スレッド返信の場合、親メッセージのthreadCountを更新
     if (formData.parentMessageId) {
@@ -316,7 +292,6 @@ export const subscribeToMessages = (
   messageLimit: number = 50
 ) => {
   if (!channelId || typeof channelId !== 'string') {
-    console.warn('Invalid channelId provided to subscribeToMessages:', channelId);
     callback([]);
     return () => {};
   }
@@ -332,11 +307,6 @@ export const subscribeToMessages = (
     q,
     (querySnapshot) => {
       try {
-        const changes = querySnapshot.docChanges();
-        if (changes.length > 0) {
-          console.log('📥', changes.map(c => `${c.type}:${c.doc.data().content?.substring(0, 10)}`).join(', '));
-        }
-
         const messages = querySnapshot.docs
           .map(doc => documentToChatMessage(doc))
           .filter(msg => !msg.isDeleted);
@@ -349,11 +319,6 @@ export const subscribeToMessages = (
 
         // 既に昇順で取得済みなので、そのまま配列化
         const deduplicatedMessages = Array.from(uniqueMessages.values());
-
-        console.log('📊 全', deduplicatedMessages.length, '件');
-        console.log('📍 全順序:', deduplicatedMessages.map((m, i) =>
-          `[${i + 1}] ${m.content.substring(0, 8)} @${m.timestamp.toLocaleTimeString('ja-JP')}`
-        ).join('\n'));
 
         callback(deduplicatedMessages);
       } catch (error) {
@@ -736,10 +701,6 @@ export const getChannels = async (
     );
 
     const querySnapshot = await getDocs(q);
-    console.log('📥 [getChannels] Firestoreクエリ結果:', {
-      ドキュメント数: querySnapshot.docs.length,
-      ドキュメントID一覧: querySnapshot.docs.map(doc => doc.id),
-    });
 
     // 変換エラーが発生してもスキップして他のチャンネルは表示
     const channels = querySnapshot.docs
@@ -752,12 +713,6 @@ export const getChannels = async (
         }
         return a.position - b.position;
       });
-
-    console.log('📊 [getChannels] 変換結果:', {
-      変換成功: channels.length,
-      変換失敗: querySnapshot.docs.length - channels.length,
-      チャンネル一覧: channels.map(ch => ({ id: ch.id, name: ch.name, categoryId: ch.categoryId })),
-    });
 
     return { data: channels, error: null };
   } catch (error: any) {
@@ -781,21 +736,10 @@ export const subscribeToChannels = (
     q,
     (querySnapshot) => {
       try {
-        console.log('📥 [subscribeToChannels] Firestoreクエリ結果:', {
-          ドキュメント数: querySnapshot.docs.length,
-          ドキュメントID一覧: querySnapshot.docs.map(doc => doc.id),
-        });
-
         // 変換エラーが発生してもスキップして他のチャンネルは表示
         const channels = querySnapshot.docs
           .map(doc => documentToChatChannel(doc))
           .filter((channel): channel is ChatChannel => channel !== null);
-
-        console.log('📊 [subscribeToChannels] 変換結果:', {
-          変換成功: channels.length,
-          変換失敗: querySnapshot.docs.length - channels.length,
-          チャンネル一覧: channels.map(ch => ({ id: ch.id, name: ch.name })),
-        });
 
         callback(channels);
       } catch (error) {
@@ -826,7 +770,6 @@ export const createChannel = async (
   try {
     // categoryIdバリデーション: 必須チェック
     if (!channelData.categoryId) {
-      console.error('❌ チャンネル作成エラー: categoryIdが必須です');
       return { id: null, error: 'カテゴリが選択されていません。チャンネルはカテゴリ内に作成する必要があります。' };
     }
 
@@ -934,8 +877,6 @@ export const deleteChannel = async (
 
     await batch.commit();
 
-    console.log(`✅ チャンネル削除完了: ${channelId} (メッセージ: ${messagesSnapshot.docs.length}件)`);
-
     return { data: undefined, error: null };
   } catch (error: any) {
     console.error('Error deleting channel:', error);
@@ -997,7 +938,6 @@ export const leaveChannel = async (
   try {
     // TODO: channel_membersコレクションから該当ユーザーを削除
     // 現在は簡易実装のため、何もしない
-    console.log(`User ${userId} left channel ${channelId}`);
 
     // メンバー数を減らす
     const channelRef = doc(db, COLLECTIONS.CHANNELS, channelId);
@@ -1215,8 +1155,6 @@ export const deleteCategory = async (
     );
     const channelsSnapshot = await getDocs(channelsQuery);
 
-    console.log(`🗑️ カテゴリ削除: ${categoryId} (チャンネル数: ${channelsSnapshot.docs.length}件)`);
-
     // 2. 各チャンネルのメッセージも削除
     for (const channelDoc of channelsSnapshot.docs) {
       const channelId = channelDoc.id;
@@ -1260,7 +1198,6 @@ export const deleteCategory = async (
 
     await batch.commit();
 
-    console.log(`✅ カテゴリ削除完了: ${categoryId}`);
     return { error: null };
   } catch (error: any) {
     console.error('カテゴリ削除エラー:', error);
@@ -1739,16 +1676,12 @@ export const cleanupDuplicateChannels = async (): Promise<void> => {
         for (let i = 1; i < channels.length; i++) {
           batch.delete(doc(db, COLLECTIONS.CHANNELS, channels[i].id));
           deleteCount++;
-          console.log(`🗑️ 重複削除: ${name} (${channels[i].id})`);
         }
       }
     });
 
     if (deleteCount > 0) {
       await batch.commit();
-      console.log(`✅ 重複チャンネル ${deleteCount}件を削除しました`);
-    } else {
-      console.log('ℹ️ 重複チャンネルはありませんでした');
     }
   } catch (error) {
     console.error('❌ クリーンアップエラー:', error);

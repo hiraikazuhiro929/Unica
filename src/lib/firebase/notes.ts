@@ -487,13 +487,11 @@ export const uploadImages = async (
   onProgress?: (progress: number, fileIndex: number) => void,
   noteId?: string
 ): Promise<{ urls: string[]; errors: string[] }> => {
-  console.log("uploadImages function called (using Base64 fallback)", { filesCount: files.length, userId, noteId });
   const urls: string[] = [];
   const errors: string[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    console.log(`Processing file ${i + 1}/${files.length}:`, { name: file.name, type: file.type, size: file.size });
     
     try {
       // ファイル検証
@@ -509,8 +507,6 @@ export const uploadImages = async (
         continue;
       }
 
-      console.log(`Converting ${file.name} to Base64...`);
-      
       // ファイルをBase64に変換
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -525,8 +521,6 @@ export const uploadImages = async (
         reader.readAsDataURL(file);
       });
 
-      console.log(`Successfully converted ${file.name} to Base64 (${base64.length} characters)`);
-      
       // Base64 データURLを返す（一時的な解決策）
       urls.push(base64);
       
@@ -534,13 +528,11 @@ export const uploadImages = async (
       onProgress?.(100, i);
 
     } catch (error: any) {
-      console.error(`Error processing ${file.name}:`, error);
       const errorMessage = error.message || 'Unknown error';
       errors.push(`${file.name}: ${errorMessage}`);
     }
   }
 
-  console.log("uploadImages function completed (Base64)", { successCount: urls.length, errorCount: errors.length });
   return { urls, errors };
 };
 
@@ -553,13 +545,11 @@ export const uploadImagesToFirebaseStorage = async (
   onProgress?: (progress: number, fileIndex: number) => void,
   noteId?: string
 ): Promise<{ urls: string[]; errors: string[] }> => {
-  console.log("uploadImagesToFirebaseStorage function called", { filesCount: files.length, userId, noteId });
   const urls: string[] = [];
   const errors: string[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    console.log(`Processing file ${i + 1}/${files.length}:`, { name: file.name, type: file.type, size: file.size });
     
     try {
       // ファイル検証
@@ -582,14 +572,12 @@ export const uploadImagesToFirebaseStorage = async (
       const fileName = `${timestamp}_${randomId}.${extension}`;
       
       // Storage参照作成
-      const path = noteId 
+      const path = noteId
         ? `notes/${userId}/${noteId}/${fileName}`
         : `notes/${userId}/temp/${fileName}`;
-      console.log(`Creating storage reference for file ${file.name}:`, { path });
       const storageRef = ref(storage, path);
 
       // 進行状況付きアップロード
-      console.log(`Starting upload for file ${file.name}...`);
       const uploadTask = uploadBytesResumable(storageRef, file);
       
       await new Promise<void>((resolve, reject) => {
@@ -603,7 +591,6 @@ export const uploadImagesToFirebaseStorage = async (
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log(`Successfully uploaded ${file.name}:`, downloadURL);
               urls.push(downloadURL);
               resolve();
             } catch (error) {
@@ -621,7 +608,6 @@ export const uploadImagesToFirebaseStorage = async (
     }
   }
 
-  console.log("uploadImagesToFirebaseStorage function completed", { successCount: urls.length, errorCount: errors.length, urls, errors });
   return { urls, errors };
 };
 

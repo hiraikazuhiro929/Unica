@@ -208,8 +208,6 @@ class DataDeletionManagerImpl {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - policy.retentionDays);
 
-    console.log(`🔍 ${collectionName} の削除対象検索開始 (${policy.retentionDays}日前: ${cutoffDate.toISOString()})`);
-
     try {
       let dateField = 'createdAt';
 
@@ -233,11 +231,10 @@ class DataDeletionManagerImpl {
       const querySnapshot = await getDocs(deletableQuery);
       const recordIds = querySnapshot.docs.map(doc => doc.id);
 
-      console.log(`📊 ${collectionName}: 削除対象 ${recordIds.length}件`);
       return recordIds;
 
     } catch (error) {
-      console.error(`❌ ${collectionName} の削除対象検索エラー:`, error);
+      console.error(`${collectionName} の削除対象検索エラー:`, error);
       return [];
     }
   }
@@ -247,8 +244,6 @@ class DataDeletionManagerImpl {
   // =============================================================================
 
   async exportCollectionData(collectionName: string, recordIds: string[]): Promise<string | null> {
-    console.log(`📄 ${collectionName} のデータエクスポート開始 (${recordIds.length}件)`);
-
     try {
       // レコードデータを取得
       const records: any[] = [];
@@ -272,7 +267,6 @@ class DataDeletionManagerImpl {
       }
 
       if (records.length === 0) {
-        console.warn(`⚠️ ${collectionName}: エクスポート対象データなし`);
         return null;
       }
 
@@ -313,11 +307,10 @@ class DataDeletionManagerImpl {
         exportDate: exportDate.toISOString()
       });
 
-      console.log(`✅ ${collectionName} エクスポート完了: ${exportPath}`);
       return exportPath;
 
     } catch (error) {
-      console.error(`❌ ${collectionName} エクスポートエラー:`, error);
+      console.error(`${collectionName} エクスポートエラー:`, error);
       return null;
     }
   }
@@ -327,8 +320,6 @@ class DataDeletionManagerImpl {
   // =============================================================================
 
   async executeRecordDeletion(collectionName: string, recordIds: string[]): Promise<DeletionResult> {
-    console.log(`🗑️ ${collectionName} データ削除実行開始 (${recordIds.length}件)`);
-
     let deletedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
@@ -356,11 +347,10 @@ class DataDeletionManagerImpl {
         try {
           await batch.commit();
           deletedCount += count;
-          console.log(`✅ バッチ削除完了: ${count}件`);
         } catch (error) {
           failedCount += count;
           errors.push(`バッチ削除エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
-          console.error('❌ バッチ削除エラー:', error);
+          console.error('バッチ削除エラー:', error);
         }
       }
 
@@ -381,8 +371,6 @@ class DataDeletionManagerImpl {
         jobId,
         recordIds: recordIds.slice(0, 10) // 最初の10件のIDのみ記録
       });
-
-      console.log(`🎯 ${collectionName} 削除完了: 成功 ${deletedCount}件, 失敗 ${failedCount}件`);
 
       return {
         success: failedCount === 0,
@@ -439,8 +427,6 @@ class DataDeletionManagerImpl {
 
     try {
       const jobRef = await addDoc(collection(db, 'deletion-jobs'), job);
-
-      console.log(`📅 削除ジョブ作成: ${collectionName} (${recordsToDelete.length}件)`);
 
       return {
         id: jobRef.id,
@@ -585,8 +571,6 @@ class DataDeletionManagerImpl {
     totalDeleted: number;
     errors: string[];
   }> {
-    console.log('🔄 定期削除処理開始');
-
     const processedCollections: string[] = [];
     let totalDeleted = 0;
     const errors: string[] = [];
@@ -596,11 +580,8 @@ class DataDeletionManagerImpl {
 
     for (const policy of autoDeletePolicies) {
       try {
-        console.log(`🔍 ${policy.collectionName} の処理開始`);
-
         const recordIds = await this.findDeletableRecords(policy.collectionName);
         if (recordIds.length === 0) {
-          console.log(`✅ ${policy.collectionName}: 削除対象なし`);
           continue;
         }
 
@@ -620,7 +601,6 @@ class DataDeletionManagerImpl {
         if (result.success) {
           processedCollections.push(policy.collectionName);
           totalDeleted += result.deletedCount;
-          console.log(`✅ ${policy.collectionName}: ${result.deletedCount}件削除完了`);
         } else {
           errors.push(`${policy.collectionName}: ${result.errors.join(', ')}`);
         }
@@ -628,7 +608,7 @@ class DataDeletionManagerImpl {
       } catch (error) {
         const errorMessage = `${policy.collectionName}: ${error instanceof Error ? error.message : '不明なエラー'}`;
         errors.push(errorMessage);
-        console.error('❌ 削除処理エラー:', error);
+        console.error('削除処理エラー:', error);
       }
     }
 
@@ -639,8 +619,6 @@ class DataDeletionManagerImpl {
       errorCount: errors.length,
       executedAt: new Date().toISOString()
     });
-
-    console.log(`🎯 定期削除処理完了: ${totalDeleted}件削除, エラー${errors.length}件`);
 
     return {
       processedCollections,
@@ -661,8 +639,6 @@ export const dataDeletionManager = DataDeletionManagerImpl.getInstance();
 // =============================================================================
 
 export const initializeDataDeletion = async (): Promise<void> => {
-  console.log('🔧 データ削除システム初期化中...');
-
   try {
     // 各コレクションの削除ジョブを作成
     for (const policy of DELETION_POLICIES) {
@@ -670,10 +646,8 @@ export const initializeDataDeletion = async (): Promise<void> => {
         await dataDeletionManager.createDeletionJob(policy.collectionName);
       }
     }
-
-    console.log('✅ データ削除システム初期化完了');
   } catch (error) {
-    console.error('❌ 初期化エラー:', error);
+    console.error('初期化エラー:', error);
   }
 };
 
