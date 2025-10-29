@@ -76,8 +76,6 @@ const MainDashboard = () => {
 
     const unsubscribes: (() => void)[] = [];
 
-    console.log('Firebase接続を開始します...', 'User ID:', user.uid);
-
     // Subscribe to processes
     const processUnsubscribe = subscribeToProcessesList(
       {
@@ -86,7 +84,6 @@ const MainDashboard = () => {
         orderDirection: 'desc'
       },
       (data) => {
-        console.log('取得した工程データ:', data);
         setProcesses(data);
       }
     );
@@ -98,7 +95,6 @@ const MainDashboard = () => {
         limit: 10
       },
       (data) => {
-        console.log('取得した全体タスク:', data);
         setCompanyTasks(data);
       }
     );
@@ -111,7 +107,6 @@ const MainDashboard = () => {
         limit: 10
       },
       (data) => {
-        console.log('取得した個人タスク:', data);
         setPersonalTasks(data);
       }
     );
@@ -124,7 +119,6 @@ const MainDashboard = () => {
         limit: 20
       },
       (data) => {
-        console.log('取得した通知:', data);
         setNotifications(data);
       }
     );
@@ -137,7 +131,6 @@ const MainDashboard = () => {
         limit: 10
       },
       (data) => {
-        console.log('取得した全体連絡:', data);
         setAnnouncements(data);
       }
     );
@@ -151,7 +144,6 @@ const MainDashboard = () => {
       if (todayError) {
         console.warn('今日の予定取得エラー:', todayError);
       } else {
-        console.log('取得した今日の予定:', todayEvents);
         setCalendarEvents(todayEvents);
       }
 
@@ -164,7 +156,6 @@ const MainDashboard = () => {
       if (monthError) {
         console.warn('今月の予定取得エラー:', monthError);
       } else {
-        console.log('取得した今月の予定:', currentMonthEvents);
         setMonthEvents(currentMonthEvents);
       }
     };
@@ -670,7 +661,6 @@ const MainDashboard = () => {
                           process={process}
                           onStatusUpdate={async (processId, newStatus) => {
                             // Handle status update - you might want to call a Firebase update function here
-                            console.log(`Updating process ${processId} to status ${newStatus}`);
                             // Example: await updateProcessStatus(processId, newStatus);
                           }}
                           onViewDetails={(processId) => {
@@ -868,9 +858,6 @@ const MainDashboard = () => {
                         userId: currentUserId,
                         userName: 'ユーザー'
                       });
-                      if (result.id) {
-                        console.log('クイックメモ作成成功');
-                      }
                       setShowQuickNoteModal(false);
                       setQuickNoteContent('');
                     }
@@ -892,7 +879,6 @@ const MainDashboard = () => {
           onClose={() => setShowNotifications(false)}
           onNotificationRead={(id) => {
             // 通知が既読になったときの処理（Firebaseのリアルタイム更新で自動的に反映される）
-            console.log('通知が既読になりました:', id);
           }}
         />
       </div>
